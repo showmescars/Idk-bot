@@ -5,7 +5,6 @@ import os
 import random
 from datetime import datetime
 from dotenv import load_dotenv
-import string
 
 # Load environment variables
 load_dotenv()
@@ -63,10 +62,6 @@ def save_keys(keys_data):
     with open(KEYS_FILE, 'w') as f:
         json.dump(keys_data, f, indent=4)
 
-# Generate random key
-def generate_key(length=16):
-    return ''.join(random.choices(string.ascii_uppercase + string.digits, k=length))
-
 logs = load_logs()
 credits = load_credits()
 keys = load_keys()
@@ -115,7 +110,7 @@ USER COMMANDS:
 
 ADMIN COMMANDS:
 !g [amount] - Generate keys (no credit cost, optional amount)
-!gk [amount] - Create keys and add to stock (default: 1)
+!rs - Upload .txt file to restock keys
 !stock - View how many keys are available
 !vk - View all available keys
 !ck - Clear all available keys
@@ -236,45 +231,37 @@ async def view_credits(ctx):
     else:
         await ctx.send(f"```{msg}```")
 
-# Generate keys and add to stock (admin only)
-@bot.command(name='gk')
+# Restock from file
+@bot.command(name='rs')
 @commands.has_permissions(administrator=True)
-async def generate_keys_stock(ctx, amount: int = 1):
-    """Generate keys and add them to stock"""
-    
-    if amount < 1:
-        await ctx.send("Amount must be at least 1")
+async def restock_from_file(ctx):
+    """Restock keys from a txt file - attach the file when using this command"""
+
+    if len(ctx.message.attachments) == 0:
+        await ctx.send("Please attach a .txt file with keys (one key per line)")
         return
-    
-    if amount > 50:
-        await ctx.send("Maximum 50 keys per command")
+
+    attachment = ctx.message.attachments[0]
+
+    if not attachment.filename.endswith('.txt'):
+        await ctx.send("File must be a .txt file")
         return
-    
-    generated_keys = []
-    for i in range(amount):
-        new_key = generate_key()
-        # Make sure key is unique
-        while new_key in keys["available"]:
-            new_key = generate_key()
-        
-        keys["available"].append(new_key)
-        generated_keys.append(new_key)
-    
+
+    # Download and read file
+    file_content = await attachment.read()
+    keys_list = file_content.decode('utf-8').strip().split('\n')
+
+    # Remove empty lines and strip whitespace
+    keys_list = [key.strip() for key in keys_list if key.strip()]
+
+    # Remove duplicates
+    keys_list = list(set(keys_list))
+
+    # Add keys to stock
+    keys["available"].extend(keys_list)
     save_keys(keys)
-    
-    # Send keys in DM to admin
-    try:
-        if amount == 1:
-            await ctx.author.send(f"**Generated Key:**\n``{generated_keys[0]}``")
-        else:
-            dm_message = f"**Generated {amount} Keys:**\n"
-            for idx, key in enumerate(generated_keys, 1):
-                dm_message += f"{idx}. ``{key}``\n"
-            await ctx.author.send(dm_message)
-        
-        await ctx.send(f"Generated **{amount}** key(s) and added to stock! Check your DMs.\nTotal stock: **{len(keys['available'])}** keys")
-    except:
-        await ctx.send(f"I couldn't DM you the keys. Please enable DMs!")
+
+    await ctx.send(f"Successfully added **{len(keys_list)}** keys to stock!\nTotal stock: **{len(keys['available'])}** keys")
 
 # Check stock
 @bot.command(name='stock')
