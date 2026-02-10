@@ -560,11 +560,16 @@ async def announce_restock(ctx, account_type: str = None):
 
 # Run the bot
 if __name__ == "__main__":
+    # Try to load from .env file (for local development)
+    load_dotenv()
+    
+    # Get token from environment (works for both local and Railway)
     TOKEN = os.getenv('DISCORD_TOKEN')
     
     if TOKEN is None:
-        print("ERROR: DISCORD_TOKEN not found in .env file!")
-        print("Please create a .env file with your token:")
-        print("DISCORD_TOKEN=your_token_here")
+        print("ERROR: DISCORD_TOKEN not found!")
+        print("For local: Create a .env file with DISCORD_TOKEN=your_token")
+        print("For Railway: Add DISCORD_TOKEN in the Variables tab")
     else:
+        print("Token found! Starting bot...")
         bot.run(TOKEN)
