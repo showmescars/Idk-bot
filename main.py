@@ -560,4 +560,11 @@ async def announce_restock(ctx, account_type: str = None):
 
 # Run the bot
 if __name__ == "__main__":
-    bot.run(os.environ["DISCORD_TOKEN"])
+    TOKEN = os.getenv('DISCORD_TOKEN')
+    
+    if TOKEN is None:
+        print("ERROR: DISCORD_TOKEN not found in .env file!")
+        print("Please create a .env file with your token:")
+        print("DISCORD_TOKEN=your_token_here")
+    else:
+        bot.run(TOKEN)
