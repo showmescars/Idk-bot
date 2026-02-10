@@ -5,6 +5,7 @@ import os
 import random
 from datetime import datetime
 from dotenv import load_dotenv
+import string
 
 # Load environment variables
 load_dotenv()
@@ -15,29 +16,16 @@ intents.message_content = True
 bot = commands.Bot(command_prefix='!', intents=intents)
 
 # Files
-ACCOUNTS_FILE = 'accounts.json'
+KEYS_FILE = 'keys.json'
 LOGS_FILE = 'claim_logs.json'
 CREDITS_FILE = 'credits.json'
-WHITELIST_FILE = 'whitelist.json'
 
 # Blocked channel ID
 BLOCKED_CHANNEL_ID = 1470843481177198876
 
 # Credit settings
 STARTING_CREDITS = 15
-GEN_COST = 5
-
-# Load accounts
-def load_accounts():
-    if os.path.exists(ACCOUNTS_FILE):
-        with open(ACCOUNTS_FILE, 'r') as f:
-            return json.load(f)
-    return {}
-
-# Save accounts
-def save_accounts(accounts):
-    with open(ACCOUNTS_FILE, 'w') as f:
-        json.dump(accounts, f, indent=4)
+KEY_COST = 5
 
 # Load logs
 def load_logs():
@@ -63,27 +51,30 @@ def save_credits(credits):
     with open(CREDITS_FILE, 'w') as f:
         json.dump(credits, f, indent=4)
 
-# Load whitelist
-def load_whitelist():
-    if os.path.exists(WHITELIST_FILE):
-        with open(WHITELIST_FILE, 'r') as f:
+# Load keys
+def load_keys():
+    if os.path.exists(KEYS_FILE):
+        with open(KEYS_FILE, 'r') as f:
             return json.load(f)
-    return []
+    return {"available": [], "claimed": {}}
 
-# Save whitelist
-def save_whitelist(whitelist):
-    with open(WHITELIST_FILE, 'w') as f:
-        json.dump(whitelist, f, indent=4)
+# Save keys
+def save_keys(keys_data):
+    with open(KEYS_FILE, 'w') as f:
+        json.dump(keys_data, f, indent=4)
 
-accounts = load_accounts()
+# Generate random key
+def generate_key(length=16):
+    return ''.join(random.choices(string.ascii_uppercase + string.digits, k=length))
+
 logs = load_logs()
 credits = load_credits()
-whitelist = load_whitelist()
+keys = load_keys()
 
 @bot.event
 async def on_ready():
     print(f'{bot.user} is online')
-    print('Account Generator Ready')
+    print('Key Generator Bot Ready')
 
 # Check to block DM commands
 @bot.check
@@ -115,39 +106,35 @@ async def info_command(ctx):
 
     if is_admin:
         # Admin sees all commands
-        info_text = """ACCOUNT GENERATOR BOT - ALL COMMANDS
+        info_text = """KEY GENERATOR BOT - ALL COMMANDS
 
 USER COMMANDS:
-!g <type> - Claim an account (costs 5 credits, whitelist required)
-!s - Check stock for all types
+!g - Generate/claim a key (costs 5 credits)
 !c - Check your credit balance
 !i - Display this command list
 
 ADMIN COMMANDS:
-!g <type> [amount] - Generate accounts (no credit cost, optional amount)
-!rs <type> - Upload .txt file to add accounts
-!cl <type> - Clear all accounts of a specific type
-!vs <type> - View all accounts in stock for a type
+!g [amount] - Generate keys (no credit cost, optional amount)
+!gk [amount] - Create keys and add to stock (default: 1)
+!stock - View how many keys are available
+!vk - View all available keys
+!ck - Clear all available keys
 !l [limit] - View recent claims (default: 10)
 !ac @user <amount> - Give credits to a user
 !rc @user <amount> - Remove credits from a user
 !vc - View all users and their credits
-!ann <type> - Announce restock to @everyone
-!aw @user - Add user to whitelist
-!rw @user - Remove user from whitelist
-!vw - View all whitelisted users
+!ann - Announce key restock to @everyone
 """
     else:
         # Regular users see only user commands
-        info_text = """ACCOUNT GENERATOR BOT - COMMANDS
+        info_text = """KEY GENERATOR BOT - COMMANDS
 
-!g <type> - Claim an account (costs 5 credits, whitelist required)
-!s - Check stock for all types
+!g - Generate/claim a key (costs 5 credits)
 !c - Check your credit balance
 !i - Display this command list
 
-Note: You must be whitelisted to use !g
-Each generation costs 5 credits. You start with 15 credits.
+Note: Each key costs 5 credits. You start with 15 credits.
+Contact an admin to get more credits!
 """
 
     await ctx.send(f"```{info_text}```")
@@ -236,11 +223,9 @@ async def view_credits(ctx):
     for user_id, user_credits in sorted_credits:
         try:
             user = await bot.fetch_user(int(user_id))
-            whitelist_status = " [WHITELISTED]" if user_id in whitelist else ""
-            msg += f"{user.name} ({user.id}){whitelist_status} - {user_credits} credits\n"
+            msg += f"{user.name} ({user.id}) - {user_credits} credits\n"
         except:
-            whitelist_status = " [WHITELISTED]" if user_id in whitelist else ""
-            msg += f"Unknown User ({user_id}){whitelist_status} - {user_credits} credits\n"
+            msg += f"Unknown User ({user_id}) - {user_credits} credits\n"
 
     # Discord has a 2000 character limit, so split if needed
     if len(msg) > 1900:
@@ -251,187 +236,96 @@ async def view_credits(ctx):
     else:
         await ctx.send(f"```{msg}```")
 
-# Add user to whitelist
-@bot.command(name='aw')
+# Generate keys and add to stock (admin only)
+@bot.command(name='gk')
 @commands.has_permissions(administrator=True)
-async def add_whitelist(ctx, member: discord.Member):
-    """Add a user to the whitelist"""
-    user_id = str(member.id)
-
-    if user_id in whitelist:
-        await ctx.send(f"**{member.name}** is already whitelisted")
-        return
-
-    whitelist.append(user_id)
-    save_whitelist(whitelist)
+async def generate_keys_stock(ctx, amount: int = 1):
+    """Generate keys and add them to stock"""
     
-    # Initialize credits for new whitelisted user
-    if user_id not in credits:
-        credits[user_id] = STARTING_CREDITS
-        save_credits(credits)
+    if amount < 1:
+        await ctx.send("Amount must be at least 1")
+        return
     
-    await ctx.send(f"Added **{member.name}** to whitelist with **{STARTING_CREDITS}** starting credits")
-
-# Remove user from whitelist
-@bot.command(name='rw')
-@commands.has_permissions(administrator=True)
-async def remove_whitelist(ctx, member: discord.Member):
-    """Remove a user from the whitelist"""
-    user_id = str(member.id)
-
-    if user_id not in whitelist:
-        await ctx.send(f"**{member.name}** is not whitelisted")
+    if amount > 50:
+        await ctx.send("Maximum 50 keys per command")
         return
-
-    whitelist.remove(user_id)
-    save_whitelist(whitelist)
-    await ctx.send(f"Removed **{member.name}** from whitelist")
-
-# View whitelist
-@bot.command(name='vw')
-@commands.has_permissions(administrator=True)
-async def view_whitelist(ctx):
-    """View all whitelisted users"""
-    if not whitelist:
-        await ctx.send("Whitelist is empty")
-        return
-
-    msg = "WHITELISTED USERS:\n\n"
-    for user_id in whitelist:
-        try:
-            user = await bot.fetch_user(int(user_id))
-            user_credits = credits.get(user_id, STARTING_CREDITS)
-            msg += f"{user.name} ({user.id}) - {user_credits} credits\n"
-        except:
-            user_credits = credits.get(user_id, STARTING_CREDITS)
-            msg += f"Unknown User ({user_id}) - {user_credits} credits\n"
-
-    await ctx.send(f"```{msg}```")
-
-# Restock from file
-@bot.command(name='rs')
-@commands.has_permissions(administrator=True)
-async def restock_from_file(ctx, account_type: str = None):
-    """Restock from a txt file - attach the file when using this command"""
-
-    if account_type is None:
-        await ctx.send("Usage: !rs <type> (and attach a .txt file)")
-        return
-
-    account_type = account_type.lower()
-
-    if len(ctx.message.attachments) == 0:
-        await ctx.send("Please attach a .txt file with accounts")
-        return
-
-    attachment = ctx.message.attachments[0]
-
-    if not attachment.filename.endswith('.txt'):
-        await ctx.send("File must be a .txt file")
-        return
-
-    # Download and read file
-    file_content = await attachment.read()
-    accounts_list = file_content.decode('utf-8').strip().split('\n')
-
-    # Remove empty lines
-    accounts_list = [acc.strip() for acc in accounts_list if acc.strip()]
-
-    if account_type not in accounts:
-        accounts[account_type] = []
-
-    # Add accounts
-    accounts[account_type].extend(accounts_list)
-    save_accounts(accounts)
-
-    await ctx.send(f"Successfully added {len(accounts_list)} accounts to **{account_type}**\nTotal stock: {len(accounts[account_type])}")
-
-# Clear accounts
-@bot.command(name='cl')
-@commands.has_permissions(administrator=True)
-async def clear_accounts(ctx, account_type: str = None):
-    """Clear all accounts of a specific type"""
-
-    if account_type is None:
-        await ctx.send("Usage: !cl <type>")
-        return
-
-    account_type = account_type.lower()
-
-    if account_type not in accounts:
-        await ctx.send(f"No accounts found for type: **{account_type}**")
-        return
-
-    count = len(accounts[account_type])
-    accounts[account_type] = []
-    save_accounts(accounts)
-
-    await ctx.send(f"Cleared {count} accounts from **{account_type}**")
-
-# View stock for specific type
-@bot.command(name='vs')
-@commands.has_permissions(administrator=True)
-async def view_stock(ctx, account_type: str = None):
-    """View all accounts in stock for a type"""
-
-    if account_type is None:
-        await ctx.send("Usage: !vs <type>")
-        return
-
-    account_type = account_type.lower()
-
-    if account_type not in accounts or len(accounts[account_type]) == 0:
-        await ctx.send(f"No accounts in stock for **{account_type}**")
-        return
-
-    stock_list = "\n".join(accounts[account_type])
-
-    # Discord has a 2000 character limit, so split if needed
-    if len(stock_list) > 1900:
-        await ctx.send(f"**{account_type}** stock ({len(accounts[account_type])} accounts):")
-        # Send in chunks
-        for i in range(0, len(stock_list), 1900):
-            await ctx.send(f"```{stock_list[i:i+1900]}```")
-    else:
-        await ctx.send(f"**{account_type}** stock ({len(accounts[account_type])} accounts):\n```{stock_list}```")
+    
+    generated_keys = []
+    for i in range(amount):
+        new_key = generate_key()
+        # Make sure key is unique
+        while new_key in keys["available"]:
+            new_key = generate_key()
+        
+        keys["available"].append(new_key)
+        generated_keys.append(new_key)
+    
+    save_keys(keys)
+    
+    # Send keys in DM to admin
+    try:
+        if amount == 1:
+            await ctx.author.send(f"**Generated Key:**\n``{generated_keys[0]}``")
+        else:
+            dm_message = f"**Generated {amount} Keys:**\n"
+            for idx, key in enumerate(generated_keys, 1):
+                dm_message += f"{idx}. ``{key}``\n"
+            await ctx.author.send(dm_message)
+        
+        await ctx.send(f"Generated **{amount}** key(s) and added to stock! Check your DMs.\nTotal stock: **{len(keys['available'])}** keys")
+    except:
+        await ctx.send(f"I couldn't DM you the keys. Please enable DMs!")
 
 # Check stock
-@bot.command(name='s')
+@bot.command(name='stock')
 async def check_stock(ctx):
-    """Check available stock for all account types"""
+    """Check how many keys are available"""
+    stock_count = len(keys["available"])
+    await ctx.send(f"**Available Keys:** {stock_count}")
 
-    if not accounts or all(len(accs) == 0 for accs in accounts.values()):
-        await ctx.send("No accounts in stock")
+# View all available keys (admin only)
+@bot.command(name='vk')
+@commands.has_permissions(administrator=True)
+async def view_keys(ctx):
+    """View all available keys"""
+    
+    if len(keys["available"]) == 0:
+        await ctx.send("No keys in stock")
         return
+    
+    keys_list = "\n".join([f"``{key}``" for key in keys["available"]])
+    
+    # Discord has a 2000 character limit
+    if len(keys_list) > 1900:
+        await ctx.send(f"**Available Keys ({len(keys['available'])}):**")
+        for i in range(0, len(keys_list), 1900):
+            await ctx.send(keys_list[i:i+1900])
+    else:
+        await ctx.send(f"**Available Keys ({len(keys['available'])}):**\n{keys_list}")
 
-    stock_msg = "**CURRENT STOCK:**\n"
-    for acc_type, acc_list in accounts.items():
-        stock_msg += f"{acc_type}: {len(acc_list)} available\n"
+# Clear all keys (admin only)
+@bot.command(name='ck')
+@commands.has_permissions(administrator=True)
+async def clear_keys(ctx):
+    """Clear all available keys"""
+    
+    count = len(keys["available"])
+    keys["available"] = []
+    save_keys(keys)
+    
+    await ctx.send(f"Cleared **{count}** keys from stock")
 
-    await ctx.send(stock_msg)
-
-# Generate/claim account
+# Generate/claim key
 @bot.command(name='g')
-async def generate_account(ctx, account_type: str = None, amount: int = 1):
-    """Claim an account (costs 5 credits per account, whitelist required, admins get unlimited free gens)"""
+async def generate_key_command(ctx, amount: int = 1):
+    """Claim a key (costs 5 credits per key, admins get unlimited free)"""
 
     user_id = str(ctx.author.id)
     is_admin = ctx.author.guild_permissions.administrator
 
-    # Check whitelist (admins bypass this)
-    if not is_admin and user_id not in whitelist:
-        await ctx.send("You are not whitelisted to use this command")
-        return
-
-    if account_type is None:
-        await ctx.send("Usage: !g <type> [amount] (amount is optional, admins only)")
-        return
-
-    account_type = account_type.lower()
-
-    # Regular users can only claim 1 account
+    # Regular users can only claim 1 key
     if not is_admin and amount > 1:
-        await ctx.send("Only admins can claim multiple accounts at once")
+        await ctx.send("Only admins can claim multiple keys at once")
         return
 
     # Validate amount
@@ -440,7 +334,7 @@ async def generate_account(ctx, account_type: str = None, amount: int = 1):
         return
 
     if amount > 10:
-        await ctx.send("Maximum 10 accounts per command")
+        await ctx.send("Maximum 10 keys per command")
         return
 
     # Check credits (only for non-admins)
@@ -450,75 +344,82 @@ async def generate_account(ctx, account_type: str = None, amount: int = 1):
             credits[user_id] = STARTING_CREDITS
             save_credits(credits)
         
-        total_cost = GEN_COST * amount
+        total_cost = KEY_COST * amount
         
         if credits[user_id] < total_cost:
-            await ctx.send(f"Not enough credits! You have **{credits[user_id]}** credits but need **{total_cost}** credits ({GEN_COST} per account)")
+            await ctx.send(f"Not enough credits! You have **{credits[user_id]}** credits but need **{total_cost}** credits ({KEY_COST} per key)")
             return
 
-    # Check if type exists
-    if account_type not in accounts or len(accounts[account_type]) == 0:
-        await ctx.send(f"No accounts available for **{account_type}**")
+    # Check if keys are available
+    if len(keys["available"]) == 0:
+        await ctx.send(f"❌ No keys available in stock! Contact an admin.")
         return
 
     # Check if enough stock
-    if len(accounts[account_type]) < amount:
-        await ctx.send(f"Not enough stock! Only {len(accounts[account_type])} accounts available for **{account_type}**")
+    if len(keys["available"]) < amount:
+        await ctx.send(f"Not enough stock! Only **{len(keys['available'])}** keys available")
         return
 
-    # Get random accounts
-    claimed_accounts = []
+    # Get random keys
+    claimed_keys = []
     for i in range(amount):
-        account = random.choice(accounts[account_type])
-        accounts[account_type].remove(account)
-        claimed_accounts.append(account)
+        key = random.choice(keys["available"])
+        keys["available"].remove(key)
+        claimed_keys.append(key)
 
-    save_accounts(accounts)
+        # Add to claimed
+        keys["claimed"][key] = {
+            "user": str(ctx.author),
+            "user_id": user_id,
+            "claimed_at": datetime.now().isoformat(),
+            "is_admin": is_admin
+        }
+
+    save_keys(keys)
 
     # Deduct credits (only for non-admins)
     if not is_admin:
-        total_cost = GEN_COST * amount
+        total_cost = KEY_COST * amount
         credits[user_id] -= total_cost
         save_credits(credits)
 
     # Log the claims
-    for account in claimed_accounts:
+    for key in claimed_keys:
         log_entry = {
             "user": str(ctx.author),
             "user_id": user_id,
-            "type": account_type,
-            "account": account,
+            "key": key,
             "timestamp": datetime.now().isoformat(),
             "is_admin": is_admin,
-            "credits_spent": 0 if is_admin else GEN_COST
+            "credits_spent": 0 if is_admin else KEY_COST
         }
         logs.append(log_entry)
     save_logs(logs)
 
-    # Send accounts via DM with double backtick formatting
+    # Send keys via DM
     try:
         if amount == 1:
-            await ctx.author.send(f"**Your {account_type} account:**\n``{claimed_accounts[0]}``")
+            await ctx.author.send(f"**Your Key:**\n``{claimed_keys[0]}``")
         else:
-            dm_message = f"**Your {amount} {account_type} accounts:**\n"
-            for idx, account in enumerate(claimed_accounts, 1):
-                dm_message += f"{idx}. ``{account}``\n"
+            dm_message = f"**Your {amount} Keys:**\n"
+            for idx, key in enumerate(claimed_keys, 1):
+                dm_message += f"{idx}. ``{key}``\n"
             await ctx.author.send(dm_message)
 
-        # Success message with credit info (NO MENTION)
+        # Success message with credit info
         if is_admin:
-            await ctx.send(f"Check your DMs!")
+            await ctx.send(f"✅ Check your DMs!")
         else:
             remaining_credits = credits[user_id]
-            await ctx.send(f"Check your DMs! Credits remaining: **{remaining_credits}**")
+            await ctx.send(f"✅ Check your DMs! Credits remaining: **{remaining_credits}**")
     except:
-        await ctx.send(f"I couldn't DM you. Please enable DMs and try again!")
+        await ctx.send(f"❌ I couldn't DM you. Please enable DMs and try again!")
 
 # View logs
 @bot.command(name='l')
 @commands.has_permissions(administrator=True)
 async def view_logs(ctx, limit: int = 10):
-    """View recent claim logs"""
+    """View recent key claims"""
 
     if not logs:
         await ctx.send("No logs available")
@@ -527,34 +428,28 @@ async def view_logs(ctx, limit: int = 10):
     recent_logs = logs[-limit:]
     recent_logs.reverse()
 
-    log_msg = f"**RECENT CLAIMS (Last {len(recent_logs)}):**\n"
+    log_msg = f"**RECENT KEY CLAIMS (Last {len(recent_logs)}):**\n"
     for log in recent_logs:
         timestamp = datetime.fromisoformat(log['timestamp']).strftime('%Y-%m-%d %H:%M:%S')
         admin_badge = " [ADMIN]" if log.get('is_admin', False) else ""
         credits_info = f" (-{log.get('credits_spent', 0)} credits)" if log.get('credits_spent', 0) > 0 else ""
-        log_msg += f"\n`{timestamp}` - {log['user']}{admin_badge} claimed **{log['type']}**{credits_info}"
+        log_msg += f"\n`{timestamp}` - {log['user']}{admin_badge} claimed key{credits_info}"
 
     await ctx.send(log_msg)
 
 # Announce restock
 @bot.command(name='ann')
 @commands.has_permissions(administrator=True)
-async def announce_restock(ctx, account_type: str = None):
-    """Announce a restock"""
+async def announce_restock(ctx):
+    """Announce a key restock"""
 
-    if account_type is None:
-        await ctx.send("Usage: !ann <type>")
+    stock_count = len(keys["available"])
+
+    if stock_count == 0:
+        await ctx.send("No keys in stock to announce")
         return
 
-    account_type = account_type.lower()
-
-    if account_type not in accounts or len(accounts[account_type]) == 0:
-        await ctx.send(f"No stock available for **{account_type}**")
-        return
-
-    stock_count = len(accounts[account_type])
-
-    announcement = f"@everyone\n\n🎉 **RESTOCK ALERT** 🎉\n\n**{account_type.upper()}** accounts are now available!\n\nStock: {stock_count} accounts\n\nUse `!g {account_type}` to claim yours!\n(Costs {GEN_COST} credits per account)"
+    announcement = f"@everyone\n\n🎉 **KEY RESTOCK ALERT** 🎉\n\nKeys are now available!\n\nStock: **{stock_count}** keys\n\nUse `!g` to claim yours!\n(Costs {KEY_COST} credits per key)"
 
     await ctx.send(announcement)
 
