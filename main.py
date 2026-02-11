@@ -12,7 +12,7 @@ load_dotenv()
 # Bot setup
 intents = discord.Intents.default()
 intents.message_content = True
-bot = commands.Bot(command_prefix='!', intents=intents)
+bot = commands.Bot(command_prefix='?', intents=intents)
 
 # Files
 KEYS_FILE = 'keys.json'
@@ -64,9 +64,9 @@ async def globally_block_dms(ctx):
 async def only_allowed_channel(ctx):
     guild_id = str(ctx.guild.id)
     
-    # If server not configured, allow all channels (or block - your choice)
+    # If server not configured, allow all channels
     if guild_id not in config or 'allowed_channel' not in config[guild_id]:
-        return True  # Change to False to block until channel is set
+        return True
     
     allowed_channel = config[guild_id]['allowed_channel']
     if ctx.channel.id != allowed_channel:
@@ -98,23 +98,23 @@ async def info_command(ctx):
         info_text = """KEY BOT - COMMANDS
 
 USER COMMANDS:
-!claim <type> - Claim a key
-!stock - Check available keys
-!i - Display this command list
+?key - Generate and claim a random key
+?stock - Check available keys
+?i - Display this command list
 
 ADMIN COMMANDS:
-!setchannel - Set current channel as bot channel
-!restock <type> - Upload .txt file to add keys
-!clear <type> - Clear all keys of a specific type
-!view <type> - View all keys in stock for a type
-!announce <type> - Announce restock to @everyone
+?setchannel - Set current channel as bot channel
+?restock <type> - Upload .txt file to add keys
+?clear <type> - Clear all keys of a specific type
+?view <type> - View all keys in stock for a type
+?announce <type> - Announce restock to @everyone
 """
     else:
         info_text = """KEY BOT - COMMANDS
 
-!claim <type> - Claim a key
-!stock - Check available keys
-!i - Display this command list
+?key - Generate and claim a random key
+?stock - Check available keys
+?i - Display this command list
 """
 
     await ctx.send(f"```{info_text}```")
@@ -125,7 +125,7 @@ ADMIN COMMANDS:
 async def restock_from_file(ctx, key_type: str = None):
     """Restock from a txt file - attach the file when using this command"""
     if key_type is None:
-        await ctx.send("Usage: !restock <type> (and attach a .txt file)")
+        await ctx.send("Usage: ?restock <type> (and attach a .txt file)")
         return
 
     key_type = key_type.lower()
@@ -162,7 +162,7 @@ async def restock_from_file(ctx, key_type: str = None):
 async def clear_keys(ctx, key_type: str = None):
     """Clear all keys of a specific type"""
     if key_type is None:
-        await ctx.send("Usage: !clear <type>")
+        await ctx.send("Usage: ?clear <type>")
         return
 
     key_type = key_type.lower()
@@ -183,7 +183,7 @@ async def clear_keys(ctx, key_type: str = None):
 async def view_stock(ctx, key_type: str = None):
     """View all keys in stock for a type"""
     if key_type is None:
-        await ctx.send("Usage: !view <type>")
+        await ctx.send("Usage: ?view <type>")
         return
 
     key_type = key_type.lower()
@@ -216,32 +216,31 @@ async def check_stock(ctx):
 
     await ctx.send(stock_msg)
 
-# Claim key
-@bot.command(name='claim')
-async def claim_key(ctx, key_type: str = None):
-    """Claim a key"""
-    if key_type is None:
-        await ctx.send("Usage: !claim <type>")
+# Generate/Claim a random key from any available type
+@bot.command(name='key')
+async def generate_key(ctx):
+    """Generate and claim a random key from available stock"""
+    # Get all key types that have stock
+    available_types = [key_type for key_type, key_list in keys.items() if len(key_list) > 0]
+    
+    if not available_types:
+        await ctx.send("❌ No keys available in stock!")
         return
-
-    key_type = key_type.lower()
-
-    # Check if type exists
-    if key_type not in keys or len(keys[key_type]) == 0:
-        await ctx.send(f"No keys available for **{key_type}**")
-        return
-
-    # Get random key
-    claimed_key = random.choice(keys[key_type])
-    keys[key_type].remove(claimed_key)
+    
+    # Pick a random type
+    chosen_type = random.choice(available_types)
+    
+    # Get a random key from that type
+    claimed_key = random.choice(keys[chosen_type])
+    keys[chosen_type].remove(claimed_key)
     save_keys(keys)
 
     # Send key via DM
     try:
-        await ctx.author.send(f"**Your {key_type} key:**\n```{claimed_key}```")
-        await ctx.send(f"{ctx.author.mention} Check your DMs!")
+        await ctx.author.send(f"**Your {chosen_type} key:**\n```{claimed_key}```")
+        await ctx.send(f"{ctx.author.mention} ✅ Check your DMs! You received a **{chosen_type}** key!")
     except:
-        await ctx.send(f"{ctx.author.mention} I couldn't DM you. Please enable DMs and try again!")
+        await ctx.send(f"{ctx.author.mention} ❌ I couldn't DM you. Please enable DMs and try again!")
 
 # Announce restock
 @bot.command(name='announce')
@@ -249,7 +248,7 @@ async def claim_key(ctx, key_type: str = None):
 async def announce_restock(ctx, key_type: str = None):
     """Announce a restock"""
     if key_type is None:
-        await ctx.send("Usage: !announce <type>")
+        await ctx.send("Usage: ?announce <type>")
         return
 
     key_type = key_type.lower()
@@ -260,7 +259,7 @@ async def announce_restock(ctx, key_type: str = None):
 
     stock_count = len(keys[key_type])
 
-    announcement = f"@everyone\n\n🎉 **RESTOCK ALERT** 🎉\n\n**{key_type.upper()}** keys are now available!\n\nStock: {stock_count} keys\n\nUse `!claim {key_type}` to get yours!"
+    announcement = f"@everyone\n\n🎉 **RESTOCK ALERT** 🎉\n\n**{key_type.upper()}** keys are now available!\n\nStock: {stock_count} keys\n\nUse `?key` to get yours!"
 
     await ctx.send(announcement)
 
