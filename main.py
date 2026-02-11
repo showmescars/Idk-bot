@@ -36,13 +36,21 @@ config = load_config()
 def load_keys():
     if os.path.exists(KEYS_FILE):
         with open(KEYS_FILE, 'r') as f:
-            return json.load(f)
-    return {}
+            data = json.load(f)
+            # Handle old format with types
+            if isinstance(data, dict) and any(isinstance(v, list) for v in data.values()):
+                # Flatten all keys into one list
+                all_keys = []
+                for key_list in data.values():
+                    all_keys.extend(key_list)
+                return all_keys
+            return data if isinstance(data, list) else []
+    return []
 
 # Save keys
-def save_keys(keys):
+def save_keys(keys_list):
     with open(KEYS_FILE, 'w') as f:
-        json.dump(keys, f, indent=4)
+        json.dump(keys_list, f, indent=4)
 
 keys = load_keys()
 
@@ -86,7 +94,7 @@ async def set_channel(ctx):
     config[guild_id]['allowed_channel'] = ctx.channel.id
     save_config(config)
     
-    await ctx.send(f"✅ This channel is now set as the bot command channel!\nChannel ID: {ctx.channel.id}")
+    await ctx.send(f"This channel is now set as the bot command channel!\nChannel ID: {ctx.channel.id}")
 
 # Info command
 @bot.command(name='i')
@@ -98,21 +106,21 @@ async def info_command(ctx):
         info_text = """KEY BOT - COMMANDS
 
 USER COMMANDS:
-?key - Generate and claim a random key
+?key - Generate and claim a key
 ?stock - Check available keys
 ?i - Display this command list
 
 ADMIN COMMANDS:
 ?setchannel - Set current channel as bot channel
-?restock <type> - Upload .txt file to add keys
-?clear <type> - Clear all keys of a specific type
-?view <type> - View all keys in stock for a type
-?announce <type> - Announce restock to @everyone
+?restock - Upload .txt file to add keys
+?clear - Clear all keys
+?view - View all keys in stock
+?announce - Announce restock to @everyone
 """
     else:
         info_text = """KEY BOT - COMMANDS
 
-?key - Generate and claim a random key
+?key - Generate and claim a key
 ?stock - Check available keys
 ?i - Display this command list
 """
@@ -122,14 +130,8 @@ ADMIN COMMANDS:
 # Restock from file
 @bot.command(name='restock')
 @commands.has_permissions(administrator=True)
-async def restock_from_file(ctx, key_type: str = None):
+async def restock_from_file(ctx):
     """Restock from a txt file - attach the file when using this command"""
-    if key_type is None:
-        await ctx.send("Usage: ?restock <type> (and attach a .txt file)")
-        return
-
-    key_type = key_type.lower()
-
     if len(ctx.message.attachments) == 0:
         await ctx.send("Please attach a .txt file with keys")
         return
@@ -147,119 +149,81 @@ async def restock_from_file(ctx, key_type: str = None):
     # Remove empty lines
     keys_list = [key.strip() for key in keys_list if key.strip()]
 
-    if key_type not in keys:
-        keys[key_type] = []
-
-    # Add keys
-    keys[key_type].extend(keys_list)
+    # Add keys to existing stock
+    keys.extend(keys_list)
     save_keys(keys)
 
-    await ctx.send(f"Successfully added {len(keys_list)} keys to **{key_type}**\nTotal stock: {len(keys[key_type])}")
+    await ctx.send(f"Successfully added {len(keys_list)} keys!\nTotal stock: {len(keys)}")
 
 # Clear keys
 @bot.command(name='clear')
 @commands.has_permissions(administrator=True)
-async def clear_keys(ctx, key_type: str = None):
-    """Clear all keys of a specific type"""
-    if key_type is None:
-        await ctx.send("Usage: ?clear <type>")
-        return
-
-    key_type = key_type.lower()
-
-    if key_type not in keys:
-        await ctx.send(f"No keys found for type: **{key_type}**")
-        return
-
-    count = len(keys[key_type])
-    keys[key_type] = []
+async def clear_keys(ctx):
+    """Clear all keys"""
+    global keys
+    count = len(keys)
+    keys = []
     save_keys(keys)
 
-    await ctx.send(f"Cleared {count} keys from **{key_type}**")
+    await ctx.send(f"Cleared {count} keys from stock")
 
-# View stock for specific type
+# View stock
 @bot.command(name='view')
 @commands.has_permissions(administrator=True)
-async def view_stock(ctx, key_type: str = None):
-    """View all keys in stock for a type"""
-    if key_type is None:
-        await ctx.send("Usage: ?view <type>")
+async def view_stock(ctx):
+    """View all keys in stock"""
+    if len(keys) == 0:
+        await ctx.send("No keys in stock")
         return
 
-    key_type = key_type.lower()
-
-    if key_type not in keys or len(keys[key_type]) == 0:
-        await ctx.send(f"No keys in stock for **{key_type}**")
-        return
-
-    stock_list = "\n".join(keys[key_type])
+    stock_list = "\n".join(keys)
 
     # Discord has a 2000 character limit, so split if needed
     if len(stock_list) > 1900:
-        await ctx.send(f"**{key_type}** stock ({len(keys[key_type])} keys):")
+        await ctx.send(f"**Current Stock** ({len(keys)} keys):")
         for i in range(0, len(stock_list), 1900):
             await ctx.send(f"```{stock_list[i:i+1900]}```")
     else:
-        await ctx.send(f"**{key_type}** stock ({len(keys[key_type])} keys):\n```{stock_list}```")
+        await ctx.send(f"**Current Stock** ({len(keys)} keys):\n```{stock_list}```")
 
 # Check stock
 @bot.command(name='stock')
 async def check_stock(ctx):
-    """Check available stock for all key types"""
-    if not keys or all(len(k) == 0 for k in keys.values()):
-        await ctx.send("No keys in stock")
-        return
+    """Check available stock"""
+    await ctx.send(f"**CURRENT STOCK:** {len(keys)} keys available")
 
-    stock_msg = "**CURRENT STOCK:**\n"
-    for key_type, key_list in keys.items():
-        stock_msg += f"{key_type}: {len(key_list)} available\n"
-
-    await ctx.send(stock_msg)
-
-# Generate/Claim a random key from any available type
+# Generate/Claim a key
 @bot.command(name='key')
 async def generate_key(ctx):
-    """Generate and claim a random key from available stock"""
-    # Get all key types that have stock
-    available_types = [key_type for key_type, key_list in keys.items() if len(key_list) > 0]
-    
-    if not available_types:
-        await ctx.send("❌ No keys available in stock!")
+    """Generate and claim a key"""
+    if len(keys) == 0:
+        await ctx.send("No keys available in stock!")
         return
     
-    # Pick a random type
-    chosen_type = random.choice(available_types)
-    
-    # Get a random key from that type
-    claimed_key = random.choice(keys[chosen_type])
-    keys[chosen_type].remove(claimed_key)
+    # Get a random key
+    claimed_key = random.choice(keys)
+    keys.remove(claimed_key)
     save_keys(keys)
 
     # Send key via DM
     try:
-        await ctx.author.send(f"**Your {chosen_type} key:**\n```{claimed_key}```")
-        await ctx.send(f"{ctx.author.mention} ✅ Check your DMs! You received a **{chosen_type}** key!")
+        await ctx.author.send(f"**Your key:**\n```{claimed_key}```")
+        await ctx.send(f"{ctx.author.mention} Check your DMs!")
     except:
-        await ctx.send(f"{ctx.author.mention} ❌ I couldn't DM you. Please enable DMs and try again!")
+        await ctx.send(f"{ctx.author.mention} I couldn't DM you. Please enable DMs and try again!")
 
 # Announce restock
 @bot.command(name='announce')
 @commands.has_permissions(administrator=True)
-async def announce_restock(ctx, key_type: str = None):
+async def announce_restock(ctx):
     """Announce a restock"""
-    if key_type is None:
-        await ctx.send("Usage: ?announce <type>")
+    if len(keys) == 0:
+        await ctx.send("No stock available to announce")
         return
 
-    key_type = key_type.lower()
+    stock_count = len(keys)
 
-    if key_type not in keys or len(keys[key_type]) == 0:
-        await ctx.send(f"No stock available for **{key_type}**")
-        return
-
-    stock_count = len(keys[key_type])
-
-    announcement = f"@everyone\n\n🎉 **RESTOCK ALERT** 🎉\n\n**{key_type.upper()}** keys are now available!\n\nStock: {stock_count} keys\n\nUse `?key` to get yours!"
+    announcement = f"@everyone\n\n**RESTOCK ALERT**\n\nKeys are now available!\n\nStock: {stock_count} keys\n\nUse `?key` to get yours!"
 
     await ctx.send(announcement)
 
