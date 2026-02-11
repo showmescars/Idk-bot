@@ -16,9 +16,21 @@ bot = commands.Bot(command_prefix='!', intents=intents)
 
 # Files
 KEYS_FILE = 'keys.json'
+CONFIG_FILE = 'config.json'
 
-# Allowed channel ID - bot only works here
-ALLOWED_CHANNEL_ID = 1467033624757927999
+# Load config
+def load_config():
+    if os.path.exists(CONFIG_FILE):
+        with open(CONFIG_FILE, 'r') as f:
+            return json.load(f)
+    return {}
+
+# Save config
+def save_config(config):
+    with open(CONFIG_FILE, 'w') as f:
+        json.dump(config, f, indent=4)
+
+config = load_config()
 
 # Load keys
 def load_keys():
@@ -47,13 +59,34 @@ async def globally_block_dms(ctx):
         return False
     return True
 
-# Check to only allow specific channel
+# Check to only allow specific channel per server
 @bot.check
 async def only_allowed_channel(ctx):
-    # Only allow commands in the specified channel
-    if ctx.channel.id != ALLOWED_CHANNEL_ID:
+    guild_id = str(ctx.guild.id)
+    
+    # If server not configured, allow all channels (or block - your choice)
+    if guild_id not in config or 'allowed_channel' not in config[guild_id]:
+        return True  # Change to False to block until channel is set
+    
+    allowed_channel = config[guild_id]['allowed_channel']
+    if ctx.channel.id != allowed_channel:
         return False
     return True
+
+# Set allowed channel (admin only)
+@bot.command(name='setchannel')
+@commands.has_permissions(administrator=True)
+async def set_channel(ctx):
+    """Set this channel as the allowed channel for bot commands"""
+    guild_id = str(ctx.guild.id)
+    
+    if guild_id not in config:
+        config[guild_id] = {}
+    
+    config[guild_id]['allowed_channel'] = ctx.channel.id
+    save_config(config)
+    
+    await ctx.send(f"✅ This channel is now set as the bot command channel!\nChannel ID: {ctx.channel.id}")
 
 # Info command
 @bot.command(name='i')
@@ -70,6 +103,7 @@ USER COMMANDS:
 !i - Display this command list
 
 ADMIN COMMANDS:
+!setchannel - Set current channel as bot channel
 !restock <type> - Upload .txt file to add keys
 !clear <type> - Clear all keys of a specific type
 !view <type> - View all keys in stock for a type
