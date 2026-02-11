@@ -17,6 +17,9 @@ bot = commands.Bot(command_prefix='!', intents=intents)
 # Files
 KEYS_FILE = 'keys.json'
 
+# Allowed channel ID - bot only works here
+ALLOWED_CHANNEL_ID = 1467033624757927999
+
 # Load keys
 def load_keys():
     if os.path.exists(KEYS_FILE):
@@ -41,6 +44,14 @@ async def on_ready():
 async def globally_block_dms(ctx):
     if ctx.guild is None:
         await ctx.send("Commands can only be used in servers, not DMs")
+        return False
+    return True
+
+# Check to only allow specific channel
+@bot.check
+async def only_allowed_channel(ctx):
+    # Only allow commands in the specified channel
+    if ctx.channel.id != ALLOWED_CHANNEL_ID:
         return False
     return True
 
