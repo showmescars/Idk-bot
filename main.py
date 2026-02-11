@@ -17,6 +17,7 @@ bot = commands.Bot(command_prefix='?', intents=intents)
 # Files
 KEYS_FILE = 'keys.json'
 CONFIG_FILE = 'config.json'
+BLACKLIST_FILE = 'blacklist.json'
 
 # Load config
 def load_config():
@@ -31,6 +32,20 @@ def save_config(config):
         json.dump(config, f, indent=4)
 
 config = load_config()
+
+# Load blacklist
+def load_blacklist():
+    if os.path.exists(BLACKLIST_FILE):
+        with open(BLACKLIST_FILE, 'r') as f:
+            return json.load(f)
+    return []
+
+# Save blacklist
+def save_blacklist(blacklist):
+    with open(BLACKLIST_FILE, 'w') as f:
+        json.dump(blacklist, f, indent=4)
+
+blacklist = load_blacklist()
 
 # Load keys
 def load_keys():
@@ -67,6 +82,18 @@ async def globally_block_dms(ctx):
         return False
     return True
 
+# Check if user is blacklisted
+@bot.check
+async def check_blacklist(ctx):
+    # Admins bypass blacklist
+    if ctx.author.guild_permissions.administrator:
+        return True
+    
+    if ctx.author.id in blacklist:
+        await ctx.send(f"{ctx.author.mention} You are blacklisted from using this bot.")
+        return False
+    return True
+
 # Check to only allow specific channel per server (except for admins)
 @bot.check
 async def only_allowed_channel(ctx):
@@ -100,8 +127,65 @@ async def set_channel(ctx):
     
     await ctx.send(f"This channel is now set as the bot command channel!\nChannel ID: {ctx.channel.id}")
 
+# Blacklist a user
+@bot.command(name='blacklist')
+@commands.has_permissions(administrator=True)
+async def blacklist_user(ctx, user: discord.Member = None):
+    """Blacklist a user from using the bot"""
+    if user is None:
+        await ctx.send("Usage: ?blacklist @user")
+        return
+    
+    if user.guild_permissions.administrator:
+        await ctx.send("Cannot blacklist administrators!")
+        return
+    
+    if user.id in blacklist:
+        await ctx.send(f"{user.mention} is already blacklisted.")
+        return
+    
+    blacklist.append(user.id)
+    save_blacklist(blacklist)
+    await ctx.send(f"{user.mention} has been blacklisted from using the bot.")
+
+# Unblacklist a user
+@bot.command(name='unblacklist')
+@commands.has_permissions(administrator=True)
+async def unblacklist_user(ctx, user: discord.Member = None):
+    """Remove a user from the blacklist"""
+    if user is None:
+        await ctx.send("Usage: ?unblacklist @user")
+        return
+    
+    if user.id not in blacklist:
+        await ctx.send(f"{user.mention} is not blacklisted.")
+        return
+    
+    blacklist.remove(user.id)
+    save_blacklist(blacklist)
+    await ctx.send(f"{user.mention} has been removed from the blacklist.")
+
+# View blacklist
+@bot.command(name='viewblacklist')
+@commands.has_permissions(administrator=True)
+async def view_blacklist(ctx):
+    """View all blacklisted users"""
+    if len(blacklist) == 0:
+        await ctx.send("No users are blacklisted.")
+        return
+    
+    blacklist_text = "**Blacklisted Users:**\n"
+    for user_id in blacklist:
+        user = bot.get_user(user_id)
+        if user:
+            blacklist_text += f"{user.name} (ID: {user_id})\n"
+        else:
+            blacklist_text += f"Unknown User (ID: {user_id})\n"
+    
+    await ctx.send(blacklist_text)
+
 # Info command
-@bot.command(name='i')
+@bot.command(name='info')
 async def info_command(ctx):
     """Display all available commands"""
     is_admin = ctx.author.guild_permissions.administrator
@@ -112,7 +196,7 @@ async def info_command(ctx):
 USER COMMANDS:
 ?key - Generate and claim a key
 ?stock - Check available keys
-?i - Display this command list
+?info - Display this command list
 
 ADMIN COMMANDS:
 ?setchannel - Set current channel as bot channel
@@ -120,13 +204,16 @@ ADMIN COMMANDS:
 ?clear - Clear all keys
 ?view - View all keys in stock
 ?announce - Announce restock to @everyone
+?blacklist @user - Blacklist a user from using the bot
+?unblacklist @user - Remove a user from blacklist
+?viewblacklist - View all blacklisted users
 """
     else:
         info_text = """KEY BOT - COMMANDS
 
 ?key - Generate and claim a key
 ?stock - Check available keys
-?i - Display this command list
+?info - Display this command list
 """
 
     await ctx.send(f"```{info_text}```")
