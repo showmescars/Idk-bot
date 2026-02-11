@@ -67,9 +67,13 @@ async def globally_block_dms(ctx):
         return False
     return True
 
-# Check to only allow specific channel per server
+# Check to only allow specific channel per server (except for admins)
 @bot.check
 async def only_allowed_channel(ctx):
+    # Admins can use commands anywhere
+    if ctx.author.guild_permissions.administrator:
+        return True
+    
     guild_id = str(ctx.guild.id)
     
     # If server not configured, allow all channels
@@ -207,7 +211,7 @@ async def generate_key(ctx):
 
     # Send key via DM
     try:
-        await ctx.author.send(f"**Your key:**\n```{claimed_key}```")
+        await ctx.author.send(f"``{claimed_key}``")
         await ctx.send(f"{ctx.author.mention} Check your DMs!")
     except:
         await ctx.send(f"{ctx.author.mention} I couldn't DM you. Please enable DMs and try again!")
