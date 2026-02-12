@@ -12,7 +12,7 @@ load_dotenv()
 # Bot setup
 intents = discord.Intents.default()
 intents.message_content = True
-bot = commands.Bot(command_prefix='?', intents=intents)
+bot = commands.Bot(command_prefix='?', intents=intents, help_command=None)  # ← DISABLED DEFAULT HELP
 
 # Files
 KEYS_FILE = 'keys.json'
@@ -508,7 +508,7 @@ async def reset_cooldown(ctx, user_input: str = None):
     
     await ctx.send(f"**{user.name}**'s (ID: {user.id}) cooldown has been reset.")
 
-# Info command
+# Info/Help command - CUSTOM
 @bot.command(name='info')
 async def info_command(ctx):
     """Display all available commands"""
@@ -552,6 +552,12 @@ NOTE: You can claim up to 3 keys before a
 """
 
     await ctx.send(f"```{info_text}```")
+
+# Add ?help as an alias to ?info
+@bot.command(name='help')
+async def help_command(ctx):
+    """Display all available commands (alias for ?info)"""
+    await info_command(ctx)
 
 # Restock from file
 @bot.command(name='restock')
