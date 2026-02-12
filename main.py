@@ -140,7 +140,7 @@ def update_stats(action, **kwargs):
             stats['first_restock_date'] = current_time
     
     elif action == 'claim':
-        stats['total_keys_claimed'] += 1
+        stats['total_keys_claimed'] += kwargs.get('count', 1)
         user_id = kwargs.get('user_id')
         
         # Update most active claimer
@@ -317,23 +317,38 @@ def check_cooldown(user_id):
             'cooldown_until': None,
             'cooldown_violations': 0
         }
-        return False, None
+        return False, None, 0
     
     user_data = cooldowns[user_id_str]
     
     if user_data['cooldown_until']:
         if datetime.now() < user_data['cooldown_until']:
             time_remaining = user_data['cooldown_until'] - datetime.now()
-            return True, time_remaining
+            return True, time_remaining, user_data['keys_claimed']
         else:
             user_data['cooldown_until'] = None
             user_data['keys_claimed'] = 0
             save_cooldowns(cooldowns)
     
-    return False, None
+    return False, None, user_data['keys_claimed']
 
-# Update key claim
-def update_key_claim(user_id):
+# Get keys remaining for user
+def get_keys_remaining(user_id):
+    user_id_str = str(user_id)
+    
+    if user_id_str not in cooldowns:
+        return MAX_KEYS_BEFORE_COOLDOWN
+    
+    user_data = cooldowns[user_id_str]
+    
+    # If on cooldown, no keys available
+    if user_data['cooldown_until'] and datetime.now() < user_data['cooldown_until']:
+        return 0
+    
+    return MAX_KEYS_BEFORE_COOLDOWN - user_data['keys_claimed']
+
+# Update key claim with multiple keys
+def update_key_claim(user_id, num_keys):
     user_id_str = str(user_id)
     
     if user_id_str not in cooldowns:
@@ -344,8 +359,9 @@ def update_key_claim(user_id):
         }
     
     user_data = cooldowns[user_id_str]
-    user_data['keys_claimed'] += 1
+    user_data['keys_claimed'] += num_keys
     
+    # If user has claimed 3 or more keys total, apply cooldown
     if user_data['keys_claimed'] >= MAX_KEYS_BEFORE_COOLDOWN:
         user_data['cooldown_until'] = datetime.now() + COOLDOWN_DURATION
         user_data['keys_claimed'] = 0
@@ -876,7 +892,7 @@ async def info_command(ctx):
         
         embed.add_field(
             name="User Commands",
-            value="?key - Generate and claim a key\n?stock - Check available keys\n?info - Display this command list",
+            value="?key [amount] - Generate and claim keys (1-3)\n?stock - Check available keys\n?remaining - Check your remaining claims\n?info - Display this command list",
             inline=False
         )
         
@@ -898,7 +914,7 @@ async def info_command(ctx):
             inline=False
         )
         
-        embed.set_footer(text="Note: Users are limited to 3 keys before a 1-hour cooldown is applied.")
+        embed.set_footer(text="Note: Users can claim 1-3 keys at once. Cooldown applies after claiming 3 total keys.")
     else:
         embed = discord.Embed(
             title="Key Bot - Commands",
@@ -907,11 +923,11 @@ async def info_command(ctx):
         
         embed.add_field(
             name="Available Commands",
-            value="?key - Generate and claim a key\n?stock - Check available keys\n?info - Display this command list",
+            value="?key [amount] - Generate and claim keys (1-3)\nExample: ?key 2 (claims 2 keys)\n?stock - Check available keys\n?remaining - Check your remaining claims\n?info - Display this command list",
             inline=False
         )
         
-        embed.set_footer(text="Note: You can claim up to 3 keys before a 1-hour cooldown is applied.")
+        embed.set_footer(text="Note: You can claim 1-3 keys at once. Cooldown applies after claiming 3 total keys.")
 
     await ctx.send(embed=embed)
 
@@ -919,6 +935,55 @@ async def info_command(ctx):
 @bot.command(name='help')
 async def help_command(ctx):
     await info_command(ctx)
+
+# Check remaining keys command
+@bot.command(name='remaining')
+async def check_remaining(ctx):
+    keys_left = get_keys_remaining(ctx.author.id)
+    on_cooldown, time_remaining, _ = check_cooldown(ctx.author.id)
+    
+    embed = discord.Embed(
+        title="Your Key Status",
+        color=discord.Color.blue()
+    )
+    
+    if on_cooldown:
+        hours = int(time_remaining.total_seconds() // 3600)
+        minutes = int((time_remaining.total_seconds() % 3600) // 60)
+        
+        embed.add_field(
+            name="Status",
+            value="On Cooldown",
+            inline=True
+        )
+        embed.add_field(
+            name="Time Remaining",
+            value=f"{hours}h {minutes}m",
+            inline=True
+        )
+        embed.add_field(
+            name="Keys Available",
+            value="0",
+            inline=True
+        )
+    else:
+        embed.add_field(
+            name="Status",
+            value="Active",
+            inline=True
+        )
+        embed.add_field(
+            name="Keys Remaining",
+            value=f"{keys_left}/3",
+            inline=True
+        )
+        embed.add_field(
+            name="Can Claim",
+            value=f"1-{keys_left} keys",
+            inline=True
+        )
+    
+    await ctx.send(embed=embed)
 
 # Restock from file
 @bot.command(name='restock')
@@ -1039,11 +1104,22 @@ async def check_stock(ctx):
     )
     await ctx.send(embed=embed)
 
-# Generate/Claim a key
+# Generate/Claim keys - UPDATED TO SUPPORT MULTIPLE KEYS
 @bot.command(name='key')
-async def generate_key(ctx):
+async def generate_key(ctx, amount: int = 1):
+    # Validate amount
+    if amount < 1 or amount > 3:
+        embed = discord.Embed(
+            title="Invalid Amount",
+            description="You can only claim between 1-3 keys at a time.\nUsage: ?key [1-3]\nExample: ?key 2",
+            color=discord.Color.red()
+        )
+        await ctx.send(embed=embed)
+        return
+    
+    # Skip checks for admins
     if not ctx.author.guild_permissions.administrator:
-        on_cooldown, time_remaining = check_cooldown(ctx.author.id)
+        on_cooldown, time_remaining, _ = check_cooldown(ctx.author.id)
         
         if on_cooldown:
             should_blacklist = handle_cooldown_violation(ctx.author.id)
@@ -1073,6 +1149,18 @@ async def generate_key(ctx):
             await ctx.send(embed=embed)
             return
         
+        # Check if user has enough keys remaining
+        keys_remaining = get_keys_remaining(ctx.author.id)
+        if amount > keys_remaining:
+            embed = discord.Embed(
+                title="Not Enough Claims Available",
+                description=f"You only have **{keys_remaining}** claim(s) remaining before cooldown.\nYou requested **{amount}** key(s).\n\nUse ?remaining to check your status.",
+                color=discord.Color.red()
+            )
+            await ctx.send(embed=embed)
+            return
+        
+        # Check for spam
         if check_spam(ctx.author.id):
             if ctx.author.id not in blacklist:
                 blacklist.append(ctx.author.id)
@@ -1087,6 +1175,7 @@ async def generate_key(ctx):
                 await ctx.send(embed=embed)
                 return
     
+    # Check stock
     if len(keys) == 0:
         embed = discord.Embed(
             title="Out of Stock",
@@ -1096,75 +1185,129 @@ async def generate_key(ctx):
         await ctx.send(embed=embed)
         return
     
-    claimed_key = random.choice(keys)
-    keys.remove(claimed_key)
+    # Check if enough keys in stock
+    if len(keys) < amount:
+        embed = discord.Embed(
+            title="Insufficient Stock",
+            description=f"Only **{len(keys)}** key(s) available in stock.\nYou requested **{amount}** key(s).",
+            color=discord.Color.red()
+        )
+        await ctx.send(embed=embed)
+        return
+    
+    # Claim the keys
+    claimed_keys_list = []
+    for _ in range(amount):
+        claimed_key = random.choice(keys)
+        keys.remove(claimed_key)
+        claimed_keys_list.append(claimed_key)
+        
+        # Record each claim
+        claim_record = {
+            'user_id': ctx.author.id,
+            'username': str(ctx.author),
+            'timestamp': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+            'key': claimed_key
+        }
+        claimed_keys.append(claim_record)
+    
     save_keys(keys)
-
-    claim_record = {
-        'user_id': ctx.author.id,
-        'username': str(ctx.author),
-        'timestamp': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
-        'key': claimed_key
-    }
-    claimed_keys.append(claim_record)
     save_claimed_keys(claimed_keys)
     
     # Update stats
-    update_stats('claim', user_id=ctx.author.id)
+    update_stats('claim', user_id=ctx.author.id, count=amount)
 
+    # Update user's claim count and check cooldown (skip for admins)
     if not ctx.author.guild_permissions.administrator:
-        status = update_key_claim(ctx.author.id)
+        status = update_key_claim(ctx.author.id, amount)
+        
+        # Format keys for DM
+        keys_text = "\n".join([f"``{key}``" for key in claimed_keys_list])
         
         if status == 'cooldown_applied':
             try:
                 dm_embed = discord.Embed(
-                    title="Your Key",
-                    description=f"``{claimed_key}``",
+                    title=f"Your {amount} Key(s)",
+                    description=keys_text,
                     color=discord.Color.green()
                 )
                 dm_embed.add_field(
                     name="Cooldown Applied",
-                    value="You have claimed 3 keys and are now on a **1-hour cooldown**.\n\nWARNING: Attempting to claim more keys during this cooldown will result in an automatic blacklist!",
+                    value="You have claimed 3 keys total and are now on a **1-hour cooldown**.\n\nWARNING: Attempting to claim more keys during this cooldown will result in an automatic blacklist!",
                     inline=False
                 )
                 await ctx.author.send(embed=dm_embed)
                 
                 embed = discord.Embed(
-                    title="Key Claimed",
-                    description=f"{ctx.author.mention} Check your DMs!\n\nYou've been placed on a 1-hour cooldown after claiming 3 keys.",
+                    title="Keys Claimed",
+                    description=f"{ctx.author.mention} Check your DMs!\n\nYou've been placed on a 1-hour cooldown after claiming 3 total keys.",
                     color=discord.Color.orange()
                 )
                 await ctx.send(embed=embed)
             except:
                 embed = discord.Embed(
                     title="DM Failed",
-                    description=f"{ctx.author.mention} I couldn't DM you. Please enable DMs!\n\nYou are now on a 1-hour cooldown after claiming 3 keys.",
+                    description=f"{ctx.author.mention} I couldn't DM you. Please enable DMs!\n\nYou are now on a 1-hour cooldown after claiming 3 total keys.",
                     color=discord.Color.red()
                 )
                 await ctx.send(embed=embed)
             return
-
-    try:
-        dm_embed = discord.Embed(
-            title="Your Key",
-            description=f"``{claimed_key}``",
-            color=discord.Color.green()
-        )
-        await ctx.author.send(embed=dm_embed)
+        else:
+            # Calculate remaining keys after this claim
+            keys_left_after = get_keys_remaining(ctx.author.id)
+            
+            try:
+                dm_embed = discord.Embed(
+                    title=f"Your {amount} Key(s)",
+                    description=keys_text,
+                    color=discord.Color.green()
+                )
+                dm_embed.add_field(
+                    name="Remaining Claims",
+                    value=f"You have **{keys_left_after}** claim(s) remaining before cooldown.",
+                    inline=False
+                )
+                await ctx.author.send(embed=dm_embed)
+                
+                embed = discord.Embed(
+                    title="Keys Claimed",
+                    description=f"{ctx.author.mention} Check your DMs!\n\nYou have **{keys_left_after}** claim(s) remaining.",
+                    color=discord.Color.green()
+                )
+                await ctx.send(embed=embed)
+            except:
+                embed = discord.Embed(
+                    title="DM Failed",
+                    description=f"{ctx.author.mention} I couldn't DM you. Please enable DMs and try again!",
+                    color=discord.Color.red()
+                )
+                await ctx.send(embed=embed)
+    else:
+        # Admin claiming - no cooldown tracking
+        keys_text = "\n".join([f"``{key}``" for key in claimed_keys_list])
         
-        embed = discord.Embed(
-            title="Key Claimed",
-            description=f"{ctx.author.mention} Check your DMs!",
-            color=discord.Color.green()
-        )
-        await ctx.send(embed=embed)
-    except:
-        embed = discord.Embed(
-            title="DM Failed",
-            description=f"{ctx.author.mention} I couldn't DM you. Please enable DMs and try again!",
-            color=discord.Color.red()
-        )
-        await ctx.send(embed=embed)
+        try:
+            dm_embed = discord.Embed(
+                title=f"Your {amount} Key(s)",
+                description=keys_text,
+                color=discord.Color.green()
+            )
+            dm_embed.set_footer(text="Admin - No cooldown applied")
+            await ctx.author.send(embed=dm_embed)
+            
+            embed = discord.Embed(
+                title="Keys Claimed",
+                description=f"{ctx.author.mention} Check your DMs!",
+                color=discord.Color.green()
+            )
+            await ctx.send(embed=embed)
+        except:
+            embed = discord.Embed(
+                title="DM Failed",
+                description=f"{ctx.author.mention} I couldn't DM you. Please enable DMs and try again!",
+                color=discord.Color.red()
+            )
+            await ctx.send(embed=embed)
 
 # Announce restock
 @bot.command(name='announce')
@@ -1183,7 +1326,7 @@ async def announce_restock(ctx):
 
     embed = discord.Embed(
         title="RESTOCK ALERT",
-        description=f"Keys are now available!\n\nStock: **{stock_count}** keys\n\nUse `?key` to get yours!",
+        description=f"Keys are now available!\n\nStock: **{stock_count}** keys\n\nUse `?key [1-3]` to claim yours!\nExample: `?key 2` to claim 2 keys at once",
         color=discord.Color.gold()
     )
     
