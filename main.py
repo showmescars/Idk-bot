@@ -278,35 +278,68 @@ async def set_channel(ctx):
 # Blacklist a user
 @bot.command(name='blacklist')
 @commands.has_permissions(administrator=True)
-async def blacklist_user(ctx, user: discord.Member = None):
-    """Blacklist a user from using the bot"""
-    if user is None:
-        await ctx.send("Usage: ?blacklist @user")
+async def blacklist_user(ctx, user_input: str = None):
+    """Blacklist a user from using the bot - Usage: ?blacklist @user OR ?blacklist UserID"""
+    if user_input is None:
+        await ctx.send("Usage: ?blacklist @user OR ?blacklist UserID")
         return
     
-    if user.guild_permissions.administrator:
-        await ctx.send("Cannot blacklist administrators!")
-        return
+    # Try to get user from mention or ID
+    user = None
+    
+    # Check if it's a mention
+    if ctx.message.mentions:
+        user = ctx.message.mentions[0]
+    else:
+        # Try to treat it as a user ID
+        try:
+            user_id = int(user_input)
+            user = await bot.fetch_user(user_id)
+        except (ValueError, discord.NotFound):
+            await ctx.send("Invalid user mention or ID! Use ?blacklist @user OR ?blacklist UserID")
+            return
+    
+    # Check if user is an admin (in guild context)
+    if ctx.guild and user.id in [m.id for m in ctx.guild.members]:
+        member = ctx.guild.get_member(user.id)
+        if member and member.guild_permissions.administrator:
+            await ctx.send("Cannot blacklist administrators!")
+            return
     
     if user.id in blacklist:
-        await ctx.send(f"{user.mention} is already blacklisted.")
+        await ctx.send(f"{user.name} (ID: {user.id}) is already blacklisted.")
         return
     
     blacklist.append(user.id)
     save_blacklist(blacklist)
-    await ctx.send(f"{user.mention} has been blacklisted from using the bot.")
+    await ctx.send(f"**{user.name}** (ID: {user.id}) has been blacklisted from using the bot.")
 
 # Unblacklist a user
 @bot.command(name='unblacklist')
 @commands.has_permissions(administrator=True)
-async def unblacklist_user(ctx, user: discord.Member = None):
-    """Remove a user from the blacklist"""
-    if user is None:
-        await ctx.send("Usage: ?unblacklist @user")
+async def unblacklist_user(ctx, user_input: str = None):
+    """Remove a user from the blacklist - Usage: ?unblacklist @user OR ?unblacklist UserID"""
+    if user_input is None:
+        await ctx.send("Usage: ?unblacklist @user OR ?unblacklist UserID")
         return
     
+    # Try to get user from mention or ID
+    user = None
+    
+    # Check if it's a mention
+    if ctx.message.mentions:
+        user = ctx.message.mentions[0]
+    else:
+        # Try to treat it as a user ID
+        try:
+            user_id = int(user_input)
+            user = await bot.fetch_user(user_id)
+        except (ValueError, discord.NotFound):
+            await ctx.send("Invalid user mention or ID! Use ?unblacklist @user OR ?unblacklist UserID")
+            return
+    
     if user.id not in blacklist:
-        await ctx.send(f"{user.mention} is not blacklisted.")
+        await ctx.send(f"**{user.name}** (ID: {user.id}) is not blacklisted.")
         return
     
     blacklist.remove(user.id)
@@ -321,7 +354,7 @@ async def unblacklist_user(ctx, user: discord.Member = None):
         del cooldowns[user_id_str]
         save_cooldowns(cooldowns)
     
-    await ctx.send(f"{user.mention} has been removed from the blacklist.")
+    await ctx.send(f"**{user.name}** (ID: {user.id}) has been removed from the blacklist.")
 
 # View blacklist
 @bot.command(name='viewblacklist')
@@ -371,6 +404,23 @@ async def view_claimed_keys(ctx):
     if claimed_text:
         await ctx.send(claimed_text)
 
+# Clear claimed keys history
+@bot.command(name='clearclaimed')
+@commands.has_permissions(administrator=True)
+async def clear_claimed_history(ctx):
+    """Clear all claimed keys history"""
+    global claimed_keys
+    count = len(claimed_keys)
+    
+    if count == 0:
+        await ctx.send("No claimed keys history to clear.")
+        return
+    
+    claimed_keys = []
+    save_claimed_keys(claimed_keys)
+    
+    await ctx.send(f"✅ Successfully cleared **{count}** claimed keys from history!")
+
 # View user cooldowns (admin)
 @bot.command(name='cooldowns')
 @commands.has_permissions(administrator=True)
@@ -382,7 +432,20 @@ async def view_cooldowns(ctx):
         if data['cooldown_until'] and datetime.now() < data['cooldown_until']:
             user_id = int(user_id_str)
             user = bot.get_user(user_id)
-            username = user.name if user else f"Unknown User"
+            
+            # Get username - try to fetch if not cached
+            if user:
+                username = user.name
+                display_name = str(user)
+            else:
+                try:
+                    user = await bot.fetch_user(user_id)
+                    username = user.name
+                    display_name = str(user)
+                except:
+                    username = "Unknown User"
+                    display_name = "Unknown User"
+            
             time_remaining = data['cooldown_until'] - datetime.now()
             
             # Format time remaining
@@ -390,7 +453,7 @@ async def view_cooldowns(ctx):
             minutes = int((time_remaining.total_seconds() % 3600) // 60)
             
             active_cooldowns.append({
-                'username': username,
+                'display_name': display_name,
                 'user_id': user_id,
                 'time_remaining': f"{hours}h {minutes}m",
                 'violations': data.get('cooldown_violations', 0)
@@ -402,25 +465,40 @@ async def view_cooldowns(ctx):
     
     cooldown_text = "**Active Cooldowns:**\n\n"
     for cd in active_cooldowns:
-        cooldown_text += f"{cd['username']} (ID: {cd['user_id']})\n"
-        cooldown_text += f"   Time Remaining: {cd['time_remaining']}\n"
-        cooldown_text += f"   Violations: {cd['violations']}\n\n"
+        cooldown_text += f"**{cd['display_name']}** (ID: {cd['user_id']})\n"
+        cooldown_text += f"   ⏰ Time Remaining: {cd['time_remaining']}\n"
+        cooldown_text += f"   ⚠️ Violations: {cd['violations']}\n\n"
     
     await ctx.send(cooldown_text)
 
 # Reset user cooldown (admin)
 @bot.command(name='resetcooldown')
 @commands.has_permissions(administrator=True)
-async def reset_cooldown(ctx, user: discord.Member = None):
-    """Reset a user's cooldown"""
-    if user is None:
-        await ctx.send("Usage: ?resetcooldown @user")
+async def reset_cooldown(ctx, user_input: str = None):
+    """Reset a user's cooldown - Usage: ?resetcooldown @user OR ?resetcooldown UserID"""
+    if user_input is None:
+        await ctx.send("Usage: ?resetcooldown @user OR ?resetcooldown UserID")
         return
+    
+    # Try to get user from mention or ID
+    user = None
+    
+    # Check if it's a mention
+    if ctx.message.mentions:
+        user = ctx.message.mentions[0]
+    else:
+        # Try to treat it as a user ID
+        try:
+            user_id = int(user_input)
+            user = await bot.fetch_user(user_id)
+        except (ValueError, discord.NotFound):
+            await ctx.send("Invalid user mention or ID! Use ?resetcooldown @user OR ?resetcooldown UserID")
+            return
     
     user_id_str = str(user.id)
     
     if user_id_str not in cooldowns or not cooldowns[user_id_str]['cooldown_until']:
-        await ctx.send(f"{user.mention} is not on cooldown.")
+        await ctx.send(f"**{user.name}** (ID: {user.id}) is not on cooldown.")
         return
     
     cooldowns[user_id_str]['cooldown_until'] = None
@@ -428,7 +506,7 @@ async def reset_cooldown(ctx, user: discord.Member = None):
     cooldowns[user_id_str]['cooldown_violations'] = 0
     save_cooldowns(cooldowns)
     
-    await ctx.send(f"{user.mention}'s cooldown has been reset.")
+    await ctx.send(f"**{user.name}**'s (ID: {user.id}) cooldown has been reset.")
 
 # Info command
 @bot.command(name='info')
@@ -450,12 +528,13 @@ ADMIN COMMANDS:
 ?clear - Clear all keys
 ?view - View all keys in stock
 ?announce - Announce restock to @everyone
-?blacklist @user - Blacklist a user from using the bot
-?unblacklist @user - Remove a user from blacklist
+?blacklist @user OR UserID - Blacklist a user
+?unblacklist @user OR UserID - Remove from blacklist
 ?viewblacklist - View all blacklisted users
 ?claimed - View all users who claimed keys
+?clearclaimed - Clear claimed keys history
 ?cooldowns - View all users on cooldown
-?resetcooldown @user - Reset a user's cooldown
+?resetcooldown @user OR UserID - Reset a user's cooldown
 
 NOTE: Users are limited to 3 keys. After 3 keys, 
 a 1-hour cooldown is applied. Attempting to claim 
