@@ -5,6 +5,7 @@ import os
 import random
 from datetime import datetime, timedelta
 from dotenv import load_dotenv
+import shutil
 
 # Load environment variables
 load_dotenv()
@@ -12,7 +13,7 @@ load_dotenv()
 # Bot setup
 intents = discord.Intents.default()
 intents.message_content = True
-bot = commands.Bot(command_prefix='?', intents=intents, help_command=None)  # DISABLED DEFAULT HELP
+bot = commands.Bot(command_prefix='?', intents=intents, help_command=None)
 
 # Files
 KEYS_FILE = 'keys.json'
@@ -20,15 +21,21 @@ CONFIG_FILE = 'config.json'
 BLACKLIST_FILE = 'blacklist.json'
 CLAIMED_KEYS_FILE = 'claimed_keys.json'
 COOLDOWNS_FILE = 'cooldowns.json'
+STATS_FILE = 'stats.json'
+BACKUP_DIR = 'backups'
 
-# Spam detection settings - VERY STRICT
-SPAM_THRESHOLD = 1  # Number of commands allowed (2 total uses = blacklist)
-SPAM_TIMEFRAME = 3  # Timeframe in seconds
-user_command_times = {}  # Track user command usage
+# Spam detection settings
+SPAM_THRESHOLD = 1
+SPAM_TIMEFRAME = 3
+user_command_times = {}
 
 # Key claim limits
-MAX_KEYS_BEFORE_COOLDOWN = 3  # After 3 keys, user gets cooldown
-COOLDOWN_DURATION = timedelta(hours=1)  # 1 hour cooldown
+MAX_KEYS_BEFORE_COOLDOWN = 3
+COOLDOWN_DURATION = timedelta(hours=1)
+
+# Create backup directory if it doesn't exist
+if not os.path.exists(BACKUP_DIR):
+    os.makedirs(BACKUP_DIR)
 
 # Load config
 def load_config():
@@ -77,7 +84,6 @@ def load_cooldowns():
     if os.path.exists(COOLDOWNS_FILE):
         with open(COOLDOWNS_FILE, 'r') as f:
             data = json.load(f)
-            # Convert string timestamps back to datetime objects
             for user_id in data:
                 if 'cooldown_until' in data[user_id] and data[user_id]['cooldown_until']:
                     data[user_id]['cooldown_until'] = datetime.fromisoformat(data[user_id]['cooldown_until'])
@@ -86,7 +92,6 @@ def load_cooldowns():
 
 # Save cooldowns
 def save_cooldowns(cooldowns_data):
-    # Convert datetime objects to strings for JSON
     data_to_save = {}
     for user_id, info in cooldowns_data.items():
         data_to_save[user_id] = {
@@ -100,14 +105,63 @@ def save_cooldowns(cooldowns_data):
 
 cooldowns = load_cooldowns()
 
+# Load stats
+def load_stats():
+    if os.path.exists(STATS_FILE):
+        with open(STATS_FILE, 'r') as f:
+            return json.load(f)
+    return {
+        'total_keys_added': 0,
+        'total_keys_claimed': 0,
+        'total_restocks': 0,
+        'total_blacklists': 0,
+        'most_active_claimer': {'user_id': None, 'count': 0},
+        'first_restock_date': None,
+        'last_restock_date': None
+    }
+
+# Save stats
+def save_stats(stats_data):
+    with open(STATS_FILE, 'w') as f:
+        json.dump(stats_data, f, indent=4)
+
+stats = load_stats()
+
+# Update stats
+def update_stats(action, **kwargs):
+    global stats
+    
+    if action == 'restock':
+        stats['total_keys_added'] += kwargs.get('count', 0)
+        stats['total_restocks'] += 1
+        current_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        stats['last_restock_date'] = current_time
+        if stats['first_restock_date'] is None:
+            stats['first_restock_date'] = current_time
+    
+    elif action == 'claim':
+        stats['total_keys_claimed'] += 1
+        user_id = kwargs.get('user_id')
+        
+        # Update most active claimer
+        user_claim_count = sum(1 for claim in claimed_keys if claim['user_id'] == user_id)
+        if user_claim_count > stats['most_active_claimer']['count']:
+            stats['most_active_claimer'] = {
+                'user_id': user_id,
+                'count': user_claim_count
+            }
+    
+    elif action == 'blacklist':
+        stats['total_blacklists'] += 1
+    
+    save_stats(stats)
+
 # Load keys
 def load_keys():
     if os.path.exists(KEYS_FILE):
         with open(KEYS_FILE, 'r') as f:
             data = json.load(f)
-            # Handle old format with types
             if isinstance(data, dict) and any(isinstance(v, list) for v in data.values()):
-                # Flatten all keys into one list
                 all_keys = []
                 for key_list in data.values():
                     all_keys.extend(key_list)
@@ -122,6 +176,68 @@ def save_keys(keys_list):
 
 keys = load_keys()
 
+# Create backup
+def create_backup():
+    timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+    backup_subdir = os.path.join(BACKUP_DIR, f'backup_{timestamp}')
+    
+    if not os.path.exists(backup_subdir):
+        os.makedirs(backup_subdir)
+    
+    files_to_backup = [
+        KEYS_FILE,
+        CONFIG_FILE,
+        BLACKLIST_FILE,
+        CLAIMED_KEYS_FILE,
+        COOLDOWNS_FILE,
+        STATS_FILE
+    ]
+    
+    backed_up = []
+    for file in files_to_backup:
+        if os.path.exists(file):
+            shutil.copy2(file, os.path.join(backup_subdir, file))
+            backed_up.append(file)
+    
+    return timestamp, backed_up
+
+# List backups
+def list_backups():
+    if not os.path.exists(BACKUP_DIR):
+        return []
+    
+    backups = []
+    for item in os.listdir(BACKUP_DIR):
+        if item.startswith('backup_'):
+            backups.append(item)
+    
+    return sorted(backups, reverse=True)
+
+# Restore backup
+def restore_backup(backup_name):
+    backup_path = os.path.join(BACKUP_DIR, backup_name)
+    
+    if not os.path.exists(backup_path):
+        return False, "Backup not found"
+    
+    files_to_restore = [
+        KEYS_FILE,
+        CONFIG_FILE,
+        BLACKLIST_FILE,
+        CLAIMED_KEYS_FILE,
+        COOLDOWNS_FILE,
+        STATS_FILE
+    ]
+    
+    restored = []
+    for file in files_to_restore:
+        backup_file = os.path.join(backup_path, file)
+        if os.path.exists(backup_file):
+            shutil.copy2(backup_file, file)
+            restored.append(file)
+    
+    return True, restored
+
 @bot.event
 async def on_ready():
     print(f'{bot.user} is online')
@@ -131,32 +247,39 @@ async def on_ready():
 @bot.check
 async def globally_block_dms(ctx):
     if ctx.guild is None:
-        await ctx.send("Commands can only be used in servers, not DMs")
+        embed = discord.Embed(
+            title="DMs Not Allowed",
+            description="Commands can only be used in servers, not DMs",
+            color=discord.Color.red()
+        )
+        await ctx.send(embed=embed)
         return False
     return True
 
 # Check if user is blacklisted
 @bot.check
 async def check_blacklist(ctx):
-    # Admins bypass blacklist
     if ctx.author.guild_permissions.administrator:
         return True
     
     if ctx.author.id in blacklist:
-        await ctx.send(f"{ctx.author.mention} You are blacklisted from using this bot.")
+        embed = discord.Embed(
+            title="Access Denied",
+            description=f"{ctx.author.mention} You are blacklisted from using this bot.",
+            color=discord.Color.red()
+        )
+        await ctx.send(embed=embed)
         return False
     return True
 
-# Check to only allow specific channel per server (except for admins)
+# Check to only allow specific channel per server
 @bot.check
 async def only_allowed_channel(ctx):
-    # Admins can use commands anywhere
     if ctx.author.guild_permissions.administrator:
         return True
     
     guild_id = str(ctx.guild.id)
     
-    # If server not configured, allow all channels
     if guild_id not in config or 'allowed_channel' not in config[guild_id]:
         return True
     
@@ -165,33 +288,27 @@ async def only_allowed_channel(ctx):
         return False
     return True
 
-# Spam detection function
+# Spam detection
 def check_spam(user_id):
-    """Check if user is spamming and return True if they should be blacklisted"""
     current_time = datetime.now()
     
-    # Initialize user's command times if not exists
     if user_id not in user_command_times:
         user_command_times[user_id] = []
     
-    # Remove old timestamps outside the timeframe
     user_command_times[user_id] = [
         timestamp for timestamp in user_command_times[user_id]
         if current_time - timestamp < timedelta(seconds=SPAM_TIMEFRAME)
     ]
     
-    # Add current timestamp
     user_command_times[user_id].append(current_time)
     
-    # Check if spam threshold exceeded
     if len(user_command_times[user_id]) > SPAM_THRESHOLD:
         return True
     
     return False
 
-# Check cooldown status
+# Check cooldown
 def check_cooldown(user_id):
-    """Check if user is on cooldown. Returns (on_cooldown, time_remaining)"""
     user_id_str = str(user_id)
     
     if user_id_str not in cooldowns:
@@ -204,22 +321,19 @@ def check_cooldown(user_id):
     
     user_data = cooldowns[user_id_str]
     
-    # Check if user is currently on cooldown
     if user_data['cooldown_until']:
         if datetime.now() < user_data['cooldown_until']:
             time_remaining = user_data['cooldown_until'] - datetime.now()
             return True, time_remaining
         else:
-            # Cooldown expired, reset it
             user_data['cooldown_until'] = None
             user_data['keys_claimed'] = 0
             save_cooldowns(cooldowns)
     
     return False, None
 
-# Update user key claim count
+# Update key claim
 def update_key_claim(user_id):
-    """Update user's key claim count and apply cooldown if needed. Returns status."""
     user_id_str = str(user_id)
     
     if user_id_str not in cooldowns:
@@ -232,10 +346,9 @@ def update_key_claim(user_id):
     user_data = cooldowns[user_id_str]
     user_data['keys_claimed'] += 1
     
-    # If user has claimed 3 keys, apply cooldown
     if user_data['keys_claimed'] >= MAX_KEYS_BEFORE_COOLDOWN:
         user_data['cooldown_until'] = datetime.now() + COOLDOWN_DURATION
-        user_data['keys_claimed'] = 0  # Reset count
+        user_data['keys_claimed'] = 0
         save_cooldowns(cooldowns)
         return 'cooldown_applied'
     
@@ -244,7 +357,6 @@ def update_key_claim(user_id):
 
 # Handle cooldown violation
 def handle_cooldown_violation(user_id):
-    """Handle when user tries to claim during cooldown. Returns True if should be blacklisted."""
     user_id_str = str(user_id)
     
     if user_id_str not in cooldowns:
@@ -254,17 +366,15 @@ def handle_cooldown_violation(user_id):
     user_data['cooldown_violations'] = user_data.get('cooldown_violations', 0) + 1
     save_cooldowns(cooldowns)
     
-    # If user violated cooldown, blacklist them
     if user_data['cooldown_violations'] >= 1:
         return True
     
     return False
 
-# Set allowed channel (admin only)
+# Set allowed channel
 @bot.command(name='setchannel')
 @commands.has_permissions(administrator=True)
 async def set_channel(ctx):
-    """Set this channel as the allowed channel for bot commands"""
     guild_id = str(ctx.guild.id)
     
     if guild_id not in config:
@@ -273,79 +383,116 @@ async def set_channel(ctx):
     config[guild_id]['allowed_channel'] = ctx.channel.id
     save_config(config)
     
-    await ctx.send(f"This channel is now set as the bot command channel!\nChannel ID: {ctx.channel.id}")
+    embed = discord.Embed(
+        title="Channel Set",
+        description=f"This channel is now set as the bot command channel\nChannel ID: {ctx.channel.id}",
+        color=discord.Color.green()
+    )
+    await ctx.send(embed=embed)
 
 # Blacklist a user
 @bot.command(name='blacklist')
 @commands.has_permissions(administrator=True)
 async def blacklist_user(ctx, user_input: str = None):
-    """Blacklist a user from using the bot - Usage: ?blacklist @user OR ?blacklist UserID"""
     if user_input is None:
-        await ctx.send("Usage: ?blacklist @user OR ?blacklist UserID")
+        embed = discord.Embed(
+            title="Usage",
+            description="?blacklist @user OR ?blacklist UserID",
+            color=discord.Color.orange()
+        )
+        await ctx.send(embed=embed)
         return
     
-    # Try to get user from mention or ID
     user = None
     
-    # Check if it's a mention
     if ctx.message.mentions:
         user = ctx.message.mentions[0]
     else:
-        # Try to treat it as a user ID
         try:
             user_id = int(user_input)
             user = await bot.fetch_user(user_id)
         except (ValueError, discord.NotFound):
-            await ctx.send("Invalid user mention or ID! Use ?blacklist @user OR ?blacklist UserID")
+            embed = discord.Embed(
+                title="Error",
+                description="Invalid user mention or ID! Use ?blacklist @user OR ?blacklist UserID",
+                color=discord.Color.red()
+            )
+            await ctx.send(embed=embed)
             return
     
-    # Check if user is an admin (in guild context)
     if ctx.guild and user.id in [m.id for m in ctx.guild.members]:
         member = ctx.guild.get_member(user.id)
         if member and member.guild_permissions.administrator:
-            await ctx.send("Cannot blacklist administrators!")
+            embed = discord.Embed(
+                title="Error",
+                description="Cannot blacklist administrators!",
+                color=discord.Color.red()
+            )
+            await ctx.send(embed=embed)
             return
     
     if user.id in blacklist:
-        await ctx.send(f"{user.name} (ID: {user.id}) is already blacklisted.")
+        embed = discord.Embed(
+            title="Already Blacklisted",
+            description=f"{user.name} (ID: {user.id}) is already blacklisted.",
+            color=discord.Color.orange()
+        )
+        await ctx.send(embed=embed)
         return
     
     blacklist.append(user.id)
     save_blacklist(blacklist)
-    await ctx.send(f"**{user.name}** (ID: {user.id}) has been blacklisted from using the bot.")
+    update_stats('blacklist')
+    
+    embed = discord.Embed(
+        title="User Blacklisted",
+        description=f"**{user.name}** (ID: {user.id}) has been blacklisted from using the bot.",
+        color=discord.Color.red()
+    )
+    await ctx.send(embed=embed)
 
 # Unblacklist a user
 @bot.command(name='unblacklist')
 @commands.has_permissions(administrator=True)
 async def unblacklist_user(ctx, user_input: str = None):
-    """Remove a user from the blacklist - Usage: ?unblacklist @user OR ?unblacklist UserID"""
     if user_input is None:
-        await ctx.send("Usage: ?unblacklist @user OR ?unblacklist UserID")
+        embed = discord.Embed(
+            title="Usage",
+            description="?unblacklist @user OR ?unblacklist UserID",
+            color=discord.Color.orange()
+        )
+        await ctx.send(embed=embed)
         return
     
-    # Try to get user from mention or ID
     user = None
     
-    # Check if it's a mention
     if ctx.message.mentions:
         user = ctx.message.mentions[0]
     else:
-        # Try to treat it as a user ID
         try:
             user_id = int(user_input)
             user = await bot.fetch_user(user_id)
         except (ValueError, discord.NotFound):
-            await ctx.send("Invalid user mention or ID! Use ?unblacklist @user OR ?unblacklist UserID")
+            embed = discord.Embed(
+                title="Error",
+                description="Invalid user mention or ID! Use ?unblacklist @user OR ?unblacklist UserID",
+                color=discord.Color.red()
+            )
+            await ctx.send(embed=embed)
             return
     
     if user.id not in blacklist:
-        await ctx.send(f"**{user.name}** (ID: {user.id}) is not blacklisted.")
+        embed = discord.Embed(
+            title="Not Blacklisted",
+            description=f"**{user.name}** (ID: {user.id}) is not blacklisted.",
+            color=discord.Color.orange()
+        )
+        await ctx.send(embed=embed)
         return
     
     blacklist.remove(user.id)
     save_blacklist(blacklist)
     
-    # Clear their spam tracking and cooldown data
     if user.id in user_command_times:
         del user_command_times[user.id]
     
@@ -354,23 +501,31 @@ async def unblacklist_user(ctx, user_input: str = None):
         del cooldowns[user_id_str]
         save_cooldowns(cooldowns)
     
-    await ctx.send(f"**{user.name}** (ID: {user.id}) has been removed from the blacklist.")
+    embed = discord.Embed(
+        title="User Unblacklisted",
+        description=f"**{user.name}** (ID: {user.id}) has been removed from the blacklist.",
+        color=discord.Color.green()
+    )
+    await ctx.send(embed=embed)
 
-# View blacklist - UPDATED WITH DISPLAY NAME AND ID
+# View blacklist
 @bot.command(name='viewblacklist')
 @commands.has_permissions(administrator=True)
 async def view_blacklist(ctx):
-    """View all blacklisted users"""
     if len(blacklist) == 0:
-        await ctx.send("No users are blacklisted.")
+        embed = discord.Embed(
+            title="Blacklist",
+            description="No users are blacklisted.",
+            color=discord.Color.green()
+        )
+        await ctx.send(embed=embed)
         return
     
-    blacklist_text = "**Blacklisted Users:**\n\n"
+    blacklist_text = ""
     
     for user_id in blacklist:
         user = bot.get_user(user_id)
         
-        # Get username - try to fetch if not cached
         if user:
             display_name = str(user)
         else:
@@ -382,18 +537,27 @@ async def view_blacklist(ctx):
         
         blacklist_text += f"**{display_name}** (ID: {user_id})\n"
     
-    await ctx.send(blacklist_text)
+    embed = discord.Embed(
+        title="Blacklisted Users",
+        description=blacklist_text,
+        color=discord.Color.red()
+    )
+    await ctx.send(embed=embed)
 
-# View claimed keys history
+# View claimed keys
 @bot.command(name='claimed')
 @commands.has_permissions(administrator=True)
 async def view_claimed_keys(ctx):
-    """View all users who claimed keys"""
     if len(claimed_keys) == 0:
-        await ctx.send("No keys have been claimed yet.")
+        embed = discord.Embed(
+            title="Claimed Keys History",
+            description="No keys have been claimed yet.",
+            color=discord.Color.blue()
+        )
+        await ctx.send(embed=embed)
         return
     
-    claimed_text = "**Claimed Keys History:**\n\n"
+    claimed_text = ""
     
     for i, claim in enumerate(claimed_keys, 1):
         user_id = claim['user_id']
@@ -405,36 +569,53 @@ async def view_claimed_keys(ctx):
         claimed_text += f"   Key: ``{key}``\n"
         claimed_text += f"   Time: {timestamp}\n\n"
         
-        # Discord has message limits, split if needed
         if len(claimed_text) > 1800:
-            await ctx.send(claimed_text)
+            embed = discord.Embed(
+                title="Claimed Keys History",
+                description=claimed_text,
+                color=discord.Color.blue()
+            )
+            await ctx.send(embed=embed)
             claimed_text = ""
     
     if claimed_text:
-        await ctx.send(claimed_text)
+        embed = discord.Embed(
+            title="Claimed Keys History",
+            description=claimed_text,
+            color=discord.Color.blue()
+        )
+        await ctx.send(embed=embed)
 
-# Clear claimed keys history
+# Clear claimed keys
 @bot.command(name='clearclaimed')
 @commands.has_permissions(administrator=True)
 async def clear_claimed_history(ctx):
-    """Clear all claimed keys history"""
     global claimed_keys
     count = len(claimed_keys)
     
     if count == 0:
-        await ctx.send("No claimed keys history to clear.")
+        embed = discord.Embed(
+            title="No History",
+            description="No claimed keys history to clear.",
+            color=discord.Color.orange()
+        )
+        await ctx.send(embed=embed)
         return
     
     claimed_keys = []
     save_claimed_keys(claimed_keys)
     
-    await ctx.send(f"✅ Successfully cleared **{count}** claimed keys from history!")
+    embed = discord.Embed(
+        title="History Cleared",
+        description=f"Successfully cleared **{count}** claimed keys from history!",
+        color=discord.Color.green()
+    )
+    await ctx.send(embed=embed)
 
-# View user cooldowns (admin)
+# View cooldowns
 @bot.command(name='cooldowns')
 @commands.has_permissions(administrator=True)
 async def view_cooldowns(ctx):
-    """View all users on cooldown"""
     active_cooldowns = []
     
     for user_id_str, data in cooldowns.items():
@@ -442,7 +623,6 @@ async def view_cooldowns(ctx):
             user_id = int(user_id_str)
             user = bot.get_user(user_id)
             
-            # Get username - try to fetch if not cached
             if user:
                 username = user.name
                 display_name = str(user)
@@ -457,7 +637,6 @@ async def view_cooldowns(ctx):
             
             time_remaining = data['cooldown_until'] - datetime.now()
             
-            # Format time remaining
             hours = int(time_remaining.total_seconds() // 3600)
             minutes = int((time_remaining.total_seconds() % 3600) // 60)
             
@@ -469,45 +648,66 @@ async def view_cooldowns(ctx):
             })
     
     if len(active_cooldowns) == 0:
-        await ctx.send("No users are currently on cooldown.")
+        embed = discord.Embed(
+            title="Active Cooldowns",
+            description="No users are currently on cooldown.",
+            color=discord.Color.green()
+        )
+        await ctx.send(embed=embed)
         return
     
-    cooldown_text = "**Active Cooldowns:**\n\n"
+    cooldown_text = ""
     for cd in active_cooldowns:
         cooldown_text += f"**{cd['display_name']}** (ID: {cd['user_id']})\n"
-        cooldown_text += f"   ⏰ Time Remaining: {cd['time_remaining']}\n"
-        cooldown_text += f"   ⚠️ Violations: {cd['violations']}\n\n"
+        cooldown_text += f"Time Remaining: {cd['time_remaining']}\n"
+        cooldown_text += f"Violations: {cd['violations']}\n\n"
     
-    await ctx.send(cooldown_text)
+    embed = discord.Embed(
+        title="Active Cooldowns",
+        description=cooldown_text,
+        color=discord.Color.orange()
+    )
+    await ctx.send(embed=embed)
 
-# Reset user cooldown (admin)
+# Reset cooldown
 @bot.command(name='resetcooldown')
 @commands.has_permissions(administrator=True)
 async def reset_cooldown(ctx, user_input: str = None):
-    """Reset a user's cooldown - Usage: ?resetcooldown @user OR ?resetcooldown UserID"""
     if user_input is None:
-        await ctx.send("Usage: ?resetcooldown @user OR ?resetcooldown UserID")
+        embed = discord.Embed(
+            title="Usage",
+            description="?resetcooldown @user OR ?resetcooldown UserID",
+            color=discord.Color.orange()
+        )
+        await ctx.send(embed=embed)
         return
     
-    # Try to get user from mention or ID
     user = None
     
-    # Check if it's a mention
     if ctx.message.mentions:
         user = ctx.message.mentions[0]
     else:
-        # Try to treat it as a user ID
         try:
             user_id = int(user_input)
             user = await bot.fetch_user(user_id)
         except (ValueError, discord.NotFound):
-            await ctx.send("Invalid user mention or ID! Use ?resetcooldown @user OR ?resetcooldown UserID")
+            embed = discord.Embed(
+                title="Error",
+                description="Invalid user mention or ID! Use ?resetcooldown @user OR ?resetcooldown UserID",
+                color=discord.Color.red()
+            )
+            await ctx.send(embed=embed)
             return
     
     user_id_str = str(user.id)
     
     if user_id_str not in cooldowns or not cooldowns[user_id_str]['cooldown_until']:
-        await ctx.send(f"**{user.name}** (ID: {user.id}) is not on cooldown.")
+        embed = discord.Embed(
+            title="Not On Cooldown",
+            description=f"**{user.name}** (ID: {user.id}) is not on cooldown.",
+            color=discord.Color.orange()
+        )
+        await ctx.send(embed=embed)
         return
     
     cooldowns[user_id_str]['cooldown_until'] = None
@@ -515,195 +715,391 @@ async def reset_cooldown(ctx, user_input: str = None):
     cooldowns[user_id_str]['cooldown_violations'] = 0
     save_cooldowns(cooldowns)
     
-    await ctx.send(f"**{user.name}**'s (ID: {user.id}) cooldown has been reset.")
+    embed = discord.Embed(
+        title="Cooldown Reset",
+        description=f"**{user.name}**'s (ID: {user.id}) cooldown has been reset.",
+        color=discord.Color.green()
+    )
+    await ctx.send(embed=embed)
 
-# Info/Help command - CUSTOM
+# Stats dashboard
+@bot.command(name='stats')
+@commands.has_permissions(administrator=True)
+async def view_stats(ctx):
+    embed = discord.Embed(
+        title="Bot Statistics Dashboard",
+        color=discord.Color.blue()
+    )
+    
+    embed.add_field(
+        name="Keys",
+        value=f"Total Added: {stats['total_keys_added']}\nTotal Claimed: {stats['total_keys_claimed']}\nCurrent Stock: {len(keys)}",
+        inline=True
+    )
+    
+    embed.add_field(
+        name="Restocks",
+        value=f"Total Restocks: {stats['total_restocks']}\nFirst: {stats['first_restock_date'] or 'N/A'}\nLast: {stats['last_restock_date'] or 'N/A'}",
+        inline=True
+    )
+    
+    embed.add_field(
+        name="Users",
+        value=f"Total Blacklists: {stats['total_blacklists']}\nActive Blacklists: {len(blacklist)}\nUnique Claimers: {len(set(c['user_id'] for c in claimed_keys))}",
+        inline=True
+    )
+    
+    # Most active claimer
+    if stats['most_active_claimer']['user_id']:
+        user = bot.get_user(stats['most_active_claimer']['user_id'])
+        if not user:
+            try:
+                user = await bot.fetch_user(stats['most_active_claimer']['user_id'])
+            except:
+                user = None
+        
+        claimer_name = str(user) if user else "Unknown User"
+        embed.add_field(
+            name="Most Active Claimer",
+            value=f"{claimer_name}\nKeys Claimed: {stats['most_active_claimer']['count']}",
+            inline=False
+        )
+    
+    embed.set_footer(text=f"Stats as of {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+    
+    await ctx.send(embed=embed)
+
+# Create backup
+@bot.command(name='backup')
+@commands.has_permissions(administrator=True)
+async def backup_data(ctx):
+    timestamp, backed_up = create_backup()
+    
+    embed = discord.Embed(
+        title="Backup Created",
+        description=f"Backup created successfully!\n\nBackup ID: backup_{timestamp}\nFiles backed up: {len(backed_up)}",
+        color=discord.Color.green()
+    )
+    
+    embed.add_field(
+        name="Backed Up Files",
+        value="\n".join(backed_up),
+        inline=False
+    )
+    
+    await ctx.send(embed=embed)
+
+# List backups
+@bot.command(name='backups')
+@commands.has_permissions(administrator=True)
+async def list_all_backups(ctx):
+    backups = list_backups()
+    
+    if len(backups) == 0:
+        embed = discord.Embed(
+            title="Backups",
+            description="No backups found.",
+            color=discord.Color.orange()
+        )
+        await ctx.send(embed=embed)
+        return
+    
+    backup_list = "\n".join([f"{i+1}. {backup}" for i, backup in enumerate(backups)])
+    
+    embed = discord.Embed(
+        title="Available Backups",
+        description=backup_list,
+        color=discord.Color.blue()
+    )
+    
+    embed.set_footer(text=f"Use ?restore <backup_name> to restore a backup")
+    
+    await ctx.send(embed=embed)
+
+# Restore backup
+@bot.command(name='restore')
+@commands.has_permissions(administrator=True)
+async def restore_data(ctx, backup_name: str = None):
+    if backup_name is None:
+        embed = discord.Embed(
+            title="Usage",
+            description="?restore <backup_name>\n\nUse ?backups to see available backups",
+            color=discord.Color.orange()
+        )
+        await ctx.send(embed=embed)
+        return
+    
+    success, result = restore_backup(backup_name)
+    
+    if not success:
+        embed = discord.Embed(
+            title="Restore Failed",
+            description=result,
+            color=discord.Color.red()
+        )
+        await ctx.send(embed=embed)
+        return
+    
+    # Reload data
+    global keys, config, blacklist, claimed_keys, cooldowns, stats
+    keys = load_keys()
+    config = load_config()
+    blacklist = load_blacklist()
+    claimed_keys = load_claimed_keys()
+    cooldowns = load_cooldowns()
+    stats = load_stats()
+    
+    embed = discord.Embed(
+        title="Backup Restored",
+        description=f"Backup restored successfully!\n\nBackup: {backup_name}\nFiles restored: {len(result)}",
+        color=discord.Color.green()
+    )
+    
+    embed.add_field(
+        name="Restored Files",
+        value="\n".join(result),
+        inline=False
+    )
+    
+    await ctx.send(embed=embed)
+
+# Info/Help command
 @bot.command(name='info')
 async def info_command(ctx):
-    """Display all available commands"""
     is_admin = ctx.author.guild_permissions.administrator
 
     if is_admin:
-        info_text = """KEY BOT - COMMANDS
-
-USER COMMANDS:
-?key - Generate and claim a key
-?stock - Check available keys
-?info - Display this command list
-
-ADMIN COMMANDS:
-?setchannel - Set current channel as bot channel
-?restock - Upload .txt file to add keys
-?clear - Clear all keys
-?view - View all keys in stock
-?announce - Announce restock to @everyone
-?blacklist @user OR UserID - Blacklist a user
-?unblacklist @user OR UserID - Remove from blacklist
-?viewblacklist - View all blacklisted users
-?claimed - View all users who claimed keys
-?clearclaimed - Clear claimed keys history
-?cooldowns - View all users on cooldown
-?resetcooldown @user OR UserID - Reset a user's cooldown
-
-NOTE: Users are limited to 3 keys. After 3 keys, 
-a 1-hour cooldown is applied. Attempting to claim 
-during cooldown results in automatic blacklist.
-"""
+        embed = discord.Embed(
+            title="Key Bot - Commands",
+            color=discord.Color.blue()
+        )
+        
+        embed.add_field(
+            name="User Commands",
+            value="?key - Generate and claim a key\n?stock - Check available keys\n?info - Display this command list",
+            inline=False
+        )
+        
+        embed.add_field(
+            name="Admin Commands - Setup",
+            value="?setchannel - Set current channel as bot channel\n?restock - Upload .txt file to add keys\n?clear - Clear all keys\n?view - View all keys in stock\n?announce - Announce restock to @everyone",
+            inline=False
+        )
+        
+        embed.add_field(
+            name="Admin Commands - User Management",
+            value="?blacklist @user OR UserID - Blacklist a user\n?unblacklist @user OR UserID - Remove from blacklist\n?viewblacklist - View all blacklisted users\n?resetcooldown @user OR UserID - Reset a user's cooldown\n?cooldowns - View all users on cooldown",
+            inline=False
+        )
+        
+        embed.add_field(
+            name="Admin Commands - Data & Stats",
+            value="?claimed - View all users who claimed keys\n?clearclaimed - Clear claimed keys history\n?stats - View bot statistics dashboard\n?backup - Create a backup\n?backups - List all backups\n?restore <backup_name> - Restore a backup",
+            inline=False
+        )
+        
+        embed.set_footer(text="Note: Users are limited to 3 keys before a 1-hour cooldown is applied.")
     else:
-        info_text = """KEY BOT - COMMANDS
+        embed = discord.Embed(
+            title="Key Bot - Commands",
+            color=discord.Color.blue()
+        )
+        
+        embed.add_field(
+            name="Available Commands",
+            value="?key - Generate and claim a key\n?stock - Check available keys\n?info - Display this command list",
+            inline=False
+        )
+        
+        embed.set_footer(text="Note: You can claim up to 3 keys before a 1-hour cooldown is applied.")
 
-?key - Generate and claim a key
-?stock - Check available keys
-?info - Display this command list
+    await ctx.send(embed=embed)
 
-NOTE: You can claim up to 3 keys before a 
-1-hour cooldown is applied.
-"""
-
-    await ctx.send(f"```{info_text}```")
-
-# Add ?help as an alias to ?info
+# Help alias
 @bot.command(name='help')
 async def help_command(ctx):
-    """Display all available commands (alias for ?info)"""
     await info_command(ctx)
 
-# Restock from file - UPDATED WITH DUPLICATE DETECTION
+# Restock from file
 @bot.command(name='restock')
 @commands.has_permissions(administrator=True)
 async def restock_from_file(ctx):
-    """Restock from a txt file - attach the file when using this command"""
     if len(ctx.message.attachments) == 0:
-        await ctx.send("Please attach a .txt file with keys")
+        embed = discord.Embed(
+            title="Error",
+            description="Please attach a .txt file with keys",
+            color=discord.Color.red()
+        )
+        await ctx.send(embed=embed)
         return
 
     attachment = ctx.message.attachments[0]
 
     if not attachment.filename.endswith('.txt'):
-        await ctx.send("File must be a .txt file")
+        embed = discord.Embed(
+            title="Error",
+            description="File must be a .txt file",
+            color=discord.Color.red()
+        )
+        await ctx.send(embed=embed)
         return
 
-    # Download and read file
     file_content = await attachment.read()
     keys_list = file_content.decode('utf-8').strip().split('\n')
 
-    # Remove empty lines and strip whitespace
     keys_list = [key.strip() for key in keys_list if key.strip()]
 
-    # Detect duplicates within the uploaded file
     original_count = len(keys_list)
-    keys_list_unique = list(set(keys_list))  # Remove duplicates within file
+    keys_list_unique = list(set(keys_list))
     duplicates_in_file = original_count - len(keys_list_unique)
 
-    # Check against existing stock
     existing_keys_set = set(keys)
     new_keys = [key for key in keys_list_unique if key not in existing_keys_set]
     duplicates_in_stock = len(keys_list_unique) - len(new_keys)
 
-    # Add only new unique keys
     keys.extend(new_keys)
     save_keys(keys)
+    
+    # Update stats
+    update_stats('restock', count=len(new_keys))
 
-    # Build detailed response
-    response = f"**📦 RESTOCK COMPLETE**\n\n"
-    response += f"✅ **Added:** {len(new_keys)} new keys\n"
-    response += f"📊 **Total Stock:** {len(keys)} keys\n\n"
+    embed = discord.Embed(
+        title="Restock Complete",
+        color=discord.Color.green()
+    )
+    
+    embed.add_field(name="Added", value=f"{len(new_keys)} new keys", inline=True)
+    embed.add_field(name="Total Stock", value=f"{len(keys)} keys", inline=True)
+    embed.add_field(name="Duplicates", value=f"{duplicates_in_file + duplicates_in_stock}", inline=True)
     
     if duplicates_in_file > 0:
-        response += f"⚠️ **Duplicates in file:** {duplicates_in_file} (removed)\n"
+        embed.add_field(name="Duplicates in File", value=f"{duplicates_in_file} (removed)", inline=False)
     
     if duplicates_in_stock > 0:
-        response += f"⚠️ **Already in stock:** {duplicates_in_stock} (skipped)\n"
-    
-    if duplicates_in_file == 0 and duplicates_in_stock == 0:
-        response += f"✨ All keys were unique and added successfully!"
+        embed.add_field(name="Already in Stock", value=f"{duplicates_in_stock} (skipped)", inline=False)
 
-    await ctx.send(response)
+    await ctx.send(embed=embed)
 
 # Clear keys
 @bot.command(name='clear')
 @commands.has_permissions(administrator=True)
 async def clear_keys(ctx):
-    """Clear all keys"""
     global keys
     count = len(keys)
     keys = []
     save_keys(keys)
 
-    await ctx.send(f"Cleared {count} keys from stock")
+    embed = discord.Embed(
+        title="Keys Cleared",
+        description=f"Cleared {count} keys from stock",
+        color=discord.Color.orange()
+    )
+    await ctx.send(embed=embed)
 
 # View stock
 @bot.command(name='view')
 @commands.has_permissions(administrator=True)
 async def view_stock(ctx):
-    """View all keys in stock"""
     if len(keys) == 0:
-        await ctx.send("No keys in stock")
+        embed = discord.Embed(
+            title="Current Stock",
+            description="No keys in stock",
+            color=discord.Color.red()
+        )
+        await ctx.send(embed=embed)
         return
 
     stock_list = "\n".join(keys)
 
-    # Discord has a 2000 character limit, so split if needed
     if len(stock_list) > 1900:
-        await ctx.send(f"**Current Stock** ({len(keys)} keys):")
+        embed = discord.Embed(
+            title=f"Current Stock ({len(keys)} keys)",
+            description="Stock is too large. Sending in chunks...",
+            color=discord.Color.blue()
+        )
+        await ctx.send(embed=embed)
+        
         for i in range(0, len(stock_list), 1900):
             await ctx.send(f"```{stock_list[i:i+1900]}```")
     else:
-        await ctx.send(f"**Current Stock** ({len(keys)} keys):\n```{stock_list}```")
+        embed = discord.Embed(
+            title=f"Current Stock ({len(keys)} keys)",
+            description=f"```{stock_list}```",
+            color=discord.Color.blue()
+        )
+        await ctx.send(embed=embed)
 
 # Check stock
 @bot.command(name='stock')
 async def check_stock(ctx):
-    """Check available stock"""
-    await ctx.send(f"**CURRENT STOCK:** {len(keys)} keys available")
+    embed = discord.Embed(
+        title="Current Stock",
+        description=f"{len(keys)} keys available",
+        color=discord.Color.blue()
+    )
+    await ctx.send(embed=embed)
 
 # Generate/Claim a key
 @bot.command(name='key')
 async def generate_key(ctx):
-    """Generate and claim a key"""
-    # Skip spam check and cooldown for admins
     if not ctx.author.guild_permissions.administrator:
-        # Check if user is on cooldown
         on_cooldown, time_remaining = check_cooldown(ctx.author.id)
         
         if on_cooldown:
-            # User tried to claim during cooldown - handle violation
             should_blacklist = handle_cooldown_violation(ctx.author.id)
             
             if should_blacklist:
-                # Auto-blacklist the user
                 if ctx.author.id not in blacklist:
                     blacklist.append(ctx.author.id)
                     save_blacklist(blacklist)
-                    await ctx.send(f"{ctx.author.mention} You have been automatically blacklisted for attempting to claim keys during cooldown.")
+                    update_stats('blacklist')
+                    
+                    embed = discord.Embed(
+                        title="Auto-Blacklisted",
+                        description=f"{ctx.author.mention} You have been automatically blacklisted for attempting to claim keys during cooldown.",
+                        color=discord.Color.red()
+                    )
+                    await ctx.send(embed=embed)
                     return
             
-            # Format time remaining
             hours = int(time_remaining.total_seconds() // 3600)
             minutes = int((time_remaining.total_seconds() % 3600) // 60)
             
-            await ctx.send(f"{ctx.author.mention} You are on cooldown! Time remaining: **{hours}h {minutes}m**\n⚠️ **WARNING:** Attempting to claim during cooldown will result in an automatic blacklist!")
+            embed = discord.Embed(
+                title="Cooldown Active",
+                description=f"{ctx.author.mention} You are on cooldown!\n\nTime remaining: **{hours}h {minutes}m**\n\nWARNING: Attempting to claim during cooldown will result in an automatic blacklist!",
+                color=discord.Color.red()
+            )
+            await ctx.send(embed=embed)
             return
         
-        # Check for spam
         if check_spam(ctx.author.id):
-            # Auto-blacklist the user
             if ctx.author.id not in blacklist:
                 blacklist.append(ctx.author.id)
                 save_blacklist(blacklist)
-                await ctx.send(f"{ctx.author.mention} You have been automatically blacklisted for spamming the ?key command.")
+                update_stats('blacklist')
+                
+                embed = discord.Embed(
+                    title="Auto-Blacklisted",
+                    description=f"{ctx.author.mention} You have been automatically blacklisted for spamming the ?key command.",
+                    color=discord.Color.red()
+                )
+                await ctx.send(embed=embed)
                 return
     
     if len(keys) == 0:
-        await ctx.send("No keys available in stock!")
+        embed = discord.Embed(
+            title="Out of Stock",
+            description="No keys available in stock!",
+            color=discord.Color.red()
+        )
+        await ctx.send(embed=embed)
         return
     
-    # Get a random key
     claimed_key = random.choice(keys)
     keys.remove(claimed_key)
     save_keys(keys)
 
-    # Record the claim
     claim_record = {
         'user_id': ctx.author.id,
         'username': str(ctx.author),
@@ -712,41 +1108,86 @@ async def generate_key(ctx):
     }
     claimed_keys.append(claim_record)
     save_claimed_keys(claimed_keys)
+    
+    # Update stats
+    update_stats('claim', user_id=ctx.author.id)
 
-    # Update key claim count and check if cooldown should be applied (skip for admins)
     if not ctx.author.guild_permissions.administrator:
         status = update_key_claim(ctx.author.id)
         
         if status == 'cooldown_applied':
-            # Notify user they're now on cooldown
             try:
-                await ctx.author.send(f"``{claimed_key}``\n\n⏰ **COOLDOWN APPLIED**\nYou have claimed 3 keys and are now on a **1-hour cooldown**.\n⚠️ Attempting to claim more keys during this cooldown will result in an automatic blacklist!")
-                await ctx.send(f"{ctx.author.mention} Check your DMs! ⏰ You've been placed on a 1-hour cooldown after claiming 3 keys.")
+                dm_embed = discord.Embed(
+                    title="Your Key",
+                    description=f"``{claimed_key}``",
+                    color=discord.Color.green()
+                )
+                dm_embed.add_field(
+                    name="Cooldown Applied",
+                    value="You have claimed 3 keys and are now on a **1-hour cooldown**.\n\nWARNING: Attempting to claim more keys during this cooldown will result in an automatic blacklist!",
+                    inline=False
+                )
+                await ctx.author.send(embed=dm_embed)
+                
+                embed = discord.Embed(
+                    title="Key Claimed",
+                    description=f"{ctx.author.mention} Check your DMs!\n\nYou've been placed on a 1-hour cooldown after claiming 3 keys.",
+                    color=discord.Color.orange()
+                )
+                await ctx.send(embed=embed)
             except:
-                await ctx.send(f"{ctx.author.mention} I couldn't DM you. Please enable DMs!\n⏰ **You are now on a 1-hour cooldown** after claiming 3 keys.")
+                embed = discord.Embed(
+                    title="DM Failed",
+                    description=f"{ctx.author.mention} I couldn't DM you. Please enable DMs!\n\nYou are now on a 1-hour cooldown after claiming 3 keys.",
+                    color=discord.Color.red()
+                )
+                await ctx.send(embed=embed)
             return
 
-    # Send key via DM
     try:
-        await ctx.author.send(f"``{claimed_key}``")
-        await ctx.send(f"{ctx.author.mention} Check your DMs!")
+        dm_embed = discord.Embed(
+            title="Your Key",
+            description=f"``{claimed_key}``",
+            color=discord.Color.green()
+        )
+        await ctx.author.send(embed=dm_embed)
+        
+        embed = discord.Embed(
+            title="Key Claimed",
+            description=f"{ctx.author.mention} Check your DMs!",
+            color=discord.Color.green()
+        )
+        await ctx.send(embed=embed)
     except:
-        await ctx.send(f"{ctx.author.mention} I couldn't DM you. Please enable DMs and try again!")
+        embed = discord.Embed(
+            title="DM Failed",
+            description=f"{ctx.author.mention} I couldn't DM you. Please enable DMs and try again!",
+            color=discord.Color.red()
+        )
+        await ctx.send(embed=embed)
 
 # Announce restock
 @bot.command(name='announce')
 @commands.has_permissions(administrator=True)
 async def announce_restock(ctx):
-    """Announce a restock"""
     if len(keys) == 0:
-        await ctx.send("No stock available to announce")
+        embed = discord.Embed(
+            title="Error",
+            description="No stock available to announce",
+            color=discord.Color.red()
+        )
+        await ctx.send(embed=embed)
         return
 
     stock_count = len(keys)
 
-    announcement = f"@everyone\n\n**RESTOCK ALERT**\n\nKeys are now available!\n\nStock: {stock_count} keys\n\nUse `?key` to get yours!"
-
-    await ctx.send(announcement)
+    embed = discord.Embed(
+        title="RESTOCK ALERT",
+        description=f"Keys are now available!\n\nStock: **{stock_count}** keys\n\nUse `?key` to get yours!",
+        color=discord.Color.gold()
+    )
+    
+    await ctx.send("@everyone", embed=embed)
 
 # Run the bot
 if __name__ == "__main__":
