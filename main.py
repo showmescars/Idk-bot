@@ -3,7 +3,7 @@ from discord.ext import commands
 import json
 import os
 import random
-from datetime import datetime
+from datetime import datetime, timedelta
 from dotenv import load_dotenv
 
 # Load environment variables
@@ -18,6 +18,11 @@ bot = commands.Bot(command_prefix='?', intents=intents)
 KEYS_FILE = 'keys.json'
 CONFIG_FILE = 'config.json'
 BLACKLIST_FILE = 'blacklist.json'
+
+# Spam detection settings
+SPAM_THRESHOLD = 3  # Number of commands allowed
+SPAM_TIMEFRAME = 10  # Timeframe in seconds
+user_command_times = {}  # Track user command usage
 
 # Load config
 def load_config():
@@ -112,6 +117,30 @@ async def only_allowed_channel(ctx):
         return False
     return True
 
+# Spam detection function
+def check_spam(user_id):
+    """Check if user is spamming and return True if they should be blacklisted"""
+    current_time = datetime.now()
+    
+    # Initialize user's command times if not exists
+    if user_id not in user_command_times:
+        user_command_times[user_id] = []
+    
+    # Remove old timestamps outside the timeframe
+    user_command_times[user_id] = [
+        timestamp for timestamp in user_command_times[user_id]
+        if current_time - timestamp < timedelta(seconds=SPAM_TIMEFRAME)
+    ]
+    
+    # Add current timestamp
+    user_command_times[user_id].append(current_time)
+    
+    # Check if spam threshold exceeded
+    if len(user_command_times[user_id]) > SPAM_THRESHOLD:
+        return True
+    
+    return False
+
 # Set allowed channel (admin only)
 @bot.command(name='setchannel')
 @commands.has_permissions(administrator=True)
@@ -163,6 +192,11 @@ async def unblacklist_user(ctx, user: discord.Member = None):
     
     blacklist.remove(user.id)
     save_blacklist(blacklist)
+    
+    # Clear their spam tracking
+    if user.id in user_command_times:
+        del user_command_times[user.id]
+    
     await ctx.send(f"{user.mention} has been removed from the blacklist.")
 
 # View blacklist
@@ -287,6 +321,17 @@ async def check_stock(ctx):
 @bot.command(name='key')
 async def generate_key(ctx):
     """Generate and claim a key"""
+    # Skip spam check for admins
+    if not ctx.author.guild_permissions.administrator:
+        # Check for spam
+        if check_spam(ctx.author.id):
+            # Auto-blacklist the user
+            if ctx.author.id not in blacklist:
+                blacklist.append(ctx.author.id)
+                save_blacklist(blacklist)
+                await ctx.send(f"{ctx.author.mention} You have been automatically blacklisted for spamming the ?key command.")
+                return
+    
     if len(keys) == 0:
         await ctx.send("No keys available in stock!")
         return
