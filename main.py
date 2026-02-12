@@ -568,7 +568,7 @@ async def help_command(ctx):
     """Display all available commands (alias for ?info)"""
     await info_command(ctx)
 
-# Restock from file
+# Restock from file - UPDATED WITH DUPLICATE DETECTION
 @bot.command(name='restock')
 @commands.has_permissions(administrator=True)
 async def restock_from_file(ctx):
@@ -587,14 +587,38 @@ async def restock_from_file(ctx):
     file_content = await attachment.read()
     keys_list = file_content.decode('utf-8').strip().split('\n')
 
-    # Remove empty lines
+    # Remove empty lines and strip whitespace
     keys_list = [key.strip() for key in keys_list if key.strip()]
 
-    # Add keys to existing stock
-    keys.extend(keys_list)
+    # Detect duplicates within the uploaded file
+    original_count = len(keys_list)
+    keys_list_unique = list(set(keys_list))  # Remove duplicates within file
+    duplicates_in_file = original_count - len(keys_list_unique)
+
+    # Check against existing stock
+    existing_keys_set = set(keys)
+    new_keys = [key for key in keys_list_unique if key not in existing_keys_set]
+    duplicates_in_stock = len(keys_list_unique) - len(new_keys)
+
+    # Add only new unique keys
+    keys.extend(new_keys)
     save_keys(keys)
 
-    await ctx.send(f"Successfully added {len(keys_list)} keys!\nTotal stock: {len(keys)}")
+    # Build detailed response
+    response = f"**📦 RESTOCK COMPLETE**\n\n"
+    response += f"✅ **Added:** {len(new_keys)} new keys\n"
+    response += f"📊 **Total Stock:** {len(keys)} keys\n\n"
+    
+    if duplicates_in_file > 0:
+        response += f"⚠️ **Duplicates in file:** {duplicates_in_file} (removed)\n"
+    
+    if duplicates_in_stock > 0:
+        response += f"⚠️ **Already in stock:** {duplicates_in_stock} (skipped)\n"
+    
+    if duplicates_in_file == 0 and duplicates_in_stock == 0:
+        response += f"✨ All keys were unique and added successfully!"
+
+    await ctx.send(response)
 
 # Clear keys
 @bot.command(name='clear')
