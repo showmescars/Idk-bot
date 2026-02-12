@@ -19,9 +19,9 @@ KEYS_FILE = 'keys.json'
 CONFIG_FILE = 'config.json'
 BLACKLIST_FILE = 'blacklist.json'
 
-# Spam detection settings
-SPAM_THRESHOLD = 2  # Number of commands allowed
-SPAM_TIMEFRAME = 5  # Timeframe in seconds
+# Spam detection settings - VERY STRICT
+SPAM_THRESHOLD = 1  # Number of commands allowed (2 total uses = blacklist)
+SPAM_TIMEFRAME = 3  # Timeframe in seconds
 user_command_times = {}  # Track user command usage
 
 # Load config
