@@ -1104,7 +1104,7 @@ async def check_stock(ctx):
     )
     await ctx.send(embed=embed)
 
-# Generate/Claim keys - UPDATED TO SUPPORT MULTIPLE KEYS
+# Generate/Claim keys - NO EMBEDS IN DM
 @bot.command(name='key')
 async def generate_key(ctx, amount: int = 1):
     # Validate amount
@@ -1221,22 +1221,18 @@ async def generate_key(ctx, amount: int = 1):
     if not ctx.author.guild_permissions.administrator:
         status = update_key_claim(ctx.author.id, amount)
         
-        # Format keys for DM
+        # Format keys for DM (PLAIN TEXT - NO EMBED)
         keys_text = "\n".join([f"``{key}``" for key in claimed_keys_list])
         
         if status == 'cooldown_applied':
             try:
-                dm_embed = discord.Embed(
-                    title=f"Your {amount} Key(s)",
-                    description=keys_text,
-                    color=discord.Color.green()
-                )
-                dm_embed.add_field(
-                    name="Cooldown Applied",
-                    value="You have claimed 3 keys total and are now on a **1-hour cooldown**.\n\nWARNING: Attempting to claim more keys during this cooldown will result in an automatic blacklist!",
-                    inline=False
-                )
-                await ctx.author.send(embed=dm_embed)
+                dm_message = f"**Your {amount} Key(s):**\n\n{keys_text}\n\n"
+                dm_message += "──────────────────────\n"
+                dm_message += "**COOLDOWN APPLIED**\n"
+                dm_message += "You have claimed 3 keys total and are now on a **1-hour cooldown**.\n\n"
+                dm_message += "WARNING: Attempting to claim more keys during this cooldown will result in an automatic blacklist!"
+                
+                await ctx.author.send(dm_message)
                 
                 embed = discord.Embed(
                     title="Keys Claimed",
@@ -1257,17 +1253,12 @@ async def generate_key(ctx, amount: int = 1):
             keys_left_after = get_keys_remaining(ctx.author.id)
             
             try:
-                dm_embed = discord.Embed(
-                    title=f"Your {amount} Key(s)",
-                    description=keys_text,
-                    color=discord.Color.green()
-                )
-                dm_embed.add_field(
-                    name="Remaining Claims",
-                    value=f"You have **{keys_left_after}** claim(s) remaining before cooldown.",
-                    inline=False
-                )
-                await ctx.author.send(embed=dm_embed)
+                dm_message = f"**Your {amount} Key(s):**\n\n{keys_text}\n\n"
+                dm_message += "──────────────────────\n"
+                dm_message += f"**Remaining Claims:** {keys_left_after}\n"
+                dm_message += f"You have **{keys_left_after}** claim(s) remaining before cooldown."
+                
+                await ctx.author.send(dm_message)
                 
                 embed = discord.Embed(
                     title="Keys Claimed",
@@ -1283,17 +1274,15 @@ async def generate_key(ctx, amount: int = 1):
                 )
                 await ctx.send(embed=embed)
     else:
-        # Admin claiming - no cooldown tracking
+        # Admin claiming - no cooldown tracking (PLAIN TEXT - NO EMBED)
         keys_text = "\n".join([f"``{key}``" for key in claimed_keys_list])
         
         try:
-            dm_embed = discord.Embed(
-                title=f"Your {amount} Key(s)",
-                description=keys_text,
-                color=discord.Color.green()
-            )
-            dm_embed.set_footer(text="Admin - No cooldown applied")
-            await ctx.author.send(embed=dm_embed)
+            dm_message = f"**Your {amount} Key(s):**\n\n{keys_text}\n\n"
+            dm_message += "──────────────────────\n"
+            dm_message += "**Admin** - No cooldown applied"
+            
+            await ctx.author.send(dm_message)
             
             embed = discord.Embed(
                 title="Keys Claimed",
