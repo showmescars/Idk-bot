@@ -12,7 +12,7 @@ load_dotenv()
 # Bot setup
 intents = discord.Intents.default()
 intents.message_content = True
-bot = commands.Bot(command_prefix='?', intents=intents, help_command=None)  # ← DISABLED DEFAULT HELP
+bot = commands.Bot(command_prefix='?', intents=intents, help_command=None)  # DISABLED DEFAULT HELP
 
 # Files
 KEYS_FILE = 'keys.json'
@@ -356,7 +356,7 @@ async def unblacklist_user(ctx, user_input: str = None):
     
     await ctx.send(f"**{user.name}** (ID: {user.id}) has been removed from the blacklist.")
 
-# View blacklist
+# View blacklist - UPDATED WITH DISPLAY NAME AND ID
 @bot.command(name='viewblacklist')
 @commands.has_permissions(administrator=True)
 async def view_blacklist(ctx):
@@ -365,13 +365,22 @@ async def view_blacklist(ctx):
         await ctx.send("No users are blacklisted.")
         return
     
-    blacklist_text = "**Blacklisted Users:**\n"
+    blacklist_text = "**Blacklisted Users:**\n\n"
+    
     for user_id in blacklist:
         user = bot.get_user(user_id)
+        
+        # Get username - try to fetch if not cached
         if user:
-            blacklist_text += f"{user.name} (ID: {user_id})\n"
+            display_name = str(user)
         else:
-            blacklist_text += f"Unknown User (ID: {user_id})\n"
+            try:
+                user = await bot.fetch_user(user_id)
+                display_name = str(user)
+            except:
+                display_name = "Unknown User"
+        
+        blacklist_text += f"**{display_name}** (ID: {user_id})\n"
     
     await ctx.send(blacklist_text)
 
