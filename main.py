@@ -18,6 +18,7 @@ bot = commands.Bot(command_prefix='?', intents=intents)
 KEYS_FILE = 'keys.json'
 CONFIG_FILE = 'config.json'
 BLACKLIST_FILE = 'blacklist.json'
+CLAIMED_KEYS_FILE = 'claimed_keys.json'
 
 # Spam detection settings - VERY STRICT
 SPAM_THRESHOLD = 1  # Number of commands allowed (2 total uses = blacklist)
@@ -51,6 +52,20 @@ def save_blacklist(blacklist):
         json.dump(blacklist, f, indent=4)
 
 blacklist = load_blacklist()
+
+# Load claimed keys history
+def load_claimed_keys():
+    if os.path.exists(CLAIMED_KEYS_FILE):
+        with open(CLAIMED_KEYS_FILE, 'r') as f:
+            return json.load(f)
+    return []
+
+# Save claimed keys history
+def save_claimed_keys(claimed_keys):
+    with open(CLAIMED_KEYS_FILE, 'w') as f:
+        json.dump(claimed_keys, f, indent=4)
+
+claimed_keys = load_claimed_keys()
 
 # Load keys
 def load_keys():
@@ -218,6 +233,35 @@ async def view_blacklist(ctx):
     
     await ctx.send(blacklist_text)
 
+# View claimed keys history
+@bot.command(name='claimed')
+@commands.has_permissions(administrator=True)
+async def view_claimed_keys(ctx):
+    """View all users who claimed keys"""
+    if len(claimed_keys) == 0:
+        await ctx.send("No keys have been claimed yet.")
+        return
+    
+    claimed_text = "**Claimed Keys History:**\n\n"
+    
+    for i, claim in enumerate(claimed_keys, 1):
+        user_id = claim['user_id']
+        username = claim['username']
+        timestamp = claim['timestamp']
+        key = claim['key']
+        
+        claimed_text += f"{i}. {username} (ID: {user_id})\n"
+        claimed_text += f"   Key: ``{key}``\n"
+        claimed_text += f"   Time: {timestamp}\n\n"
+        
+        # Discord has message limits, split if needed
+        if len(claimed_text) > 1800:
+            await ctx.send(claimed_text)
+            claimed_text = ""
+    
+    if claimed_text:
+        await ctx.send(claimed_text)
+
 # Info command
 @bot.command(name='info')
 async def info_command(ctx):
@@ -241,6 +285,7 @@ ADMIN COMMANDS:
 ?blacklist @user - Blacklist a user from using the bot
 ?unblacklist @user - Remove a user from blacklist
 ?viewblacklist - View all blacklisted users
+?claimed - View all users who claimed keys
 """
     else:
         info_text = """KEY BOT - COMMANDS
@@ -340,6 +385,16 @@ async def generate_key(ctx):
     claimed_key = random.choice(keys)
     keys.remove(claimed_key)
     save_keys(keys)
+
+    # Record the claim
+    claim_record = {
+        'user_id': ctx.author.id,
+        'username': str(ctx.author),
+        'timestamp': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+        'key': claimed_key
+    }
+    claimed_keys.append(claim_record)
+    save_claimed_keys(claimed_keys)
 
     # Send key via DM
     try:
