@@ -19,11 +19,16 @@ KEYS_FILE = 'keys.json'
 CONFIG_FILE = 'config.json'
 BLACKLIST_FILE = 'blacklist.json'
 CLAIMED_KEYS_FILE = 'claimed_keys.json'
+COOLDOWNS_FILE = 'cooldowns.json'
 
 # Spam detection settings - VERY STRICT
 SPAM_THRESHOLD = 1  # Number of commands allowed (2 total uses = blacklist)
 SPAM_TIMEFRAME = 3  # Timeframe in seconds
 user_command_times = {}  # Track user command usage
+
+# Key claim limits
+MAX_KEYS_BEFORE_COOLDOWN = 3  # After 3 keys, user gets cooldown
+COOLDOWN_DURATION = timedelta(hours=1)  # 1 hour cooldown
 
 # Load config
 def load_config():
@@ -66,6 +71,34 @@ def save_claimed_keys(claimed_keys):
         json.dump(claimed_keys, f, indent=4)
 
 claimed_keys = load_claimed_keys()
+
+# Load cooldowns
+def load_cooldowns():
+    if os.path.exists(COOLDOWNS_FILE):
+        with open(COOLDOWNS_FILE, 'r') as f:
+            data = json.load(f)
+            # Convert string timestamps back to datetime objects
+            for user_id in data:
+                if 'cooldown_until' in data[user_id] and data[user_id]['cooldown_until']:
+                    data[user_id]['cooldown_until'] = datetime.fromisoformat(data[user_id]['cooldown_until'])
+            return data
+    return {}
+
+# Save cooldowns
+def save_cooldowns(cooldowns_data):
+    # Convert datetime objects to strings for JSON
+    data_to_save = {}
+    for user_id, info in cooldowns_data.items():
+        data_to_save[user_id] = {
+            'keys_claimed': info['keys_claimed'],
+            'cooldown_until': info['cooldown_until'].isoformat() if info['cooldown_until'] else None,
+            'cooldown_violations': info.get('cooldown_violations', 0)
+        }
+    
+    with open(COOLDOWNS_FILE, 'w') as f:
+        json.dump(data_to_save, f, indent=4)
+
+cooldowns = load_cooldowns()
 
 # Load keys
 def load_keys():
@@ -156,6 +189,77 @@ def check_spam(user_id):
     
     return False
 
+# Check cooldown status
+def check_cooldown(user_id):
+    """Check if user is on cooldown. Returns (on_cooldown, time_remaining)"""
+    user_id_str = str(user_id)
+    
+    if user_id_str not in cooldowns:
+        cooldowns[user_id_str] = {
+            'keys_claimed': 0,
+            'cooldown_until': None,
+            'cooldown_violations': 0
+        }
+        return False, None
+    
+    user_data = cooldowns[user_id_str]
+    
+    # Check if user is currently on cooldown
+    if user_data['cooldown_until']:
+        if datetime.now() < user_data['cooldown_until']:
+            time_remaining = user_data['cooldown_until'] - datetime.now()
+            return True, time_remaining
+        else:
+            # Cooldown expired, reset it
+            user_data['cooldown_until'] = None
+            user_data['keys_claimed'] = 0
+            save_cooldowns(cooldowns)
+    
+    return False, None
+
+# Update user key claim count
+def update_key_claim(user_id):
+    """Update user's key claim count and apply cooldown if needed. Returns status."""
+    user_id_str = str(user_id)
+    
+    if user_id_str not in cooldowns:
+        cooldowns[user_id_str] = {
+            'keys_claimed': 0,
+            'cooldown_until': None,
+            'cooldown_violations': 0
+        }
+    
+    user_data = cooldowns[user_id_str]
+    user_data['keys_claimed'] += 1
+    
+    # If user has claimed 3 keys, apply cooldown
+    if user_data['keys_claimed'] >= MAX_KEYS_BEFORE_COOLDOWN:
+        user_data['cooldown_until'] = datetime.now() + COOLDOWN_DURATION
+        user_data['keys_claimed'] = 0  # Reset count
+        save_cooldowns(cooldowns)
+        return 'cooldown_applied'
+    
+    save_cooldowns(cooldowns)
+    return 'normal'
+
+# Handle cooldown violation
+def handle_cooldown_violation(user_id):
+    """Handle when user tries to claim during cooldown. Returns True if should be blacklisted."""
+    user_id_str = str(user_id)
+    
+    if user_id_str not in cooldowns:
+        return False
+    
+    user_data = cooldowns[user_id_str]
+    user_data['cooldown_violations'] = user_data.get('cooldown_violations', 0) + 1
+    save_cooldowns(cooldowns)
+    
+    # If user violated cooldown, blacklist them
+    if user_data['cooldown_violations'] >= 1:
+        return True
+    
+    return False
+
 # Set allowed channel (admin only)
 @bot.command(name='setchannel')
 @commands.has_permissions(administrator=True)
@@ -208,9 +312,14 @@ async def unblacklist_user(ctx, user: discord.Member = None):
     blacklist.remove(user.id)
     save_blacklist(blacklist)
     
-    # Clear their spam tracking
+    # Clear their spam tracking and cooldown data
     if user.id in user_command_times:
         del user_command_times[user.id]
+    
+    user_id_str = str(user.id)
+    if user_id_str in cooldowns:
+        del cooldowns[user_id_str]
+        save_cooldowns(cooldowns)
     
     await ctx.send(f"{user.mention} has been removed from the blacklist.")
 
@@ -262,6 +371,65 @@ async def view_claimed_keys(ctx):
     if claimed_text:
         await ctx.send(claimed_text)
 
+# View user cooldowns (admin)
+@bot.command(name='cooldowns')
+@commands.has_permissions(administrator=True)
+async def view_cooldowns(ctx):
+    """View all users on cooldown"""
+    active_cooldowns = []
+    
+    for user_id_str, data in cooldowns.items():
+        if data['cooldown_until'] and datetime.now() < data['cooldown_until']:
+            user_id = int(user_id_str)
+            user = bot.get_user(user_id)
+            username = user.name if user else f"Unknown User"
+            time_remaining = data['cooldown_until'] - datetime.now()
+            
+            # Format time remaining
+            hours = int(time_remaining.total_seconds() // 3600)
+            minutes = int((time_remaining.total_seconds() % 3600) // 60)
+            
+            active_cooldowns.append({
+                'username': username,
+                'user_id': user_id,
+                'time_remaining': f"{hours}h {minutes}m",
+                'violations': data.get('cooldown_violations', 0)
+            })
+    
+    if len(active_cooldowns) == 0:
+        await ctx.send("No users are currently on cooldown.")
+        return
+    
+    cooldown_text = "**Active Cooldowns:**\n\n"
+    for cd in active_cooldowns:
+        cooldown_text += f"{cd['username']} (ID: {cd['user_id']})\n"
+        cooldown_text += f"   Time Remaining: {cd['time_remaining']}\n"
+        cooldown_text += f"   Violations: {cd['violations']}\n\n"
+    
+    await ctx.send(cooldown_text)
+
+# Reset user cooldown (admin)
+@bot.command(name='resetcooldown')
+@commands.has_permissions(administrator=True)
+async def reset_cooldown(ctx, user: discord.Member = None):
+    """Reset a user's cooldown"""
+    if user is None:
+        await ctx.send("Usage: ?resetcooldown @user")
+        return
+    
+    user_id_str = str(user.id)
+    
+    if user_id_str not in cooldowns or not cooldowns[user_id_str]['cooldown_until']:
+        await ctx.send(f"{user.mention} is not on cooldown.")
+        return
+    
+    cooldowns[user_id_str]['cooldown_until'] = None
+    cooldowns[user_id_str]['keys_claimed'] = 0
+    cooldowns[user_id_str]['cooldown_violations'] = 0
+    save_cooldowns(cooldowns)
+    
+    await ctx.send(f"{user.mention}'s cooldown has been reset.")
+
 # Info command
 @bot.command(name='info')
 async def info_command(ctx):
@@ -286,6 +454,12 @@ ADMIN COMMANDS:
 ?unblacklist @user - Remove a user from blacklist
 ?viewblacklist - View all blacklisted users
 ?claimed - View all users who claimed keys
+?cooldowns - View all users on cooldown
+?resetcooldown @user - Reset a user's cooldown
+
+NOTE: Users are limited to 3 keys. After 3 keys, 
+a 1-hour cooldown is applied. Attempting to claim 
+during cooldown results in automatic blacklist.
 """
     else:
         info_text = """KEY BOT - COMMANDS
@@ -293,6 +467,9 @@ ADMIN COMMANDS:
 ?key - Generate and claim a key
 ?stock - Check available keys
 ?info - Display this command list
+
+NOTE: You can claim up to 3 keys before a 
+1-hour cooldown is applied.
 """
 
     await ctx.send(f"```{info_text}```")
@@ -366,8 +543,30 @@ async def check_stock(ctx):
 @bot.command(name='key')
 async def generate_key(ctx):
     """Generate and claim a key"""
-    # Skip spam check for admins
+    # Skip spam check and cooldown for admins
     if not ctx.author.guild_permissions.administrator:
+        # Check if user is on cooldown
+        on_cooldown, time_remaining = check_cooldown(ctx.author.id)
+        
+        if on_cooldown:
+            # User tried to claim during cooldown - handle violation
+            should_blacklist = handle_cooldown_violation(ctx.author.id)
+            
+            if should_blacklist:
+                # Auto-blacklist the user
+                if ctx.author.id not in blacklist:
+                    blacklist.append(ctx.author.id)
+                    save_blacklist(blacklist)
+                    await ctx.send(f"{ctx.author.mention} You have been automatically blacklisted for attempting to claim keys during cooldown.")
+                    return
+            
+            # Format time remaining
+            hours = int(time_remaining.total_seconds() // 3600)
+            minutes = int((time_remaining.total_seconds() % 3600) // 60)
+            
+            await ctx.send(f"{ctx.author.mention} You are on cooldown! Time remaining: **{hours}h {minutes}m**\n⚠️ **WARNING:** Attempting to claim during cooldown will result in an automatic blacklist!")
+            return
+        
         # Check for spam
         if check_spam(ctx.author.id):
             # Auto-blacklist the user
@@ -395,6 +594,19 @@ async def generate_key(ctx):
     }
     claimed_keys.append(claim_record)
     save_claimed_keys(claimed_keys)
+
+    # Update key claim count and check if cooldown should be applied (skip for admins)
+    if not ctx.author.guild_permissions.administrator:
+        status = update_key_claim(ctx.author.id)
+        
+        if status == 'cooldown_applied':
+            # Notify user they're now on cooldown
+            try:
+                await ctx.author.send(f"``{claimed_key}``\n\n⏰ **COOLDOWN APPLIED**\nYou have claimed 3 keys and are now on a **1-hour cooldown**.\n⚠️ Attempting to claim more keys during this cooldown will result in an automatic blacklist!")
+                await ctx.send(f"{ctx.author.mention} Check your DMs! ⏰ You've been placed on a 1-hour cooldown after claiming 3 keys.")
+            except:
+                await ctx.send(f"{ctx.author.mention} I couldn't DM you. Please enable DMs!\n⏰ **You are now on a 1-hour cooldown** after claiming 3 keys.")
+            return
 
     # Send key via DM
     try:
