@@ -225,29 +225,63 @@ async def help_command(ctx):
     is_admin = ctx.author.guild_permissions.administrator
     
     embed = discord.Embed(
-        title="Vampire Bot - Command List",
-        description="All available commands for the Vampire Bot",
+        title="Vampire Bot Commands",
+        description="Complete list of available commands",
         color=discord.Color.dark_red()
     )
     
     # User Commands
-    user_commands = """
-    **?make** - Create a random vampire
-    **?list** - View all your vampires
-    **?mission <ID>** - Send your vampire on a mission
-    **?train <ID>** - Train your vampire (1 hour cooldown)
-    **?viewmultiplier <ID>** - Check a vampire's training multiplier
-    **?help** - Display this command list
-    """
-    embed.add_field(name="User Commands", value=user_commands, inline=False)
+    embed.add_field(
+        name="?make",
+        value="Create a random vampire",
+        inline=False
+    )
     
+    embed.add_field(
+        name="?list",
+        value="View all your vampires",
+        inline=False
+    )
+    
+    embed.add_field(
+        name="?mission <vampire_ID>",
+        value="Send your vampire on a mission to fight AI vampires",
+        inline=False
+    )
+    
+    embed.add_field(
+        name="?train <vampire_ID>",
+        value="Train your vampire to increase stats (1 hour cooldown)",
+        inline=False
+    )
+    
+    embed.add_field(
+        name="?viewmultiplier <vampire_ID>",
+        value="Check a vampire's training multiplier",
+        inline=False
+    )
+    
+    embed.add_field(
+        name="?help",
+        value="Display this command list",
+        inline=False
+    )
+    
+    # Admin Commands
     if is_admin:
-        admin_commands = """
-        **?multiplier <ID> <amount>** - Set training multiplier for a vampire
-        """
-        embed.add_field(name="Admin Commands", value=admin_commands, inline=False)
+        embed.add_field(
+            name="\nADMIN ONLY",
+            value="Commands below require administrator permissions",
+            inline=False
+        )
+        
+        embed.add_field(
+            name="?multiplier <vampire_ID> <amount>",
+            value="Set training multiplier for a specific vampire",
+            inline=False
+        )
     
-    embed.set_footer(text="Use ? before each command")
+    embed.set_footer(text="Example: ?mission A7B2C9")
     
     await ctx.send(embed=embed)
 
