@@ -1,5 +1,5 @@
 import discord
-from discord.ext import commands
+from discord.ext import commands, tasks
 import json
 import os
 import random
@@ -29,9 +29,8 @@ SPAM_THRESHOLD = 1
 SPAM_TIMEFRAME = 3
 user_command_times = {}
 
-# Key claim limits
-MAX_KEYS_BEFORE_COOLDOWN = 3
-COOLDOWN_DURATION = timedelta(hours=1)
+# Auto-blacklist removal time (5 hours)
+AUTO_BLACKLIST_REMOVAL_HOURS = 5
 
 # Create backup directory if it doesn't exist
 if not os.path.exists(BACKUP_DIR):
@@ -51,17 +50,54 @@ def save_config(config):
 
 config = load_config()
 
-# Load blacklist
+# Get key limit for server
+def get_key_limit(guild_id):
+    guild_id_str = str(guild_id)
+    if guild_id_str in config and 'max_keys' in config[guild_id_str]:
+        return config[guild_id_str]['max_keys']
+    return 3  # Default
+
+# Get cooldown duration for server (in hours)
+def get_cooldown_hours(guild_id):
+    guild_id_str = str(guild_id)
+    if guild_id_str in config and 'cooldown_hours' in config[guild_id_str]:
+        return config[guild_id_str]['cooldown_hours']
+    return 1  # Default
+
+# Load blacklist with timestamps
 def load_blacklist():
     if os.path.exists(BLACKLIST_FILE):
         with open(BLACKLIST_FILE, 'r') as f:
-            return json.load(f)
-    return []
+            data = json.load(f)
+            # Convert old format to new format if needed
+            if isinstance(data, list):
+                # Old format: just list of user IDs
+                new_format = {}
+                for user_id in data:
+                    new_format[str(user_id)] = {
+                        'blacklisted_at': datetime.now().isoformat(),
+                        'auto_remove': True
+                    }
+                return new_format
+            else:
+                # New format: dict with timestamps
+                for user_id in data:
+                    if 'blacklisted_at' in data[user_id]:
+                        data[user_id]['blacklisted_at'] = datetime.fromisoformat(data[user_id]['blacklisted_at'])
+                return data
+    return {}
 
 # Save blacklist
-def save_blacklist(blacklist):
+def save_blacklist(blacklist_data):
+    data_to_save = {}
+    for user_id, info in blacklist_data.items():
+        data_to_save[user_id] = {
+            'blacklisted_at': info['blacklisted_at'].isoformat() if isinstance(info['blacklisted_at'], datetime) else info['blacklisted_at'],
+            'auto_remove': info.get('auto_remove', True)
+        }
+    
     with open(BLACKLIST_FILE, 'w') as f:
-        json.dump(blacklist, f, indent=4)
+        json.dump(data_to_save, f, indent=4)
 
 blacklist = load_blacklist()
 
@@ -115,6 +151,7 @@ def load_stats():
         'total_keys_claimed': 0,
         'total_restocks': 0,
         'total_blacklists': 0,
+        'total_auto_unblacklists': 0,
         'most_active_claimer': {'user_id': None, 'count': 0},
         'first_restock_date': None,
         'last_restock_date': None
@@ -153,6 +190,9 @@ def update_stats(action, **kwargs):
     
     elif action == 'blacklist':
         stats['total_blacklists'] += 1
+    
+    elif action == 'auto_unblacklist':
+        stats['total_auto_unblacklists'] = stats.get('total_auto_unblacklists', 0) + 1
     
     save_stats(stats)
 
@@ -238,10 +278,53 @@ def restore_backup(backup_name):
     
     return True, restored
 
+# Background task to check and remove expired blacklists
+@tasks.loop(minutes=5)  # Check every 5 minutes
+async def check_blacklist_expiry():
+    global blacklist
+    current_time = datetime.now()
+    users_to_remove = []
+    
+    for user_id_str, info in blacklist.items():
+        if info.get('auto_remove', True):
+            blacklist_time = info['blacklisted_at']
+            if isinstance(blacklist_time, str):
+                blacklist_time = datetime.fromisoformat(blacklist_time)
+            
+            time_elapsed = current_time - blacklist_time
+            
+            # Check if 5 hours have passed
+            if time_elapsed >= timedelta(hours=AUTO_BLACKLIST_REMOVAL_HOURS):
+                users_to_remove.append(user_id_str)
+    
+    # Remove expired blacklists
+    for user_id_str in users_to_remove:
+        user_id = int(user_id_str)
+        del blacklist[user_id_str]
+        
+        # Clear cooldown data
+        if user_id_str in cooldowns:
+            del cooldowns[user_id_str]
+            save_cooldowns(cooldowns)
+        
+        # Clear spam tracking
+        if user_id in user_command_times:
+            del user_command_times[user_id]
+        
+        # Update stats
+        update_stats('auto_unblacklist')
+        
+        print(f"Auto-removed blacklist for user ID: {user_id}")
+    
+    if users_to_remove:
+        save_blacklist(blacklist)
+
 @bot.event
 async def on_ready():
     print(f'{bot.user} is online')
     print('Key Bot Ready')
+    check_blacklist_expiry.start()  # Start the background task
+    print('Auto-blacklist removal task started (checks every 5 minutes)')
 
 # Check to block DM commands
 @bot.check
@@ -258,14 +341,26 @@ async def globally_block_dms(ctx):
 
 # Check if user is blacklisted
 @bot.check
-async def check_blacklist(ctx):
+async def check_blacklist_check(ctx):
     if ctx.author.guild_permissions.administrator:
         return True
     
-    if ctx.author.id in blacklist:
+    user_id_str = str(ctx.author.id)
+    if user_id_str in blacklist:
+        info = blacklist[user_id_str]
+        blacklist_time = info['blacklisted_at']
+        if isinstance(blacklist_time, str):
+            blacklist_time = datetime.fromisoformat(blacklist_time)
+        
+        time_elapsed = datetime.now() - blacklist_time
+        time_remaining = timedelta(hours=AUTO_BLACKLIST_REMOVAL_HOURS) - time_elapsed
+        
+        hours = int(time_remaining.total_seconds() // 3600)
+        minutes = int((time_remaining.total_seconds() % 3600) // 60)
+        
         embed = discord.Embed(
             title="Access Denied",
-            description=f"{ctx.author.mention} You are blacklisted from using this bot.",
+            description=f"{ctx.author.mention} You are blacklisted from using this bot.\n\n**Auto-removal in:** {hours}h {minutes}m",
             color=discord.Color.red()
         )
         await ctx.send(embed=embed)
@@ -333,11 +428,12 @@ def check_cooldown(user_id):
     return False, None, user_data['keys_claimed']
 
 # Get keys remaining for user
-def get_keys_remaining(user_id):
+def get_keys_remaining(user_id, guild_id):
+    max_keys = get_key_limit(guild_id)
     user_id_str = str(user_id)
     
     if user_id_str not in cooldowns:
-        return MAX_KEYS_BEFORE_COOLDOWN
+        return max_keys
     
     user_data = cooldowns[user_id_str]
     
@@ -345,10 +441,12 @@ def get_keys_remaining(user_id):
     if user_data['cooldown_until'] and datetime.now() < user_data['cooldown_until']:
         return 0
     
-    return MAX_KEYS_BEFORE_COOLDOWN - user_data['keys_claimed']
+    return max_keys - user_data['keys_claimed']
 
 # Update key claim with multiple keys
-def update_key_claim(user_id, num_keys):
+def update_key_claim(user_id, num_keys, guild_id):
+    max_keys = get_key_limit(guild_id)
+    cooldown_hours = get_cooldown_hours(guild_id)
     user_id_str = str(user_id)
     
     if user_id_str not in cooldowns:
@@ -361,9 +459,9 @@ def update_key_claim(user_id, num_keys):
     user_data = cooldowns[user_id_str]
     user_data['keys_claimed'] += num_keys
     
-    # If user has claimed 3 or more keys total, apply cooldown
-    if user_data['keys_claimed'] >= MAX_KEYS_BEFORE_COOLDOWN:
-        user_data['cooldown_until'] = datetime.now() + COOLDOWN_DURATION
+    # If user has claimed max keys or more, apply cooldown
+    if user_data['keys_claimed'] >= max_keys:
+        user_data['cooldown_until'] = datetime.now() + timedelta(hours=cooldown_hours)
         user_data['keys_claimed'] = 0
         save_cooldowns(cooldowns)
         return 'cooldown_applied'
@@ -387,6 +485,108 @@ def handle_cooldown_violation(user_id):
     
     return False
 
+# NEW COMMAND: Set key limit
+@bot.command(name='setkeylimit')
+@commands.has_permissions(administrator=True)
+async def set_key_limit(ctx, max_keys: int = None):
+    if max_keys is None:
+        # Show current settings
+        current_max = get_key_limit(ctx.guild.id)
+        
+        embed = discord.Embed(
+            title="Current Key Limit Settings",
+            color=discord.Color.blue()
+        )
+        embed.add_field(name="Max Keys Per User", value=f"{current_max} keys", inline=True)
+        embed.add_field(
+            name="Usage",
+            value="?setkeylimit <number>\nExample: ?setkeylimit 5\n(Allows users to claim up to 5 keys)",
+            inline=False
+        )
+        await ctx.send(embed=embed)
+        return
+    
+    if max_keys < 1 or max_keys > 20:
+        embed = discord.Embed(
+            title="Invalid Value",
+            description="Max keys must be between 1 and 20",
+            color=discord.Color.red()
+        )
+        await ctx.send(embed=embed)
+        return
+    
+    guild_id_str = str(ctx.guild.id)
+    
+    if guild_id_str not in config:
+        config[guild_id_str] = {}
+    
+    config[guild_id_str]['max_keys'] = max_keys
+    save_config(config)
+    
+    embed = discord.Embed(
+        title="Key Limit Updated",
+        color=discord.Color.green()
+    )
+    embed.add_field(name="Max Keys Per User", value=f"{max_keys} keys", inline=True)
+    embed.add_field(
+        name="Note",
+        value=f"Users can now claim 1-{max_keys} keys before cooldown is applied.",
+        inline=False
+    )
+    
+    await ctx.send(embed=embed)
+
+# NEW COMMAND: Set cooldown duration
+@bot.command(name='setcooldown')
+@commands.has_permissions(administrator=True)
+async def set_cooldown_duration(ctx, hours: int = None):
+    if hours is None:
+        # Show current settings
+        current_cooldown = get_cooldown_hours(ctx.guild.id)
+        
+        embed = discord.Embed(
+            title="Current Cooldown Settings",
+            color=discord.Color.blue()
+        )
+        embed.add_field(name="Cooldown Duration", value=f"{current_cooldown} hour(s)", inline=True)
+        embed.add_field(
+            name="Usage",
+            value="?setcooldown <hours>\nExample: ?setcooldown 2\n(Sets 2 hour cooldown after max keys claimed)",
+            inline=False
+        )
+        await ctx.send(embed=embed)
+        return
+    
+    if hours < 1 or hours > 48:
+        embed = discord.Embed(
+            title="Invalid Value",
+            description="Cooldown hours must be between 1 and 48",
+            color=discord.Color.red()
+        )
+        await ctx.send(embed=embed)
+        return
+    
+    guild_id_str = str(ctx.guild.id)
+    
+    if guild_id_str not in config:
+        config[guild_id_str] = {}
+    
+    config[guild_id_str]['cooldown_hours'] = hours
+    save_config(config)
+    
+    embed = discord.Embed(
+        title="Cooldown Duration Updated",
+        color=discord.Color.green()
+    )
+    embed.add_field(name="Cooldown Duration", value=f"{hours} hour(s)", inline=True)
+    embed.add_field(
+        name="Note",
+        value=f"Users will be on cooldown for {hours} hour(s) after claiming max keys.",
+        inline=False
+    )
+    
+    await ctx.send(embed=embed)
+
 # Set allowed channel
 @bot.command(name='setchannel')
 @commands.has_permissions(administrator=True)
@@ -409,11 +609,11 @@ async def set_channel(ctx):
 # Blacklist a user
 @bot.command(name='blacklist')
 @commands.has_permissions(administrator=True)
-async def blacklist_user(ctx, user_input: str = None):
+async def blacklist_user(ctx, user_input: str = None, permanent: str = None):
     if user_input is None:
         embed = discord.Embed(
             title="Usage",
-            description="?blacklist @user OR ?blacklist UserID",
+            description="?blacklist @user OR ?blacklist UserID [permanent]\n\nAdd 'permanent' to prevent auto-removal after 5 hours\nExample: ?blacklist @user permanent",
             color=discord.Color.orange()
         )
         await ctx.send(embed=embed)
@@ -447,7 +647,8 @@ async def blacklist_user(ctx, user_input: str = None):
             await ctx.send(embed=embed)
             return
     
-    if user.id in blacklist:
+    user_id_str = str(user.id)
+    if user_id_str in blacklist:
         embed = discord.Embed(
             title="Already Blacklisted",
             description=f"{user.name} (ID: {user.id}) is already blacklisted.",
@@ -456,13 +657,20 @@ async def blacklist_user(ctx, user_input: str = None):
         await ctx.send(embed=embed)
         return
     
-    blacklist.append(user.id)
+    is_permanent = permanent and permanent.lower() == 'permanent'
+    
+    blacklist[user_id_str] = {
+        'blacklisted_at': datetime.now(),
+        'auto_remove': not is_permanent
+    }
     save_blacklist(blacklist)
     update_stats('blacklist')
     
+    blacklist_type = "permanently" if is_permanent else f"for {AUTO_BLACKLIST_REMOVAL_HOURS} hours (auto-removal enabled)"
+    
     embed = discord.Embed(
         title="User Blacklisted",
-        description=f"**{user.name}** (ID: {user.id}) has been blacklisted from using the bot.",
+        description=f"**{user.name}** (ID: {user.id}) has been blacklisted {blacklist_type}.",
         color=discord.Color.red()
     )
     await ctx.send(embed=embed)
@@ -497,7 +705,8 @@ async def unblacklist_user(ctx, user_input: str = None):
             await ctx.send(embed=embed)
             return
     
-    if user.id not in blacklist:
+    user_id_str = str(user.id)
+    if user_id_str not in blacklist:
         embed = discord.Embed(
             title="Not Blacklisted",
             description=f"**{user.name}** (ID: {user.id}) is not blacklisted.",
@@ -506,13 +715,12 @@ async def unblacklist_user(ctx, user_input: str = None):
         await ctx.send(embed=embed)
         return
     
-    blacklist.remove(user.id)
+    del blacklist[user_id_str]
     save_blacklist(blacklist)
     
     if user.id in user_command_times:
         del user_command_times[user.id]
     
-    user_id_str = str(user.id)
     if user_id_str in cooldowns:
         del cooldowns[user_id_str]
         save_cooldowns(cooldowns)
@@ -539,7 +747,8 @@ async def view_blacklist(ctx):
     
     blacklist_text = ""
     
-    for user_id in blacklist:
+    for user_id_str, info in blacklist.items():
+        user_id = int(user_id_str)
         user = bot.get_user(user_id)
         
         if user:
@@ -551,13 +760,29 @@ async def view_blacklist(ctx):
             except:
                 display_name = "Unknown User"
         
+        blacklist_time = info['blacklisted_at']
+        if isinstance(blacklist_time, str):
+            blacklist_time = datetime.fromisoformat(blacklist_time)
+        
+        time_elapsed = datetime.now() - blacklist_time
+        
+        if info.get('auto_remove', True):
+            time_remaining = timedelta(hours=AUTO_BLACKLIST_REMOVAL_HOURS) - time_elapsed
+            hours = int(time_remaining.total_seconds() // 3600)
+            minutes = int((time_remaining.total_seconds() % 3600) // 60)
+            status = f"Auto-removes in: {hours}h {minutes}m"
+        else:
+            status = "Permanent"
+        
         blacklist_text += f"**{display_name}** (ID: {user_id})\n"
+        blacklist_text += f"   {status}\n\n"
     
     embed = discord.Embed(
         title="Blacklisted Users",
         description=blacklist_text,
         color=discord.Color.red()
     )
+    embed.set_footer(text=f"Auto-removal occurs after {AUTO_BLACKLIST_REMOVAL_HOURS} hours (unless permanent)")
     await ctx.send(embed=embed)
 
 # View claimed keys
@@ -761,7 +986,7 @@ async def view_stats(ctx):
     
     embed.add_field(
         name="Users",
-        value=f"Total Blacklists: {stats['total_blacklists']}\nActive Blacklists: {len(blacklist)}\nUnique Claimers: {len(set(c['user_id'] for c in claimed_keys))}",
+        value=f"Total Blacklists: {stats['total_blacklists']}\nAuto-Removals: {stats.get('total_auto_unblacklists', 0)}\nActive Blacklists: {len(blacklist)}\nUnique Claimers: {len(set(c['user_id'] for c in claimed_keys))}",
         inline=True
     )
     
@@ -780,6 +1005,15 @@ async def view_stats(ctx):
             value=f"{claimer_name}\nKeys Claimed: {stats['most_active_claimer']['count']}",
             inline=False
         )
+    
+    # Server settings
+    max_keys = get_key_limit(ctx.guild.id)
+    cooldown_hours = get_cooldown_hours(ctx.guild.id)
+    embed.add_field(
+        name="Server Settings",
+        value=f"Max Keys: {max_keys}\nCooldown: {cooldown_hours}h\nAuto-Unblacklist: {AUTO_BLACKLIST_REMOVAL_HOURS}h",
+        inline=False
+    )
     
     embed.set_footer(text=f"Stats as of {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
     
@@ -883,6 +1117,8 @@ async def restore_data(ctx, backup_name: str = None):
 @bot.command(name='info')
 async def info_command(ctx):
     is_admin = ctx.author.guild_permissions.administrator
+    max_keys = get_key_limit(ctx.guild.id)
+    cooldown_hours = get_cooldown_hours(ctx.guild.id)
 
     if is_admin:
         embed = discord.Embed(
@@ -892,19 +1128,19 @@ async def info_command(ctx):
         
         embed.add_field(
             name="User Commands",
-            value="?key [amount] - Generate and claim keys (1-3)\n?stock - Check available keys\n?remaining - Check your remaining claims\n?info - Display this command list",
+            value=f"?key [amount] - Generate and claim keys (1-{max_keys})\n?stock - Check available keys\n?remaining - Check your remaining claims\n?info - Display this command list",
             inline=False
         )
         
         embed.add_field(
             name="Admin Commands - Setup",
-            value="?setchannel - Set current channel as bot channel\n?restock - Upload .txt file to add keys\n?clear - Clear all keys\n?view - View all keys in stock\n?announce - Announce restock to @everyone",
+            value="?setchannel - Set current channel as bot channel\n?setkeylimit <number> - Set max keys per user (1-20)\n?setcooldown <hours> - Set cooldown duration (1-48h)\n?restock - Upload .txt file to add keys\n?clear - Clear all keys\n?view - View all keys in stock\n?announce - Announce restock to @everyone",
             inline=False
         )
         
         embed.add_field(
             name="Admin Commands - User Management",
-            value="?blacklist @user OR UserID - Blacklist a user\n?unblacklist @user OR UserID - Remove from blacklist\n?viewblacklist - View all blacklisted users\n?resetcooldown @user OR UserID - Reset a user's cooldown\n?cooldowns - View all users on cooldown",
+            value="?blacklist @user OR UserID [permanent] - Blacklist a user\n?unblacklist @user OR UserID - Remove from blacklist\n?viewblacklist - View all blacklisted users\n?resetcooldown @user OR UserID - Reset a user's cooldown\n?cooldowns - View all users on cooldown",
             inline=False
         )
         
@@ -914,7 +1150,7 @@ async def info_command(ctx):
             inline=False
         )
         
-        embed.set_footer(text="Note: Users can claim 1-3 keys at once. Cooldown applies after claiming 3 total keys.")
+        embed.set_footer(text=f"Server: {max_keys} keys max, {cooldown_hours}h cooldown | Blacklist auto-removes after {AUTO_BLACKLIST_REMOVAL_HOURS}h")
     else:
         embed = discord.Embed(
             title="Key Bot - Commands",
@@ -923,11 +1159,11 @@ async def info_command(ctx):
         
         embed.add_field(
             name="Available Commands",
-            value="?key [amount] - Generate and claim keys (1-3)\nExample: ?key 2 (claims 2 keys)\n?stock - Check available keys\n?remaining - Check your remaining claims\n?info - Display this command list",
+            value=f"?key [amount] - Generate and claim keys (1-{max_keys})\nExample: ?key 2 (claims 2 keys)\n?stock - Check available keys\n?remaining - Check your remaining claims\n?info - Display this command list",
             inline=False
         )
         
-        embed.set_footer(text="Note: You can claim 1-3 keys at once. Cooldown applies after claiming 3 total keys.")
+        embed.set_footer(text=f"Note: You can claim up to {max_keys} keys total before {cooldown_hours}h cooldown")
 
     await ctx.send(embed=embed)
 
@@ -939,7 +1175,9 @@ async def help_command(ctx):
 # Check remaining keys command
 @bot.command(name='remaining')
 async def check_remaining(ctx):
-    keys_left = get_keys_remaining(ctx.author.id)
+    max_keys = get_key_limit(ctx.guild.id)
+    cooldown_hours = get_cooldown_hours(ctx.guild.id)
+    keys_left = get_keys_remaining(ctx.author.id, ctx.guild.id)
     on_cooldown, time_remaining, _ = check_cooldown(ctx.author.id)
     
     embed = discord.Embed(
@@ -974,7 +1212,7 @@ async def check_remaining(ctx):
         )
         embed.add_field(
             name="Keys Remaining",
-            value=f"{keys_left}/3",
+            value=f"{keys_left}/{max_keys}",
             inline=True
         )
         embed.add_field(
@@ -982,6 +1220,8 @@ async def check_remaining(ctx):
             value=f"1-{keys_left} keys",
             inline=True
         )
+    
+    embed.set_footer(text=f"Cooldown: {cooldown_hours}h after claiming {max_keys} keys")
     
     await ctx.send(embed=embed)
 
@@ -1107,11 +1347,14 @@ async def check_stock(ctx):
 # Generate/Claim keys - NO EMBEDS IN DM
 @bot.command(name='key')
 async def generate_key(ctx, amount: int = 1):
+    max_keys = get_key_limit(ctx.guild.id)
+    cooldown_hours = get_cooldown_hours(ctx.guild.id)
+    
     # Validate amount
-    if amount < 1 or amount > 3:
+    if amount < 1 or amount > max_keys:
         embed = discord.Embed(
             title="Invalid Amount",
-            description="You can only claim between 1-3 keys at a time.\nUsage: ?key [1-3]\nExample: ?key 2",
+            description=f"You can only claim between 1-{max_keys} keys at a time.\nUsage: ?key [1-{max_keys}]\nExample: ?key 2",
             color=discord.Color.red()
         )
         await ctx.send(embed=embed)
@@ -1125,14 +1368,18 @@ async def generate_key(ctx, amount: int = 1):
             should_blacklist = handle_cooldown_violation(ctx.author.id)
             
             if should_blacklist:
-                if ctx.author.id not in blacklist:
-                    blacklist.append(ctx.author.id)
+                user_id_str = str(ctx.author.id)
+                if user_id_str not in blacklist:
+                    blacklist[user_id_str] = {
+                        'blacklisted_at': datetime.now(),
+                        'auto_remove': True
+                    }
                     save_blacklist(blacklist)
                     update_stats('blacklist')
                     
                     embed = discord.Embed(
                         title="Auto-Blacklisted",
-                        description=f"{ctx.author.mention} You have been automatically blacklisted for attempting to claim keys during cooldown.",
+                        description=f"{ctx.author.mention} You have been automatically blacklisted for attempting to claim keys during cooldown.\n\n**Auto-removal in:** {AUTO_BLACKLIST_REMOVAL_HOURS} hours",
                         color=discord.Color.red()
                     )
                     await ctx.send(embed=embed)
@@ -1150,7 +1397,7 @@ async def generate_key(ctx, amount: int = 1):
             return
         
         # Check if user has enough keys remaining
-        keys_remaining = get_keys_remaining(ctx.author.id)
+        keys_remaining = get_keys_remaining(ctx.author.id, ctx.guild.id)
         if amount > keys_remaining:
             embed = discord.Embed(
                 title="Not Enough Claims Available",
@@ -1162,14 +1409,18 @@ async def generate_key(ctx, amount: int = 1):
         
         # Check for spam
         if check_spam(ctx.author.id):
-            if ctx.author.id not in blacklist:
-                blacklist.append(ctx.author.id)
+            user_id_str = str(ctx.author.id)
+            if user_id_str not in blacklist:
+                blacklist[user_id_str] = {
+                    'blacklisted_at': datetime.now(),
+                    'auto_remove': True
+                }
                 save_blacklist(blacklist)
                 update_stats('blacklist')
                 
                 embed = discord.Embed(
                     title="Auto-Blacklisted",
-                    description=f"{ctx.author.mention} You have been automatically blacklisted for spamming the ?key command.",
+                    description=f"{ctx.author.mention} You have been automatically blacklisted for spamming the ?key command.\n\n**Auto-removal in:** {AUTO_BLACKLIST_REMOVAL_HOURS} hours",
                     color=discord.Color.red()
                 )
                 await ctx.send(embed=embed)
@@ -1219,7 +1470,7 @@ async def generate_key(ctx, amount: int = 1):
 
     # Update user's claim count and check cooldown (skip for admins)
     if not ctx.author.guild_permissions.administrator:
-        status = update_key_claim(ctx.author.id, amount)
+        status = update_key_claim(ctx.author.id, amount, ctx.guild.id)
         
         # Format keys for DM (PLAIN TEXT - NO EMBED)
         keys_text = "\n".join([f"``{key}``" for key in claimed_keys_list])
@@ -1229,28 +1480,28 @@ async def generate_key(ctx, amount: int = 1):
                 dm_message = f"**Your {amount} Key(s):**\n\n{keys_text}\n\n"
                 dm_message += "──────────────────────\n"
                 dm_message += "**COOLDOWN APPLIED**\n"
-                dm_message += "You have claimed 3 keys total and are now on a **1-hour cooldown**.\n\n"
+                dm_message += f"You have claimed {max_keys} keys total and are now on a **{cooldown_hours}-hour cooldown**.\n\n"
                 dm_message += "WARNING: Attempting to claim more keys during this cooldown will result in an automatic blacklist!"
                 
                 await ctx.author.send(dm_message)
                 
                 embed = discord.Embed(
                     title="Keys Claimed",
-                    description=f"{ctx.author.mention} Check your DMs!\n\nYou've been placed on a 1-hour cooldown after claiming 3 total keys.",
+                    description=f"{ctx.author.mention} Check your DMs!\n\nYou've been placed on a {cooldown_hours}-hour cooldown after claiming {max_keys} total keys.",
                     color=discord.Color.orange()
                 )
                 await ctx.send(embed=embed)
             except:
                 embed = discord.Embed(
                     title="DM Failed",
-                    description=f"{ctx.author.mention} I couldn't DM you. Please enable DMs!\n\nYou are now on a 1-hour cooldown after claiming 3 total keys.",
+                    description=f"{ctx.author.mention} I couldn't DM you. Please enable DMs!\n\nYou are now on a {cooldown_hours}-hour cooldown after claiming {max_keys} total keys.",
                     color=discord.Color.red()
                 )
                 await ctx.send(embed=embed)
             return
         else:
             # Calculate remaining keys after this claim
-            keys_left_after = get_keys_remaining(ctx.author.id)
+            keys_left_after = get_keys_remaining(ctx.author.id, ctx.guild.id)
             
             try:
                 dm_message = f"**Your {amount} Key(s):**\n\n{keys_text}\n\n"
@@ -1302,6 +1553,8 @@ async def generate_key(ctx, amount: int = 1):
 @bot.command(name='announce')
 @commands.has_permissions(administrator=True)
 async def announce_restock(ctx):
+    max_keys = get_key_limit(ctx.guild.id)
+    
     if len(keys) == 0:
         embed = discord.Embed(
             title="Error",
@@ -1314,8 +1567,8 @@ async def announce_restock(ctx):
     stock_count = len(keys)
 
     embed = discord.Embed(
-        title="RESTOCK ALERT",
-        description=f"Keys are now available!\n\nStock: **{stock_count}** keys\n\nUse `?key [1-3]` to claim yours!\nExample: `?key 2` to claim 2 keys at once",
+        title="🔑 RESTOCK ALERT 🔑",
+        description=f"Keys are now available!\n\nStock: **{stock_count}** keys\n\nUse `?key [1-{max_keys}]` to claim yours!\nExample: `?key 2` to claim 2 keys at once",
         color=discord.Color.gold()
     )
     
