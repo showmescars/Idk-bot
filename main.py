@@ -133,16 +133,20 @@ def create_vampire(owner_id, owner_name):
     return vampire
 
 def create_ai_vampire():
-    """Create an AI vampire with random power between 330-5000"""
+    """Create an AI vampire with balanced power distribution"""
     first_name = random.choice(VAMPIRE_FIRST_NAMES)
     last_name = random.choice(VAMPIRE_LAST_NAMES)
     clan = random.choice(VAMPIRE_CLANS)
     
-    # Generate random target power
-    target_power = random.randint(330, 5000)
+    # 50% chance for weak vampire, 50% chance for strong vampire
+    if random.random() < 0.5:
+        # Weak vampire: 330-1500
+        target_power = random.randint(330, 1500)
+    else:
+        # Strong vampire: 1501-5000
+        target_power = random.randint(1501, 5000)
     
     # Distribute power across 5 stats
-    # Each stat gets approximately 1/5 of target power with some randomness
     remaining_power = target_power
     stats = {}
     
@@ -292,7 +296,7 @@ async def send_mission(ctx, vampire_id: str):
     # Select random mission
     mission = random.choice(MISSIONS)
     
-    # Create AI opponent with power between 330-5000
+    # Create AI opponent with balanced 50/50 power distribution
     ai_vampire = create_ai_vampire()
     
     # Simulate battle
