@@ -3,7 +3,7 @@ from discord.ext import commands, tasks
 import json
 import os
 import random
-from datetime import datetime
+from datetime import datetime, timedelta
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -14,13 +14,7 @@ bot = commands.Bot(command_prefix='!', intents=intents)
 
 VAMPIRES_FILE = 'vampires.json'
 BATTLES_FILE = 'battle_logs.json'
-CREDITS_FILE = 'credits.json'
-WHITELIST_FILE = 'whitelist.json'
-
-BLOCKED_CHANNEL_ID = None
-
-STARTING_CREDITS = 30
-GEN_COST = 10
+SETTINGS_FILE = 'settings.json'
 
 VAMPIRE_FIRST_NAMES = [
     "Dracula", "Vlad", "Lestat", "Armand", "Louis", "Akasha", "Marius", "Kain",
@@ -72,30 +66,19 @@ def save_battles(battles):
     with open(BATTLES_FILE, 'w') as f:
         json.dump(battles, f, indent=4)
 
-def load_credits():
-    if os.path.exists(CREDITS_FILE):
-        with open(CREDITS_FILE, 'r') as f:
+def load_settings():
+    if os.path.exists(SETTINGS_FILE):
+        with open(SETTINGS_FILE, 'r') as f:
             return json.load(f)
     return {}
 
-def save_credits(credits):
-    with open(CREDITS_FILE, 'w') as f:
-        json.dump(credits, f, indent=4)
-
-def load_whitelist():
-    if os.path.exists(WHITELIST_FILE):
-        with open(WHITELIST_FILE, 'r') as f:
-            return json.load(f)
-    return []
-
-def save_whitelist(whitelist):
-    with open(WHITELIST_FILE, 'w') as f:
-        json.dump(whitelist, f, indent=4)
+def save_settings(settings):
+    with open(SETTINGS_FILE, 'w') as f:
+        json.dump(settings, f, indent=4)
 
 vampires = load_vampires()
 battles = load_battles()
-credits = load_credits()
-whitelist = load_whitelist()
+settings = load_settings()
 
 def generate_vampire_stats():
     return {
@@ -117,37 +100,64 @@ def create_vampire(owner_id, owner_name):
     stats = generate_vampire_stats()
     
     vampire = {
-        "id": f"vamp_{owner_id}_{datetime.now().timestamp()}",
+        "id": f"vamp_{owner_id}_{int(datetime.now().timestamp() * 1000)}",
         "name": f"{first_name} {last_name}",
         "clan": clan,
         "abilities": abilities,
         "stats": stats,
         "power": calculate_power(stats),
+        "level": 1,
+        "xp": 0,
         "owner_id": owner_id,
         "owner_name": owner_name,
         "wins": 0,
         "losses": 0,
         "kills": 0,
         "created_at": datetime.now().isoformat(),
+        "last_trained": None,
         "alive": True
     }
     
     return vampire
 
+def level_up_vampire(vampire):
+    vampire['level'] += 1
+    
+    # Increase stats on level up
+    stat_increases = {
+        "strength": random.randint(5, 15),
+        "speed": random.randint(5, 15),
+        "intelligence": random.randint(5, 15),
+        "blood_power": random.randint(5, 15),
+        "defense": random.randint(5, 15)
+    }
+    
+    for stat, increase in stat_increases.items():
+        vampire['stats'][stat] += increase
+    
+    vampire['power'] = calculate_power(vampire['stats'])
+    vampire['xp'] = 0
+    
+    return stat_increases
+
+def calculate_xp_needed(level):
+    return level * 100
+
 def simulate_battle(vampire1, vampire2):
+    # Calculate combat scores
     v1_combat = (
         vampire1['stats']['strength'] * 0.3 +
         vampire1['stats']['speed'] * 0.2 +
         vampire1['stats']['blood_power'] * 0.3 +
         vampire1['stats']['defense'] * 0.2
-    ) * random.uniform(0.8, 1.2)
+    ) * random.uniform(0.8, 1.2) * (1 + (vampire1['level'] * 0.05))
     
     v2_combat = (
         vampire2['stats']['strength'] * 0.3 +
         vampire2['stats']['speed'] * 0.2 +
         vampire2['stats']['blood_power'] * 0.3 +
         vampire2['stats']['defense'] * 0.2
-    ) * random.uniform(0.8, 1.2)
+    ) * random.uniform(0.8, 1.2) * (1 + (vampire2['level'] * 0.05))
     
     if v1_combat > v2_combat:
         winner = vampire1
@@ -190,6 +200,49 @@ async def globally_block_dms(ctx):
         return False
     return True
 
+@bot.check
+async def check_allowed_channel(ctx):
+    # Admins can use commands anywhere
+    if ctx.author.guild_permissions.administrator:
+        return True
+    
+    # Check if channel is set
+    guild_id = str(ctx.guild.id)
+    if guild_id in settings and 'allowed_channel' in settings[guild_id]:
+        allowed_channel_id = settings[guild_id]['allowed_channel']
+        if ctx.channel.id != allowed_channel_id:
+            return False
+    
+    return True
+
+@bot.command(name='setchannel')
+@commands.has_permissions(administrator=True)
+async def set_channel(ctx, channel: discord.TextChannel = None):
+    """Set the allowed channel for vampire commands"""
+    if channel is None:
+        channel = ctx.channel
+    
+    guild_id = str(ctx.guild.id)
+    if guild_id not in settings:
+        settings[guild_id] = {}
+    
+    settings[guild_id]['allowed_channel'] = channel.id
+    save_settings(settings)
+    
+    await ctx.send(f"✅ Vampire commands can now only be used in {channel.mention}\n(Admins can still use commands anywhere)")
+
+@bot.command(name='removechannel')
+@commands.has_permissions(administrator=True)
+async def remove_channel(ctx):
+    """Remove channel restriction"""
+    guild_id = str(ctx.guild.id)
+    if guild_id in settings and 'allowed_channel' in settings[guild_id]:
+        del settings[guild_id]['allowed_channel']
+        save_settings(settings)
+        await ctx.send("✅ Channel restriction removed. Commands can be used anywhere.")
+    else:
+        await ctx.send("No channel restriction is set.")
+
 @bot.command(name='i')
 async def info_command(ctx):
     is_admin = ctx.author.guild_permissions.administrator
@@ -198,194 +251,56 @@ async def info_command(ctx):
         info_text = """VAMPIRE BATTLE BOT - ALL COMMANDS
 
 USER COMMANDS:
-!gv - Generate a vampire (costs 10 credits, whitelist required)
+!gv [amount] - Generate vampires (unlimited, default: 1)
 !mv - View all your vampires
 !v <vampire_id> - View details of a specific vampire
-!lb - View leaderboard (top vampires by wins)
-!c - Check your credit balance
+!fight <your_vamp_id> <target_vamp_id> - Challenge another vampire to battle
+!train <vampire_id> - Train your vampire (once per hour, +10-20 XP)
+!feed <vampire_id> - Feed your vampire (+5-15 XP, once per 30 min)
+!lb - View leaderboard (top vampires by level & wins)
+!delete <vampire_id> - Delete one of your vampires
 !i - Display this command list
 
 ADMIN COMMANDS:
-!gv [amount] - Generate vampires (no credit cost, optional amount)
-!ac @user <amount> - Give credits to a user
-!rc @user <amount> - Remove credits from a user
-!vc - View all users and their credits
-!aw @user - Add user to whitelist
-!rw @user - Remove user from whitelist
-!vw - View all whitelisted users
+!setchannel [#channel] - Set allowed channel for commands
+!removechannel - Remove channel restriction
 !bl [limit] - View recent battles
 !va - View all vampires in the realm
-!fb <vampire1_id> <vampire2_id> - Force a battle between two vampires
-!rv <vampire_id> - Revive a dead vampire (admin only)
-!kv <vampire_id> - Kill a vampire (admin only)
+!rv <vampire_id> - Revive a dead vampire
+!kv <vampire_id> - Kill a vampire
+!givexp <vampire_id> <amount> - Give XP to a vampire
 """
     else:
         info_text = """VAMPIRE BATTLE BOT - COMMANDS
 
-!gv - Generate a vampire (costs 10 credits, whitelist required)
+!gv [amount] - Generate vampires (unlimited, default: 1)
 !mv - View all your vampires
 !v <vampire_id> - View details of a specific vampire
-!lb - View leaderboard (top vampires by wins)
-!c - Check your credit balance
+!fight <your_vamp_id> <target_vamp_id> - Challenge another vampire to battle
+!train <vampire_id> - Train your vampire (once per hour, +10-20 XP)
+!feed <vampire_id> - Feed your vampire (+5-15 XP, once per 30 min)
+!lb - View leaderboard (top vampires by level & wins)
+!delete <vampire_id> - Delete one of your vampires
 !i - Display this command list
 
-Note: Vampires automatically battle each other every 5 minutes!
-Each vampire costs 10 credits. You start with 30 credits.
+TIP: Level up your vampires by battling, training, and feeding!
+XP needed to level up: Level x 100
 """
 
     await ctx.send(f"```{info_text}```")
 
-@bot.command(name='c')
-async def check_credits(ctx):
-    user_id = str(ctx.author.id)
-    
-    if user_id not in credits:
-        credits[user_id] = STARTING_CREDITS
-        save_credits(credits)
-    
-    user_credits = credits[user_id]
-    await ctx.send(f"You have **{user_credits}** credits")
-
-@bot.command(name='ac')
-@commands.has_permissions(administrator=True)
-async def add_credits(ctx, member: discord.Member, amount: int):
-    if amount <= 0:
-        await ctx.send("Amount must be greater than 0")
-        return
-    
-    user_id = str(member.id)
-    
-    if user_id not in credits:
-        credits[user_id] = STARTING_CREDITS
-    
-    credits[user_id] += amount
-    save_credits(credits)
-    
-    await ctx.send(f"Added **{amount}** credits to **{member.name}**\nNew balance: **{credits[user_id]}** credits")
-
-@bot.command(name='rc')
-@commands.has_permissions(administrator=True)
-async def remove_credits(ctx, member: discord.Member, amount: int):
-    if amount <= 0:
-        await ctx.send("Amount must be greater than 0")
-        return
-    
-    user_id = str(member.id)
-    
-    if user_id not in credits:
-        credits[user_id] = STARTING_CREDITS
-    
-    credits[user_id] -= amount
-    if credits[user_id] < 0:
-        credits[user_id] = 0
-    
-    save_credits(credits)
-    
-    await ctx.send(f"Removed **{amount}** credits from **{member.name}**\nNew balance: **{credits[user_id]}** credits")
-
-@bot.command(name='vc')
-@commands.has_permissions(administrator=True)
-async def view_credits(ctx):
-    if not credits:
-        await ctx.send("No users have credits yet")
-        return
-
-    msg = "ALL USER CREDITS:\n\n"
-    sorted_credits = sorted(credits.items(), key=lambda x: x[1], reverse=True)
-    
-    for user_id, user_credits in sorted_credits:
-        try:
-            user = await bot.fetch_user(int(user_id))
-            whitelist_status = " [WHITELISTED]" if user_id in whitelist else ""
-            msg += f"{user.name}{whitelist_status} - {user_credits} credits\n"
-        except:
-            whitelist_status = " [WHITELISTED]" if user_id in whitelist else ""
-            msg += f"Unknown User ({user_id}){whitelist_status} - {user_credits} credits\n"
-
-    if len(msg) > 1900:
-        await ctx.send("**ALL USER CREDITS:**")
-        for i in range(0, len(msg), 1900):
-            await ctx.send(f"```{msg[i:i+1900]}```")
-    else:
-        await ctx.send(f"```{msg}```")
-
-@bot.command(name='aw')
-@commands.has_permissions(administrator=True)
-async def add_whitelist(ctx, member: discord.Member):
-    user_id = str(member.id)
-
-    if user_id in whitelist:
-        await ctx.send(f"**{member.name}** is already whitelisted")
-        return
-
-    whitelist.append(user_id)
-    save_whitelist(whitelist)
-    
-    if user_id not in credits:
-        credits[user_id] = STARTING_CREDITS
-        save_credits(credits)
-    
-    await ctx.send(f"Added **{member.name}** to whitelist with **{STARTING_CREDITS}** starting credits")
-
-@bot.command(name='rw')
-@commands.has_permissions(administrator=True)
-async def remove_whitelist(ctx, member: discord.Member):
-    user_id = str(member.id)
-
-    if user_id not in whitelist:
-        await ctx.send(f"**{member.name}** is not whitelisted")
-        return
-
-    whitelist.remove(user_id)
-    save_whitelist(whitelist)
-    await ctx.send(f"Removed **{member.name}** from whitelist")
-
-@bot.command(name='vw')
-@commands.has_permissions(administrator=True)
-async def view_whitelist(ctx):
-    if not whitelist:
-        await ctx.send("Whitelist is empty")
-        return
-
-    msg = "WHITELISTED USERS:\n\n"
-    for user_id in whitelist:
-        try:
-            user = await bot.fetch_user(int(user_id))
-            user_credits = credits.get(user_id, STARTING_CREDITS)
-            msg += f"{user.name} - {user_credits} credits\n"
-        except:
-            user_credits = credits.get(user_id, STARTING_CREDITS)
-            msg += f"Unknown User ({user_id}) - {user_credits} credits\n"
-
-    await ctx.send(f"```{msg}```")
-
 @bot.command(name='gv')
 async def generate_vampire(ctx, amount: int = 1):
+    """Generate vampires (unlimited)"""
     user_id = str(ctx.author.id)
-    is_admin = ctx.author.guild_permissions.administrator
 
-    if not is_admin and user_id not in whitelist:
-        await ctx.send("You are not whitelisted to use this command")
+    if amount < 1:
+        await ctx.send("Amount must be at least 1")
         return
-
-    if not is_admin and amount > 1:
-        await ctx.send("Only admins can generate multiple vampires at once")
+    
+    if amount > 20:
+        await ctx.send("Maximum 20 vampires per command")
         return
-
-    if amount < 1 or amount > 10:
-        await ctx.send("Amount must be between 1 and 10")
-        return
-
-    if not is_admin:
-        if user_id not in credits:
-            credits[user_id] = STARTING_CREDITS
-            save_credits(credits)
-        
-        total_cost = GEN_COST * amount
-        
-        if credits[user_id] < total_cost:
-            await ctx.send(f"Not enough credits! You have **{credits[user_id]}** credits but need **{total_cost}** credits")
-            return
 
     new_vampires = []
     for i in range(amount):
@@ -399,11 +314,6 @@ async def generate_vampire(ctx, amount: int = 1):
     
     save_vampires(vampires)
 
-    if not is_admin:
-        total_cost = GEN_COST * amount
-        credits[user_id] -= total_cost
-        save_credits(credits)
-
     if amount == 1:
         v = new_vampires[0]
         embed = discord.Embed(
@@ -412,27 +322,23 @@ async def generate_vampire(ctx, amount: int = 1):
             color=discord.Color.dark_red()
         )
         embed.add_field(name="Clan", value=v['clan'], inline=True)
+        embed.add_field(name="Level", value=v['level'], inline=True)
         embed.add_field(name="Power", value=v['power'], inline=True)
         embed.add_field(name="ID", value=f"`{v['id']}`", inline=False)
         embed.add_field(name="Abilities", value=", ".join(v['abilities']), inline=False)
         embed.add_field(name="Stats", value=f"STR: {v['stats']['strength']} | SPD: {v['stats']['speed']} | INT: {v['stats']['intelligence']} | BP: {v['stats']['blood_power']} | DEF: {v['stats']['defense']}", inline=False)
         
-        if not is_admin:
-            embed.set_footer(text=f"Credits remaining: {credits[user_id]}")
-        
         await ctx.send(embed=embed)
     else:
         msg = f"**{amount} vampires created!**\n\n"
         for v in new_vampires:
-            msg += f"• **{v['name']}** (Clan: {v['clan']}, Power: {v['power']})\n"
-        
-        if not is_admin:
-            msg += f"\nCredits remaining: **{credits[user_id]}**"
+            msg += f"• **{v['name']}** (Clan: {v['clan']}, Power: {v['power']}, Level: {v['level']})\n"
         
         await ctx.send(msg)
 
 @bot.command(name='mv')
 async def my_vampires(ctx):
+    """View all your vampires"""
     user_id = str(ctx.author.id)
     
     if user_id not in vampires or len(vampires[user_id]) == 0:
@@ -449,9 +355,10 @@ async def my_vampires(ctx):
     
     for v in user_vamps:
         status = "💀 DEAD" if not v['alive'] else "✅ ALIVE"
+        xp_needed = calculate_xp_needed(v['level'])
         embed.add_field(
             name=f"{v['name']} {status}",
-            value=f"Clan: {v['clan']}\nPower: {v['power']}\nW/L: {v['wins']}/{v['losses']}\nID: `{v['id']}`",
+            value=f"Clan: {v['clan']}\nLevel: {v['level']} | XP: {v['xp']}/{xp_needed}\nPower: {v['power']} | W/L: {v['wins']}/{v['losses']}\nID: `{v['id']}`",
             inline=True
         )
     
@@ -459,6 +366,8 @@ async def my_vampires(ctx):
 
 @bot.command(name='v')
 async def view_vampire(ctx, vampire_id: str):
+    """View details of a specific vampire"""
+    
     found_vampire = None
     for user_id, user_vamps in vampires.items():
         for v in user_vamps:
@@ -474,6 +383,7 @@ async def view_vampire(ctx, vampire_id: str):
     
     v = found_vampire
     status = "💀 DEAD" if not v['alive'] else "✅ ALIVE"
+    xp_needed = calculate_xp_needed(v['level'])
     
     embed = discord.Embed(
         title=f"🧛 {v['name']} {status}",
@@ -482,6 +392,8 @@ async def view_vampire(ctx, vampire_id: str):
     )
     
     embed.add_field(name="Owner", value=v['owner_name'], inline=True)
+    embed.add_field(name="Level", value=v['level'], inline=True)
+    embed.add_field(name="XP", value=f"{v['xp']}/{xp_needed}", inline=True)
     embed.add_field(name="Total Power", value=v['power'], inline=True)
     embed.add_field(name="Record", value=f"{v['wins']}W - {v['losses']}L", inline=True)
     embed.add_field(name="Kills", value=v['kills'], inline=True)
@@ -495,8 +407,314 @@ async def view_vampire(ctx, vampire_id: str):
     
     await ctx.send(embed=embed)
 
+@bot.command(name='fight')
+async def fight_vampire(ctx, your_vamp_id: str, target_vamp_id: str):
+    """Challenge another vampire to battle"""
+    
+    # Find both vampires
+    your_vamp = None
+    target_vamp = None
+    
+    for user_id, user_vamps in vampires.items():
+        for v in user_vamps:
+            if v['id'] == your_vamp_id:
+                your_vamp = v
+            if v['id'] == target_vamp_id:
+                target_vamp = v
+    
+    if not your_vamp:
+        await ctx.send(f"Your vampire ({your_vamp_id}) not found!")
+        return
+    
+    if not target_vamp:
+        await ctx.send(f"Target vampire ({target_vamp_id}) not found!")
+        return
+    
+    # Check ownership
+    if your_vamp['owner_id'] != str(ctx.author.id):
+        await ctx.send("You don't own that vampire!")
+        return
+    
+    # Check if alive
+    if not your_vamp['alive']:
+        await ctx.send(f"{your_vamp['name']} is dead!")
+        return
+    
+    if not target_vamp['alive']:
+        await ctx.send(f"{target_vamp['name']} is dead!")
+        return
+    
+    # Can't fight yourself
+    if your_vamp_id == target_vamp_id:
+        await ctx.send("A vampire cannot fight itself!")
+        return
+    
+    # Simulate battle
+    result = simulate_battle(your_vamp, target_vamp)
+    
+    # Update stats
+    result['winner']['wins'] += 1
+    result['loser']['losses'] += 1
+    
+    # Award XP
+    winner_xp = random.randint(30, 50)
+    loser_xp = random.randint(10, 20)
+    
+    result['winner']['xp'] += winner_xp
+    result['loser']['xp'] += loser_xp
+    
+    # Check for level up
+    winner_leveled = False
+    loser_leveled = False
+    winner_increases = None
+    loser_increases = None
+    
+    if result['winner']['xp'] >= calculate_xp_needed(result['winner']['level']):
+        winner_increases = level_up_vampire(result['winner'])
+        winner_leveled = True
+    
+    if result['loser']['xp'] >= calculate_xp_needed(result['loser']['level']):
+        loser_increases = level_up_vampire(result['loser'])
+        loser_leveled = True
+    
+    # 10% chance of death for loser
+    death_msg = ""
+    if random.random() < 0.1:
+        result['loser']['alive'] = False
+        result['winner']['kills'] += 1
+        death_msg = f"\n💀 **{result['loser']['name']} has been slain!**"
+    
+    save_vampires(vampires)
+    
+    # Log battle
+    battle_log = {
+        "attacker": your_vamp['name'],
+        "defender": target_vamp['name'],
+        "winner": result['winner']['name'],
+        "loser": result['loser']['name'],
+        "narrative": result['narrative'],
+        "timestamp": datetime.now().isoformat(),
+        "player_initiated": True
+    }
+    battles.append(battle_log)
+    save_battles(battles)
+    
+    # Send result
+    embed = discord.Embed(
+        title="⚔️ VAMPIRE BATTLE!",
+        description=result['narrative'],
+        color=discord.Color.red()
+    )
+    
+    embed.add_field(
+        name="Winner", 
+        value=f"{result['winner']['name']} (Lvl {result['winner']['level']})\nOwner: {result['winner']['owner_name']}\n+{winner_xp} XP", 
+        inline=True
+    )
+    embed.add_field(
+        name="Loser", 
+        value=f"{result['loser']['name']} (Lvl {result['loser']['level']})\nOwner: {result['loser']['owner_name']}\n+{loser_xp} XP", 
+        inline=True
+    )
+    
+    if winner_leveled:
+        embed.add_field(
+            name="🎉 LEVEL UP!", 
+            value=f"{result['winner']['name']} reached level {result['winner']['level']}!", 
+            inline=False
+        )
+    
+    if loser_leveled:
+        embed.add_field(
+            name="🎉 LEVEL UP!", 
+            value=f"{result['loser']['name']} reached level {result['loser']['level']}!", 
+            inline=False
+        )
+    
+    if death_msg:
+        embed.add_field(name="Death!", value=death_msg, inline=False)
+    
+    await ctx.send(embed=embed)
+
+@bot.command(name='train')
+async def train_vampire(ctx, vampire_id: str):
+    """Train your vampire to gain XP (once per hour)"""
+    
+    # Find vampire
+    found_vampire = None
+    for user_id, user_vamps in vampires.items():
+        for v in user_vamps:
+            if v['id'] == vampire_id:
+                found_vampire = v
+                break
+        if found_vampire:
+            break
+    
+    if not found_vampire:
+        await ctx.send("Vampire not found!")
+        return
+    
+    v = found_vampire
+    
+    # Check ownership
+    if v['owner_id'] != str(ctx.author.id):
+        await ctx.send("You don't own that vampire!")
+        return
+    
+    # Check if alive
+    if not v['alive']:
+        await ctx.send(f"{v['name']} is dead and cannot train!")
+        return
+    
+    # Check cooldown
+    if v['last_trained']:
+        last_trained_time = datetime.fromisoformat(v['last_trained'])
+        time_since = datetime.now() - last_trained_time
+        if time_since < timedelta(hours=1):
+            remaining = timedelta(hours=1) - time_since
+            minutes = int(remaining.total_seconds() / 60)
+            await ctx.send(f"⏰ {v['name']} is tired! Can train again in {minutes} minutes")
+            return
+    
+    # Train
+    xp_gain = random.randint(10, 20)
+    v['xp'] += xp_gain
+    v['last_trained'] = datetime.now().isoformat()
+    
+    # Check for level up
+    leveled = False
+    stat_increases = None
+    xp_needed = calculate_xp_needed(v['level'])
+    
+    if v['xp'] >= xp_needed:
+        stat_increases = level_up_vampire(v)
+        leveled = True
+    
+    save_vampires(vampires)
+    
+    if leveled:
+        embed = discord.Embed(
+            title="🎉 LEVEL UP!",
+            description=f"**{v['name']}** trained hard and leveled up!",
+            color=discord.Color.gold()
+        )
+        embed.add_field(name="New Level", value=v['level'], inline=True)
+        embed.add_field(name="New Power", value=v['power'], inline=True)
+        embed.add_field(name="XP Gained", value=f"+{xp_gain}", inline=True)
+        
+        stat_text = "\n".join([f"+{inc} {stat.upper()}" for stat, inc in stat_increases.items()])
+        embed.add_field(name="Stat Increases", value=stat_text, inline=False)
+        
+        await ctx.send(embed=embed)
+    else:
+        await ctx.send(f"💪 **{v['name']}** trained hard! +{xp_gain} XP ({v['xp']}/{xp_needed})")
+
+@bot.command(name='feed')
+async def feed_vampire(ctx, vampire_id: str):
+    """Feed your vampire to gain XP (once per 30 minutes)"""
+    
+    # Find vampire
+    found_vampire = None
+    for user_id, user_vamps in vampires.items():
+        for v in user_vamps:
+            if v['id'] == vampire_id:
+                found_vampire = v
+                break
+        if found_vampire:
+            break
+    
+    if not found_vampire:
+        await ctx.send("Vampire not found!")
+        return
+    
+    v = found_vampire
+    
+    # Check ownership
+    if v['owner_id'] != str(ctx.author.id):
+        await ctx.send("You don't own that vampire!")
+        return
+    
+    # Check if alive
+    if not v['alive']:
+        await ctx.send(f"{v['name']} is dead!")
+        return
+    
+    # Check cooldown (using a separate 'last_fed' field)
+    if 'last_fed' not in v:
+        v['last_fed'] = None
+    
+    if v['last_fed']:
+        last_fed_time = datetime.fromisoformat(v['last_fed'])
+        time_since = datetime.now() - last_fed_time
+        if time_since < timedelta(minutes=30):
+            remaining = timedelta(minutes=30) - time_since
+            minutes = int(remaining.total_seconds() / 60)
+            await ctx.send(f"🩸 {v['name']} is not hungry yet! Can feed again in {minutes} minutes")
+            return
+    
+    # Feed
+    xp_gain = random.randint(5, 15)
+    v['xp'] += xp_gain
+    v['last_fed'] = datetime.now().isoformat()
+    
+    # Check for level up
+    leveled = False
+    stat_increases = None
+    xp_needed = calculate_xp_needed(v['level'])
+    
+    if v['xp'] >= xp_needed:
+        stat_increases = level_up_vampire(v)
+        leveled = True
+    
+    save_vampires(vampires)
+    
+    if leveled:
+        embed = discord.Embed(
+            title="🎉 LEVEL UP!",
+            description=f"**{v['name']}** feasted and grew stronger!",
+            color=discord.Color.gold()
+        )
+        embed.add_field(name="New Level", value=v['level'], inline=True)
+        embed.add_field(name="New Power", value=v['power'], inline=True)
+        embed.add_field(name="XP Gained", value=f"+{xp_gain}", inline=True)
+        
+        stat_text = "\n".join([f"+{inc} {stat.upper()}" for stat, inc in stat_increases.items()])
+        embed.add_field(name="Stat Increases", value=stat_text, inline=False)
+        
+        await ctx.send(embed=embed)
+    else:
+        await ctx.send(f"🩸 **{v['name']}** fed on fresh blood! +{xp_gain} XP ({v['xp']}/{xp_needed})")
+
+@bot.command(name='delete')
+async def delete_vampire(ctx, vampire_id: str):
+    """Delete one of your vampires"""
+    
+    user_id = str(ctx.author.id)
+    
+    if user_id not in vampires:
+        await ctx.send("You don't have any vampires!")
+        return
+    
+    # Find and remove vampire
+    found = False
+    for i, v in enumerate(vampires[user_id]):
+        if v['id'] == vampire_id:
+            vampire_name = v['name']
+            vampires[user_id].pop(i)
+            found = True
+            break
+    
+    if not found:
+        await ctx.send("Vampire not found or you don't own it!")
+        return
+    
+    save_vampires(vampires)
+    await ctx.send(f"💀 **{vampire_name}** has been removed from your collection")
+
 @bot.command(name='lb')
 async def leaderboard(ctx):
+    """View top vampires by level and wins"""
+    
     all_vampires = []
     for user_id, user_vamps in vampires.items():
         all_vampires.extend(user_vamps)
@@ -505,11 +723,12 @@ async def leaderboard(ctx):
         await ctx.send("No vampires exist yet!")
         return
     
-    top_vampires = sorted(all_vampires, key=lambda v: v['wins'], reverse=True)[:10]
+    # Sort by level first, then wins
+    top_vampires = sorted(all_vampires, key=lambda v: (v['level'], v['wins']), reverse=True)[:10]
     
     embed = discord.Embed(
         title="🏆 Vampire Leaderboard",
-        description="Top 10 vampires by wins",
+        description="Top 10 vampires by level & wins",
         color=discord.Color.gold()
     )
     
@@ -517,7 +736,7 @@ async def leaderboard(ctx):
         status = "💀" if not v['alive'] else "🧛"
         embed.add_field(
             name=f"{idx}. {v['name']} {status}",
-            value=f"Wins: {v['wins']} | Power: {v['power']} | Clan: {v['clan']}\nOwner: {v['owner_name']}",
+            value=f"Level: {v['level']} | Wins: {v['wins']} | Power: {v['power']}\nClan: {v['clan']} | Owner: {v['owner_name']}",
             inline=False
         )
     
@@ -526,6 +745,8 @@ async def leaderboard(ctx):
 @bot.command(name='bl')
 @commands.has_permissions(administrator=True)
 async def battle_logs(ctx, limit: int = 10):
+    """View recent battles"""
+    
     if not battles:
         await ctx.send("No battles have occurred yet")
         return
@@ -536,13 +757,16 @@ async def battle_logs(ctx, limit: int = 10):
     msg = f"**RECENT BATTLES (Last {len(recent)}):**\n\n"
     for b in recent:
         timestamp = datetime.fromisoformat(b['timestamp']).strftime('%Y-%m-%d %H:%M')
-        msg += f"`{timestamp}` - {b['narrative']}\n"
+        battle_type = "[PLAYER]" if b.get('player_initiated', False) else "[AUTO]"
+        msg += f"`{timestamp}` {battle_type} - {b['narrative']}\n"
     
     await ctx.send(msg)
 
 @bot.command(name='va')
 @commands.has_permissions(administrator=True)
 async def view_all_vampires(ctx):
+    """View all vampires in the realm"""
+    
     total = 0
     alive = 0
     
@@ -552,76 +776,11 @@ async def view_all_vampires(ctx):
     
     await ctx.send(f"**Total Vampires:** {total}\n**Alive:** {alive}\n**Dead:** {total - alive}")
 
-@bot.command(name='fb')
-@commands.has_permissions(administrator=True)
-async def force_battle(ctx, vamp1_id: str, vamp2_id: str):
-    v1 = None
-    v2 = None
-    
-    for user_id, user_vamps in vampires.items():
-        for v in user_vamps:
-            if v['id'] == vamp1_id:
-                v1 = v
-            if v['id'] == vamp2_id:
-                v2 = v
-    
-    if not v1:
-        await ctx.send(f"Vampire 1 ({vamp1_id}) not found!")
-        return
-    
-    if not v2:
-        await ctx.send(f"Vampire 2 ({vamp2_id}) not found!")
-        return
-    
-    if not v1['alive']:
-        await ctx.send(f"{v1['name']} is dead!")
-        return
-    
-    if not v2['alive']:
-        await ctx.send(f"{v2['name']} is dead!")
-        return
-    
-    result = simulate_battle(v1, v2)
-    
-    result['winner']['wins'] += 1
-    result['loser']['losses'] += 1
-    
-    if random.random() < 0.2:
-        result['loser']['alive'] = False
-        result['winner']['kills'] += 1
-        death_msg = f"\n💀 **{result['loser']['name']} has been slain!**"
-    else:
-        death_msg = ""
-    
-    save_vampires(vampires)
-    
-    battle_log = {
-        "winner": result['winner']['name'],
-        "loser": result['loser']['name'],
-        "narrative": result['narrative'],
-        "timestamp": datetime.now().isoformat(),
-        "forced": True
-    }
-    battles.append(battle_log)
-    save_battles(battles)
-    
-    embed = discord.Embed(
-        title="⚔️ FORCED BATTLE!",
-        description=result['narrative'],
-        color=discord.Color.red()
-    )
-    
-    embed.add_field(name="Winner", value=f"{result['winner']['name']} ({result['winner']['owner_name']})", inline=True)
-    embed.add_field(name="Loser", value=f"{result['loser']['name']} ({result['loser']['owner_name']})", inline=True)
-    
-    if death_msg:
-        embed.add_field(name="Death!", value=death_msg, inline=False)
-    
-    await ctx.send(embed=embed)
-
 @bot.command(name='rv')
 @commands.has_permissions(administrator=True)
 async def revive_vampire(ctx, vampire_id: str):
+    """Revive a dead vampire"""
+    
     found = False
     for user_id, user_vamps in vampires.items():
         for v in user_vamps:
@@ -645,6 +804,8 @@ async def revive_vampire(ctx, vampire_id: str):
 @bot.command(name='kv')
 @commands.has_permissions(administrator=True)
 async def kill_vampire(ctx, vampire_id: str):
+    """Kill a vampire"""
+    
     found = False
     for user_id, user_vamps in vampires.items():
         for v in user_vamps:
@@ -665,8 +826,47 @@ async def kill_vampire(ctx, vampire_id: str):
     
     save_vampires(vampires)
 
-@tasks.loop(minutes=5)
+@bot.command(name='givexp')
+@commands.has_permissions(administrator=True)
+async def give_xp(ctx, vampire_id: str, amount: int):
+    """Give XP to a vampire"""
+    
+    if amount < 1:
+        await ctx.send("Amount must be positive!")
+        return
+    
+    found = False
+    for user_id, user_vamps in vampires.items():
+        for v in user_vamps:
+            if v['id'] == vampire_id:
+                v['xp'] += amount
+                
+                # Check for level ups
+                levels_gained = 0
+                while v['xp'] >= calculate_xp_needed(v['level']):
+                    level_up_vampire(v)
+                    levels_gained += 1
+                
+                found = True
+                
+                if levels_gained > 0:
+                    await ctx.send(f"✅ Gave {amount} XP to **{v['name']}**\n🎉 Leveled up {levels_gained} time(s)! Now level {v['level']}")
+                else:
+                    await ctx.send(f"✅ Gave {amount} XP to **{v['name']}** ({v['xp']}/{calculate_xp_needed(v['level'])})")
+                break
+        if found:
+            break
+    
+    if not found:
+        await ctx.send("Vampire not found!")
+        return
+    
+    save_vampires(vampires)
+
+@tasks.loop(minutes=10)
 async def auto_battle():
+    """Automatically run battles between random vampires"""
+    
     alive_vampires = []
     for user_id, user_vamps in vampires.items():
         for v in user_vamps:
@@ -683,8 +883,20 @@ async def auto_battle():
     result['winner']['wins'] += 1
     result['loser']['losses'] += 1
     
+    # Award XP
+    result['winner']['xp'] += random.randint(20, 30)
+    result['loser']['xp'] += random.randint(5, 10)
+    
+    # Check for level ups
+    if result['winner']['xp'] >= calculate_xp_needed(result['winner']['level']):
+        level_up_vampire(result['winner'])
+    
+    if result['loser']['xp'] >= calculate_xp_needed(result['loser']['level']):
+        level_up_vampire(result['loser'])
+    
+    # 5% chance of death
     death_occurred = False
-    if random.random() < 0.2:
+    if random.random() < 0.05:
         result['loser']['alive'] = False
         result['winner']['kills'] += 1
         death_occurred = True
@@ -696,7 +908,8 @@ async def auto_battle():
         "loser": result['loser']['name'],
         "narrative": result['narrative'],
         "timestamp": datetime.now().isoformat(),
-        "death": death_occurred
+        "death": death_occurred,
+        "player_initiated": False
     }
     battles.append(battle_log)
     save_battles(battles)
