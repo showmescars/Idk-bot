@@ -553,7 +553,7 @@ if **name** == “**main**”:
 TOKEN = os.getenv(‘DISCORD_TOKEN’)
 if not TOKEN:
 print(“ERROR: DISCORD_TOKEN not found in environment variables!”)
-print(“Please set your Discord bot token in Railway or .env file”)
+print(“Please set your Discord bot token in Railway”)
 exit(1)
 else:
 try:
