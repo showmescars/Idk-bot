@@ -10,7 +10,7 @@ load_dotenv()
 
 intents = discord.Intents.default()
 intents.message_content = True
-bot = commands.Bot(command_prefix='!', intents=intents)
+bot = commands.Bot(command_prefix='?', intents=intents)
 
 VAMPIRES_FILE = 'vampires.json'
 BATTLES_FILE = 'battle_logs.json'
@@ -123,7 +123,6 @@ def create_vampire(owner_id, owner_name):
 def level_up_vampire(vampire):
     vampire['level'] += 1
     
-    # Increase stats on level up
     stat_increases = {
         "strength": random.randint(5, 15),
         "speed": random.randint(5, 15),
@@ -144,7 +143,6 @@ def calculate_xp_needed(level):
     return level * 100
 
 def simulate_battle(vampire1, vampire2):
-    # Calculate combat scores
     v1_combat = (
         vampire1['stats']['strength'] * 0.3 +
         vampire1['stats']['speed'] * 0.2 +
@@ -191,6 +189,7 @@ def simulate_battle(vampire1, vampire2):
 async def on_ready():
     print(f'{bot.user} is online')
     print('Vampire Battle Bot Ready')
+    print('Command prefix: ?')
     auto_battle.start()
 
 @bot.check
@@ -202,11 +201,9 @@ async def globally_block_dms(ctx):
 
 @bot.check
 async def check_allowed_channel(ctx):
-    # Admins can use commands anywhere
     if ctx.author.guild_permissions.administrator:
         return True
     
-    # Check if channel is set
     guild_id = str(ctx.guild.id)
     if guild_id in settings and 'allowed_channel' in settings[guild_id]:
         allowed_channel_id = settings[guild_id]['allowed_channel']
@@ -251,37 +248,39 @@ async def info_command(ctx):
         info_text = """VAMPIRE BATTLE BOT - ALL COMMANDS
 
 USER COMMANDS:
-!gv [amount] - Generate vampires (unlimited, default: 1)
-!mv - View all your vampires
-!v <vampire_id> - View details of a specific vampire
-!fight <your_vamp_id> <target_vamp_id> - Challenge another vampire to battle
-!train <vampire_id> - Train your vampire (once per hour, +10-20 XP)
-!feed <vampire_id> - Feed your vampire (+5-15 XP, once per 30 min)
-!lb - View leaderboard (top vampires by level & wins)
-!delete <vampire_id> - Delete one of your vampires
-!i - Display this command list
+?gv [amount] - Generate vampires (unlimited, default: 1)
+?mv - View all your vampires
+?v <vampire_id> - View details of a specific vampire
+?fight <your_vamp_id> <target_vamp_id> - Challenge another vampire to battle
+?war @user - All your vampires fight all of another player's vampires!
+?train <vampire_id> - Train your vampire (once per hour, +10-20 XP)
+?feed <vampire_id> - Feed your vampire (+5-15 XP, once per 30 min)
+?lb - View leaderboard (top vampires by level & wins)
+?delete <vampire_id> - Delete one of your vampires
+?i - Display this command list
 
 ADMIN COMMANDS:
-!setchannel [#channel] - Set allowed channel for commands
-!removechannel - Remove channel restriction
-!bl [limit] - View recent battles
-!va - View all vampires in the realm
-!rv <vampire_id> - Revive a dead vampire
-!kv <vampire_id> - Kill a vampire
-!givexp <vampire_id> <amount> - Give XP to a vampire
+?setchannel [#channel] - Set allowed channel for commands
+?removechannel - Remove channel restriction
+?bl [limit] - View recent battles
+?va - View all vampires in the realm
+?rv <vampire_id> - Revive a dead vampire
+?kv <vampire_id> - Kill a vampire
+?givexp <vampire_id> <amount> - Give XP to a vampire
 """
     else:
         info_text = """VAMPIRE BATTLE BOT - COMMANDS
 
-!gv [amount] - Generate vampires (unlimited, default: 1)
-!mv - View all your vampires
-!v <vampire_id> - View details of a specific vampire
-!fight <your_vamp_id> <target_vamp_id> - Challenge another vampire to battle
-!train <vampire_id> - Train your vampire (once per hour, +10-20 XP)
-!feed <vampire_id> - Feed your vampire (+5-15 XP, once per 30 min)
-!lb - View leaderboard (top vampires by level & wins)
-!delete <vampire_id> - Delete one of your vampires
-!i - Display this command list
+?gv [amount] - Generate vampires (unlimited, default: 1)
+?mv - View all your vampires
+?v <vampire_id> - View details of a specific vampire
+?fight <your_vamp_id> <target_vamp_id> - Challenge another vampire to battle
+?war @user - All your vampires fight all of another player's vampires!
+?train <vampire_id> - Train your vampire (once per hour, +10-20 XP)
+?feed <vampire_id> - Feed your vampire (+5-15 XP, once per 30 min)
+?lb - View leaderboard (top vampires by level & wins)
+?delete <vampire_id> - Delete one of your vampires
+?i - Display this command list
 
 TIP: Level up your vampires by battling, training, and feeding!
 XP needed to level up: Level x 100
@@ -342,7 +341,7 @@ async def my_vampires(ctx):
     user_id = str(ctx.author.id)
     
     if user_id not in vampires or len(vampires[user_id]) == 0:
-        await ctx.send("You don't have any vampires yet! Use `!gv` to create one")
+        await ctx.send("You don't have any vampires yet! Use `?gv` to create one")
         return
     
     user_vamps = vampires[user_id]
@@ -411,7 +410,6 @@ async def view_vampire(ctx, vampire_id: str):
 async def fight_vampire(ctx, your_vamp_id: str, target_vamp_id: str):
     """Challenge another vampire to battle"""
     
-    # Find both vampires
     your_vamp = None
     target_vamp = None
     
@@ -430,12 +428,10 @@ async def fight_vampire(ctx, your_vamp_id: str, target_vamp_id: str):
         await ctx.send(f"Target vampire ({target_vamp_id}) not found!")
         return
     
-    # Check ownership
     if your_vamp['owner_id'] != str(ctx.author.id):
         await ctx.send("You don't own that vampire!")
         return
     
-    # Check if alive
     if not your_vamp['alive']:
         await ctx.send(f"{your_vamp['name']} is dead!")
         return
@@ -444,26 +440,21 @@ async def fight_vampire(ctx, your_vamp_id: str, target_vamp_id: str):
         await ctx.send(f"{target_vamp['name']} is dead!")
         return
     
-    # Can't fight yourself
     if your_vamp_id == target_vamp_id:
         await ctx.send("A vampire cannot fight itself!")
         return
     
-    # Simulate battle
     result = simulate_battle(your_vamp, target_vamp)
     
-    # Update stats
     result['winner']['wins'] += 1
     result['loser']['losses'] += 1
     
-    # Award XP
     winner_xp = random.randint(30, 50)
     loser_xp = random.randint(10, 20)
     
     result['winner']['xp'] += winner_xp
     result['loser']['xp'] += loser_xp
     
-    # Check for level up
     winner_leveled = False
     loser_leveled = False
     winner_increases = None
@@ -477,7 +468,6 @@ async def fight_vampire(ctx, your_vamp_id: str, target_vamp_id: str):
         loser_increases = level_up_vampire(result['loser'])
         loser_leveled = True
     
-    # 10% chance of death for loser
     death_msg = ""
     if random.random() < 0.1:
         result['loser']['alive'] = False
@@ -486,7 +476,6 @@ async def fight_vampire(ctx, your_vamp_id: str, target_vamp_id: str):
     
     save_vampires(vampires)
     
-    # Log battle
     battle_log = {
         "attacker": your_vamp['name'],
         "defender": target_vamp['name'],
@@ -499,7 +488,6 @@ async def fight_vampire(ctx, your_vamp_id: str, target_vamp_id: str):
     battles.append(battle_log)
     save_battles(battles)
     
-    # Send result
     embed = discord.Embed(
         title="⚔️ VAMPIRE BATTLE!",
         description=result['narrative'],
@@ -536,11 +524,158 @@ async def fight_vampire(ctx, your_vamp_id: str, target_vamp_id: str):
     
     await ctx.send(embed=embed)
 
+@bot.command(name='war')
+async def vampire_war(ctx, opponent: discord.Member):
+    """All your vampires fight all of another player's vampires!"""
+    
+    attacker_id = str(ctx.author.id)
+    defender_id = str(opponent.id)
+    
+    if attacker_id == defender_id:
+        await ctx.send("You cannot declare war on yourself!")
+        return
+    
+    # Get all alive vampires for both players
+    attacker_vamps = []
+    defender_vamps = []
+    
+    if attacker_id in vampires:
+        attacker_vamps = [v for v in vampires[attacker_id] if v['alive']]
+    
+    if defender_id in vampires:
+        defender_vamps = [v for v in vampires[defender_id] if v['alive']]
+    
+    if not attacker_vamps:
+        await ctx.send("You don't have any alive vampires!")
+        return
+    
+    if not defender_vamps:
+        await ctx.send(f"{opponent.name} doesn't have any alive vampires!")
+        return
+    
+    # Start the war
+    await ctx.send(f"⚔️ **WAR HAS BEGUN!** ⚔️\n{ctx.author.name} ({len(attacker_vamps)} vampires) vs {opponent.name} ({len(defender_vamps)} vampires)\n\nBattles commencing...")
+    
+    battle_results = []
+    total_battles = 0
+    
+    # Each vampire from attacker fights each vampire from defender
+    for att_vamp in attacker_vamps:
+        for def_vamp in defender_vamps:
+            if not att_vamp['alive'] or not def_vamp['alive']:
+                continue
+            
+            result = simulate_battle(att_vamp, def_vamp)
+            
+            result['winner']['wins'] += 1
+            result['loser']['losses'] += 1
+            
+            # Award XP
+            winner_xp = random.randint(20, 40)
+            loser_xp = random.randint(5, 15)
+            
+            result['winner']['xp'] += winner_xp
+            result['loser']['xp'] += loser_xp
+            
+            # Check for level ups
+            if result['winner']['xp'] >= calculate_xp_needed(result['winner']['level']):
+                level_up_vampire(result['winner'])
+            
+            if result['loser']['xp'] >= calculate_xp_needed(result['loser']['level']):
+                level_up_vampire(result['loser'])
+            
+            # 15% chance of death in war
+            death_occurred = False
+            if random.random() < 0.15:
+                result['loser']['alive'] = False
+                result['winner']['kills'] += 1
+                death_occurred = True
+            
+            battle_results.append({
+                'narrative': result['narrative'],
+                'winner': result['winner']['name'],
+                'loser': result['loser']['name'],
+                'death': death_occurred
+            })
+            
+            total_battles += 1
+            
+            # Log battle
+            battle_log = {
+                "attacker": att_vamp['name'],
+                "defender": def_vamp['name'],
+                "winner": result['winner']['name'],
+                "loser": result['loser']['name'],
+                "narrative": result['narrative'],
+                "timestamp": datetime.now().isoformat(),
+                "war": True,
+                "player_initiated": True
+            }
+            battles.append(battle_log)
+    
+    save_vampires(vampires)
+    save_battles(battles)
+    
+    # Count survivors
+    attacker_survivors = sum(1 for v in attacker_vamps if v['alive'])
+    defender_survivors = sum(1 for v in defender_vamps if v['alive'])
+    
+    # Determine war winner
+    if attacker_survivors > defender_survivors:
+        war_winner = ctx.author.name
+        war_result = "VICTORY"
+        result_color = discord.Color.gold()
+    elif defender_survivors > attacker_survivors:
+        war_winner = opponent.name
+        war_result = "DEFEAT"
+        result_color = discord.Color.dark_gray()
+    else:
+        war_winner = "TIE"
+        war_result = "STALEMATE"
+        result_color = discord.Color.blue()
+    
+    # Create summary embed
+    embed = discord.Embed(
+        title=f"⚔️ WAR RESULTS - {war_result}!",
+        description=f"**{total_battles}** battles were fought!",
+        color=result_color
+    )
+    
+    embed.add_field(
+        name=f"{ctx.author.name}'s Army",
+        value=f"Started: {len(attacker_vamps)}\nSurvivors: {attacker_survivors}\nCasualties: {len(attacker_vamps) - attacker_survivors}",
+        inline=True
+    )
+    
+    embed.add_field(
+        name=f"{opponent.name}'s Army",
+        value=f"Started: {len(defender_vamps)}\nSurvivors: {defender_survivors}\nCasualties: {len(defender_vamps) - defender_survivors}",
+        inline=True
+    )
+    
+    if war_winner != "TIE":
+        embed.add_field(
+            name="Victor",
+            value=f"🏆 **{war_winner}**",
+            inline=False
+        )
+    
+    # Show some battle highlights (max 5)
+    highlights = random.sample(battle_results, min(5, len(battle_results)))
+    battle_text = ""
+    for br in highlights:
+        death_icon = " 💀" if br['death'] else ""
+        battle_text += f"• {br['narrative']}{death_icon}\n"
+    
+    if battle_text:
+        embed.add_field(name="Battle Highlights", value=battle_text, inline=False)
+    
+    await ctx.send(embed=embed)
+
 @bot.command(name='train')
 async def train_vampire(ctx, vampire_id: str):
     """Train your vampire to gain XP (once per hour)"""
     
-    # Find vampire
     found_vampire = None
     for user_id, user_vamps in vampires.items():
         for v in user_vamps:
@@ -556,17 +691,14 @@ async def train_vampire(ctx, vampire_id: str):
     
     v = found_vampire
     
-    # Check ownership
     if v['owner_id'] != str(ctx.author.id):
         await ctx.send("You don't own that vampire!")
         return
     
-    # Check if alive
     if not v['alive']:
         await ctx.send(f"{v['name']} is dead and cannot train!")
         return
     
-    # Check cooldown
     if v['last_trained']:
         last_trained_time = datetime.fromisoformat(v['last_trained'])
         time_since = datetime.now() - last_trained_time
@@ -576,12 +708,10 @@ async def train_vampire(ctx, vampire_id: str):
             await ctx.send(f"⏰ {v['name']} is tired! Can train again in {minutes} minutes")
             return
     
-    # Train
     xp_gain = random.randint(10, 20)
     v['xp'] += xp_gain
     v['last_trained'] = datetime.now().isoformat()
     
-    # Check for level up
     leveled = False
     stat_increases = None
     xp_needed = calculate_xp_needed(v['level'])
@@ -613,7 +743,6 @@ async def train_vampire(ctx, vampire_id: str):
 async def feed_vampire(ctx, vampire_id: str):
     """Feed your vampire to gain XP (once per 30 minutes)"""
     
-    # Find vampire
     found_vampire = None
     for user_id, user_vamps in vampires.items():
         for v in user_vamps:
@@ -629,17 +758,14 @@ async def feed_vampire(ctx, vampire_id: str):
     
     v = found_vampire
     
-    # Check ownership
     if v['owner_id'] != str(ctx.author.id):
         await ctx.send("You don't own that vampire!")
         return
     
-    # Check if alive
     if not v['alive']:
         await ctx.send(f"{v['name']} is dead!")
         return
     
-    # Check cooldown (using a separate 'last_fed' field)
     if 'last_fed' not in v:
         v['last_fed'] = None
     
@@ -652,12 +778,10 @@ async def feed_vampire(ctx, vampire_id: str):
             await ctx.send(f"🩸 {v['name']} is not hungry yet! Can feed again in {minutes} minutes")
             return
     
-    # Feed
     xp_gain = random.randint(5, 15)
     v['xp'] += xp_gain
     v['last_fed'] = datetime.now().isoformat()
     
-    # Check for level up
     leveled = False
     stat_increases = None
     xp_needed = calculate_xp_needed(v['level'])
@@ -695,7 +819,6 @@ async def delete_vampire(ctx, vampire_id: str):
         await ctx.send("You don't have any vampires!")
         return
     
-    # Find and remove vampire
     found = False
     for i, v in enumerate(vampires[user_id]):
         if v['id'] == vampire_id:
@@ -723,7 +846,6 @@ async def leaderboard(ctx):
         await ctx.send("No vampires exist yet!")
         return
     
-    # Sort by level first, then wins
     top_vampires = sorted(all_vampires, key=lambda v: (v['level'], v['wins']), reverse=True)[:10]
     
     embed = discord.Embed(
@@ -757,7 +879,7 @@ async def battle_logs(ctx, limit: int = 10):
     msg = f"**RECENT BATTLES (Last {len(recent)}):**\n\n"
     for b in recent:
         timestamp = datetime.fromisoformat(b['timestamp']).strftime('%Y-%m-%d %H:%M')
-        battle_type = "[PLAYER]" if b.get('player_initiated', False) else "[AUTO]"
+        battle_type = "[WAR]" if b.get('war', False) else "[PLAYER]" if b.get('player_initiated', False) else "[AUTO]"
         msg += f"`{timestamp}` {battle_type} - {b['narrative']}\n"
     
     await ctx.send(msg)
@@ -841,7 +963,6 @@ async def give_xp(ctx, vampire_id: str, amount: int):
             if v['id'] == vampire_id:
                 v['xp'] += amount
                 
-                # Check for level ups
                 levels_gained = 0
                 while v['xp'] >= calculate_xp_needed(v['level']):
                     level_up_vampire(v)
@@ -883,18 +1004,15 @@ async def auto_battle():
     result['winner']['wins'] += 1
     result['loser']['losses'] += 1
     
-    # Award XP
     result['winner']['xp'] += random.randint(20, 30)
     result['loser']['xp'] += random.randint(5, 10)
     
-    # Check for level ups
     if result['winner']['xp'] >= calculate_xp_needed(result['winner']['level']):
         level_up_vampire(result['winner'])
     
     if result['loser']['xp'] >= calculate_xp_needed(result['loser']['level']):
         level_up_vampire(result['loser'])
     
-    # 5% chance of death
     death_occurred = False
     if random.random() < 0.05:
         result['loser']['alive'] = False
