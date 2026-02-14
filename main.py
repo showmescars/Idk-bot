@@ -127,19 +127,20 @@ def create_vampire(owner_id, owner_name):
         "wins": 0,
         "losses": 0,
         "last_trained": None,
+        "multiplier": 1,
         "created_at": datetime.now().isoformat()
     }
     
     return vampire
 
 def create_ai_vampire():
-    """Create an AI vampire with balanced power distribution"""
+    """Create an AI vampire with 30% weak, 70% strong distribution"""
     first_name = random.choice(VAMPIRE_FIRST_NAMES)
     last_name = random.choice(VAMPIRE_LAST_NAMES)
     clan = random.choice(VAMPIRE_CLANS)
     
-    # 50% chance for weak vampire, 50% chance for strong vampire
-    if random.random() < 0.5:
+    # 30% chance for weak vampire, 70% chance for strong vampire
+    if random.random() < 0.3:
         # Weak vampire: 330-1500
         target_power = random.randint(330, 1500)
     else:
@@ -265,9 +266,10 @@ async def list_vampires(ctx):
     )
     
     for v in user_vamps:
+        multiplier_text = f" | x{v.get('multiplier', 1)}" if v.get('multiplier', 1) > 1 else ""
         embed.add_field(
             name=f"{v['name']} - `{v['id']}`",
-            value=f"Clan: {v['clan']}\nPower: {v['power']}\nRecord: {v['wins']}W - {v['losses']}L",
+            value=f"Clan: {v['clan']}\nPower: {v['power']}{multiplier_text}\nRecord: {v['wins']}W - {v['losses']}L",
             inline=True
         )
     
@@ -296,7 +298,7 @@ async def send_mission(ctx, vampire_id: str):
     # Select random mission
     mission = random.choice(MISSIONS)
     
-    # Create AI opponent with balanced 50/50 power distribution
+    # Create AI opponent with 30/70 distribution
     ai_vampire = create_ai_vampire()
     
     # Simulate battle
@@ -377,12 +379,16 @@ async def train_vampire(ctx, vampire_id: str):
                 await ctx.send(f"**{found_vampire['name']}** is exhausted! Can train again in **{minutes} minutes**.")
                 return
     
+    # Get vampire's multiplier (default is 1)
+    vampire_multiplier = found_vampire.get('multiplier', 1)
+    
     # Train the vampire - increase random stats
     stat_gains = {}
     total_gain = 0
     
     for stat in found_vampire['stats']:
-        gain = random.randint(2, 8)
+        base_gain = random.randint(2, 8)
+        gain = int(base_gain * vampire_multiplier)
         found_vampire['stats'][stat] += gain
         stat_gains[stat] = gain
         total_gain += gain
@@ -407,6 +413,9 @@ async def train_vampire(ctx, vampire_id: str):
     embed.add_field(name="Vampire", value=f"`{found_vampire['id']}`\n{found_vampire['clan']}", inline=True)
     embed.add_field(name="New Power", value=f"{found_vampire['power']} (+{power_gain})", inline=True)
     
+    if vampire_multiplier > 1:
+        embed.add_field(name="Multiplier", value=f"x{vampire_multiplier}", inline=True)
+    
     gains_text = "\n".join([f"**{stat.replace('_', ' ').title()}:** {found_vampire['stats'][stat]} (+{gain})" 
                             for stat, gain in stat_gains.items()])
     embed.add_field(name="Stat Gains", value=gains_text, inline=False)
@@ -417,6 +426,63 @@ async def train_vampire(ctx, vampire_id: str):
         embed.set_footer(text="Train again in 1 hour!")
     
     await ctx.send(embed=embed)
+
+@bot.command(name='multiplier')
+@commands.has_permissions(administrator=True)
+async def set_multiplier(ctx, vampire_id: str, amount: float):
+    """Set training multiplier for a specific vampire (admin only)"""
+    
+    if amount < 1:
+        await ctx.send("Multiplier must be at least 1!")
+        return
+    
+    if amount > 100:
+        await ctx.send("Multiplier cannot exceed 100!")
+        return
+    
+    # Find the vampire by ID
+    found_vampire = None
+    owner_name = None
+    
+    for user_id, user_vamps in vampires.items():
+        for v in user_vamps:
+            if v['id'].upper() == vampire_id.upper():
+                found_vampire = v
+                owner_name = v['owner_name']
+                break
+        if found_vampire:
+            break
+    
+    if not found_vampire:
+        await ctx.send(f"Vampire with ID `{vampire_id}` not found!")
+        return
+    
+    found_vampire['multiplier'] = amount
+    save_vampires(vampires)
+    
+    await ctx.send(f"Set **{found_vampire['name']}** (`{vampire_id}`) training multiplier to **x{amount}**!\nOwner: {owner_name}")
+
+@bot.command(name='viewmultiplier')
+async def view_multiplier(ctx, vampire_id: str):
+    """View a vampire's current training multiplier"""
+    
+    # Find the vampire by ID
+    user_id = str(ctx.author.id)
+    found_vampire = None
+    
+    if user_id in vampires:
+        for v in vampires[user_id]:
+            if v['id'].upper() == vampire_id.upper():
+                found_vampire = v
+                break
+    
+    if not found_vampire:
+        await ctx.send("Vampire not found! Use `?list` to see your vampires and their IDs.")
+        return
+    
+    vampire_multiplier = found_vampire.get('multiplier', 1)
+    
+    await ctx.send(f"**{found_vampire['name']}** (`{vampire_id}`) training multiplier: **x{vampire_multiplier}**")
 
 if __name__ == "__main__":
     load_dotenv()
