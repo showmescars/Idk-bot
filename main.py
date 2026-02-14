@@ -10,7 +10,7 @@ load_dotenv()
 
 intents = discord.Intents.default()
 intents.message_content = True
-bot = commands.Bot(command_prefix='?', intents=intents)
+bot = commands.Bot(command_prefix='?', intents=intents, help_command=None)
 
 VAMPIRES_FILE = 'vampires.json'
 
@@ -218,6 +218,38 @@ async def globally_block_dms(ctx):
         await ctx.send("Commands can only be used in servers, not DMs")
         return False
     return True
+
+@bot.command(name='help')
+async def help_command(ctx):
+    """Display all available commands"""
+    is_admin = ctx.author.guild_permissions.administrator
+    
+    embed = discord.Embed(
+        title="Vampire Bot - Command List",
+        description="All available commands for the Vampire Bot",
+        color=discord.Color.dark_red()
+    )
+    
+    # User Commands
+    user_commands = """
+    **?make** - Create a random vampire
+    **?list** - View all your vampires
+    **?mission <ID>** - Send your vampire on a mission
+    **?train <ID>** - Train your vampire (1 hour cooldown)
+    **?viewmultiplier <ID>** - Check a vampire's training multiplier
+    **?help** - Display this command list
+    """
+    embed.add_field(name="User Commands", value=user_commands, inline=False)
+    
+    if is_admin:
+        admin_commands = """
+        **?multiplier <ID> <amount>** - Set training multiplier for a vampire
+        """
+        embed.add_field(name="Admin Commands", value=admin_commands, inline=False)
+    
+    embed.set_footer(text="Use ? before each command")
+    
+    await ctx.send(embed=embed)
 
 @bot.command(name='make')
 async def make_vampire(ctx):
