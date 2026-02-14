@@ -57,9 +57,9 @@ def load_blacklist():
 if os.path.exists(BLACKLIST_FILE):
 with open(BLACKLIST_FILE, ‘r’) as f:
 data = json.load(f)
-# Convert old format to new format if needed
+Convert old format to new format if needed
 if isinstance(data, list):
-# Old format: just list of user IDs
+Old format: just list of user IDs
 new_format = {}
 for user_id in data:
 new_format[str(user_id)] = {
@@ -68,7 +68,7 @@ new_format[str(user_id)] = {
 }
 return new_format
 else:
-# New format: dict with timestamps
+New format: dict with timestamps
 for user_id in data:
 if ‘blacklisted_at’ in data[user_id]:
 data[user_id][‘blacklisted_at’] = datetime.fromisoformat(data[user_id][‘blacklisted_at’])
@@ -82,11 +82,8 @@ data_to_save[user_id] = {
 ‘blacklisted_at’: info[‘blacklisted_at’].isoformat() if isinstance(info[‘blacklisted_at’], datetime) else info[‘blacklisted_at’],
 ‘auto_remove’: info.get(‘auto_remove’, True)
 }
-
-with open(BLACKLIST_FILE, 'w') as f:
-    json.dump(data_to_save, f, indent=4)
-
-
+with open(BLACKLIST_FILE, ‘w’) as f:
+json.dump(data_to_save, f, indent=4)
 blacklist = load_blacklist()
 Load claimed keys history
 def load_claimed_keys():
@@ -118,11 +115,8 @@ data_to_save[user_id] = {
 ‘cooldown_until’: info[‘cooldown_until’].isoformat() if info[‘cooldown_until’] else None,
 ‘cooldown_violations’: info.get(‘cooldown_violations’, 0)
 }
-
-with open(COOLDOWNS_FILE, 'w') as f:
-    json.dump(data_to_save, f, indent=4)
-
-
+with open(COOLDOWNS_FILE, ‘w’) as f:
+json.dump(data_to_save, f, indent=4)
 cooldowns = load_cooldowns()
 Load stats
 def load_stats():
@@ -147,25 +141,24 @@ stats = load_stats()
 Update stats
 def update_stats(action, **kwargs):
 global stats
+if action == ‘restock’:
+stats[‘total_keys_added’] += kwargs.get(‘count’, 0)
+stats[‘total_restocks’] += 1
+current_time = datetime.now().strftime(’%Y-%m-%d %H:%M:%S’)
+stats[‘last_restock_date’] = current_time
+if stats[‘first_restock_date’] is None:
+stats[‘first_restock_date’] = current_time
+elif action == ‘claim’:
+stats[‘total_keys_claimed’] += kwargs.get(‘count’, 1)
+user_id = kwargs.get(‘user_id’)
 
-if action == 'restock':
-    stats['total_keys_added'] += kwargs.get('count', 0)
-    stats['total_restocks'] += 1
-    current_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-    stats['last_restock_date'] = current_time
-    if stats['first_restock_date'] is None:
-        stats['first_restock_date'] = current_time
+# Update most active claimer
+user_claim_count = sum(1 for claim in claimed_keys if claim['user_id'] == user_id)
+if user_claim_count > stats['most_active_claimer']['count']:
+    stats['most_active_claimer'] = {
+        'user_id': user_id,
+        'count': user_claim_count
+    }
 
-elif action == 'claim':
-    stats['total_keys_claimed'] += kwargs.get('count', 1)
-    user_id = kwargs.get('user_id')
-    
-    # Update most active claimer
-    user_claim_count = sum(1 for claim in claimed_keys if claim['user_id'] == user_id)
-    if user_claim_count > stats['most_active_claimer']['count']:
-        stats['most_active_claimer'] = {
-            'user_id': user_id,
-            'count': user_claim_count
-        }
 
 eli
