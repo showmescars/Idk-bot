@@ -224,7 +224,7 @@ async def make_vampire(ctx):
     v = vampire
     
     embed = discord.Embed(
-        title="🧛 Vampire Created!",
+        title="Vampire Created!",
         description=f"**{v['name']}** has risen from the grave!",
         color=discord.Color.dark_red()
     )
@@ -243,13 +243,13 @@ async def list_vampires(ctx):
     user_id = str(ctx.author.id)
     
     if user_id not in vampires or len(vampires[user_id]) == 0:
-        await ctx.send("❌ You don't have any vampires yet! Use `?make` to create one.")
+        await ctx.send("You don't have any vampires yet! Use `?make` to create one.")
         return
     
     user_vamps = vampires[user_id]
     
     embed = discord.Embed(
-        title=f"🧛 {ctx.author.name}'s Vampires",
+        title=f"{ctx.author.name}'s Vampires",
         description=f"Total: {len(user_vamps)} vampires",
         color=discord.Color.dark_red()
     )
@@ -280,7 +280,7 @@ async def send_mission(ctx, vampire_id: str):
                 break
     
     if not found_vampire:
-        await ctx.send("❌ Vampire not found! Use `?list` to see your vampires and their IDs.")
+        await ctx.send("Vampire not found! Use `?list` to see your vampires and their IDs.")
         return
     
     # Select random mission
@@ -297,18 +297,16 @@ async def send_mission(ctx, vampire_id: str):
         found_vampire['wins'] += 1
         outcome = "VICTORY"
         outcome_color = discord.Color.green()
-        outcome_icon = "✅"
     else:
         found_vampire['losses'] += 1
         outcome = "DEFEAT"
         outcome_color = discord.Color.red()
-        outcome_icon = "❌"
     
     save_vampires(vampires)
     
     # Create result embed
     embed = discord.Embed(
-        title=f"⚔️ MISSION: {mission['name']}",
+        title=f"MISSION: {mission['name']}",
         description=mission['description'],
         color=outcome_color
     )
@@ -326,19 +324,19 @@ async def send_mission(ctx, vampire_id: str):
     )
     
     embed.add_field(
-        name=f"{outcome_icon} Result",
+        name="Result",
         value=f"**{outcome}!**\n{result['winner']['name']} wins!\n\n{found_vampire['name']}'s Record: {found_vampire['wins']}W - {found_vampire['losses']}L",
         inline=False
     )
     
-    difficulty_emoji = "⭐" if mission['difficulty'] == "easy" else "⭐⭐" if mission['difficulty'] == "medium" else "⭐⭐⭐"
-    embed.set_footer(text=f"Difficulty: {mission['difficulty'].upper()} {difficulty_emoji}")
+    difficulty_stars = "*" if mission['difficulty'] == "easy" else "**" if mission['difficulty'] == "medium" else "***"
+    embed.set_footer(text=f"Difficulty: {mission['difficulty'].upper()} {difficulty_stars}")
     
     await ctx.send(embed=embed)
 
 @bot.command(name='train')
 async def train_vampire(ctx, vampire_id: str):
-    """Train your vampire to increase stats (1 hour cooldown)"""
+    """Train your vampire to increase stats (1 hour cooldown, admins bypass cooldown)"""
     
     # Find the vampire by ID
     user_id = str(ctx.author.id)
@@ -351,19 +349,23 @@ async def train_vampire(ctx, vampire_id: str):
                 break
     
     if not found_vampire:
-        await ctx.send("❌ Vampire not found! Use `?list` to see your vampires and their IDs.")
+        await ctx.send("Vampire not found! Use `?list` to see your vampires and their IDs.")
         return
     
-    # Check cooldown (1 hour)
-    if found_vampire['last_trained']:
-        last_trained = datetime.fromisoformat(found_vampire['last_trained'])
-        time_since = datetime.now() - last_trained
-        
-        if time_since < timedelta(hours=1):
-            remaining = timedelta(hours=1) - time_since
-            minutes = int(remaining.total_seconds() / 60)
-            await ctx.send(f"⏰ **{found_vampire['name']}** is exhausted! Can train again in **{minutes} minutes**.")
-            return
+    # Check if user is admin
+    is_admin = ctx.author.guild_permissions.administrator
+    
+    # Check cooldown (only for non-admins)
+    if not is_admin:
+        if found_vampire['last_trained']:
+            last_trained = datetime.fromisoformat(found_vampire['last_trained'])
+            time_since = datetime.now() - last_trained
+            
+            if time_since < timedelta(hours=1):
+                remaining = timedelta(hours=1) - time_since
+                minutes = int(remaining.total_seconds() / 60)
+                await ctx.send(f"**{found_vampire['name']}** is exhausted! Can train again in **{minutes} minutes**.")
+                return
     
     # Train the vampire - increase random stats
     stat_gains = {}
@@ -387,7 +389,7 @@ async def train_vampire(ctx, vampire_id: str):
     
     # Create result embed
     embed = discord.Embed(
-        title="💪 Training Complete!",
+        title="Training Complete!",
         description=f"**{found_vampire['name']}** has grown stronger!",
         color=discord.Color.gold()
     )
@@ -399,7 +401,10 @@ async def train_vampire(ctx, vampire_id: str):
                             for stat, gain in stat_gains.items()])
     embed.add_field(name="Stat Gains", value=gains_text, inline=False)
     
-    embed.set_footer(text="Train again in 1 hour!")
+    if is_admin:
+        embed.set_footer(text="Admin - No cooldown")
+    else:
+        embed.set_footer(text="Train again in 1 hour!")
     
     await ctx.send(embed=embed)
 
