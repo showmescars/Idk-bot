@@ -215,6 +215,8 @@ async def make_vampire(ctx):
     save_vampires(vampires)
     
     v = vampire
+    vampire_number = len(vampires[user_id])
+    
     embed = discord.Embed(
         title="🧛 Vampire Created!",
         description=f"**{v['name']}** has risen from the grave!",
@@ -223,28 +225,56 @@ async def make_vampire(ctx):
     embed.add_field(name="Clan", value=v['clan'], inline=True)
     embed.add_field(name="Power", value=v['power'], inline=True)
     embed.add_field(name="Record", value=f"{v['wins']}W - {v['losses']}L", inline=True)
-    embed.add_field(name="ID", value=f"`{v['id']}`", inline=False)
+    embed.add_field(name="Number", value=f"#{vampire_number}", inline=False)
     embed.add_field(name="Stats", value=f"**Strength:** {v['stats']['strength']}\n**Speed:** {v['stats']['speed']}\n**Intelligence:** {v['stats']['intelligence']}\n**Blood Power:** {v['stats']['blood_power']}\n**Defense:** {v['stats']['defense']}", inline=False)
+    embed.set_footer(text=f"Use ?mission {vampire_number} to send on a mission!")
+    
+    await ctx.send(embed=embed)
+
+@bot.command(name='list')
+async def list_vampires(ctx):
+    """View all your vampires"""
+    user_id = str(ctx.author.id)
+    
+    if user_id not in vampires or len(vampires[user_id]) == 0:
+        await ctx.send("❌ You don't have any vampires yet! Use `?make` to create one.")
+        return
+    
+    user_vamps = vampires[user_id]
+    
+    embed = discord.Embed(
+        title=f"🧛 {ctx.author.name}'s Vampires",
+        description=f"Total: {len(user_vamps)} vampires",
+        color=discord.Color.dark_red()
+    )
+    
+    for idx, v in enumerate(user_vamps, 1):
+        embed.add_field(
+            name=f"#{idx} - {v['name']}",
+            value=f"Clan: {v['clan']}\nPower: {v['power']}\nRecord: {v['wins']}W - {v['losses']}L",
+            inline=True
+        )
+    
+    embed.set_footer(text="Use ?mission <number> to send a vampire on a mission!")
     
     await ctx.send(embed=embed)
 
 @bot.command(name='mission')
-async def send_mission(ctx, vampire_id: str):
+async def send_mission(ctx, vampire_number: int):
     """Send your vampire on a random mission to fight AI vampires"""
     
-    # Find the vampire
+    # Find the vampire by number
     user_id = str(ctx.author.id)
-    found_vampire = None
     
-    if user_id in vampires:
-        for v in vampires[user_id]:
-            if v['id'] == vampire_id:
-                found_vampire = v
-                break
-    
-    if not found_vampire:
-        await ctx.send("❌ Vampire not found! Make sure you own this vampire and the ID is correct.")
+    if user_id not in vampires or len(vampires[user_id]) == 0:
+        await ctx.send("❌ You don't have any vampires! Use `?make` to create one.")
         return
+    
+    if vampire_number < 1 or vampire_number > len(vampires[user_id]):
+        await ctx.send(f"❌ Invalid vampire number! You have {len(vampires[user_id])} vampires. Use `?list` to see them.")
+        return
+    
+    found_vampire = vampires[user_id][vampire_number - 1]
     
     # Select random mission
     mission = random.choice(MISSIONS)
@@ -278,7 +308,7 @@ async def send_mission(ctx, vampire_id: str):
     
     embed.add_field(
         name="Your Vampire",
-        value=f"**{found_vampire['name']}**\nClan: {found_vampire['clan']}\nPower: {found_vampire['power']}\nCombat Score: {result['v1_score']}",
+        value=f"**{found_vampire['name']}** (#{vampire_number})\nClan: {found_vampire['clan']}\nPower: {found_vampire['power']}\nCombat Score: {result['v1_score']}",
         inline=True
     )
     
