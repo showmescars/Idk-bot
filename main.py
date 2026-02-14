@@ -3,7 +3,7 @@ from discord.ext import commands
 import json
 import os
 import random
-from datetime import datetime
+from datetime import datetime, timedelta
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -126,6 +126,7 @@ def create_vampire(owner_id, owner_name):
         "owner_name": owner_name,
         "wins": 0,
         "losses": 0,
+        "last_trained": None,
         "created_at": datetime.now().isoformat()
     }
     
@@ -232,7 +233,7 @@ async def make_vampire(ctx):
     embed.add_field(name="Power", value=v['power'], inline=True)
     embed.add_field(name="Record", value=f"{v['wins']}W - {v['losses']}L", inline=True)
     embed.add_field(name="Stats", value=f"**Strength:** {v['stats']['strength']}\n**Speed:** {v['stats']['speed']}\n**Intelligence:** {v['stats']['intelligence']}\n**Blood Power:** {v['stats']['blood_power']}\n**Defense:** {v['stats']['defense']}", inline=False)
-    embed.set_footer(text=f"Use ?mission {v['id']} to send on a mission!")
+    embed.set_footer(text=f"Use ?mission {v['id']} to send on a mission or ?train {v['id']} to train!")
     
     await ctx.send(embed=embed)
 
@@ -260,7 +261,7 @@ async def list_vampires(ctx):
             inline=True
         )
     
-    embed.set_footer(text="Use ?mission <ID> to send a vampire on a mission!")
+    embed.set_footer(text="Use ?mission <ID> or ?train <ID>")
     
     await ctx.send(embed=embed)
 
@@ -332,6 +333,73 @@ async def send_mission(ctx, vampire_id: str):
     
     difficulty_emoji = "⭐" if mission['difficulty'] == "easy" else "⭐⭐" if mission['difficulty'] == "medium" else "⭐⭐⭐"
     embed.set_footer(text=f"Difficulty: {mission['difficulty'].upper()} {difficulty_emoji}")
+    
+    await ctx.send(embed=embed)
+
+@bot.command(name='train')
+async def train_vampire(ctx, vampire_id: str):
+    """Train your vampire to increase stats (1 hour cooldown)"""
+    
+    # Find the vampire by ID
+    user_id = str(ctx.author.id)
+    found_vampire = None
+    
+    if user_id in vampires:
+        for v in vampires[user_id]:
+            if v['id'].upper() == vampire_id.upper():
+                found_vampire = v
+                break
+    
+    if not found_vampire:
+        await ctx.send("❌ Vampire not found! Use `?list` to see your vampires and their IDs.")
+        return
+    
+    # Check cooldown (1 hour)
+    if found_vampire['last_trained']:
+        last_trained = datetime.fromisoformat(found_vampire['last_trained'])
+        time_since = datetime.now() - last_trained
+        
+        if time_since < timedelta(hours=1):
+            remaining = timedelta(hours=1) - time_since
+            minutes = int(remaining.total_seconds() / 60)
+            await ctx.send(f"⏰ **{found_vampire['name']}** is exhausted! Can train again in **{minutes} minutes**.")
+            return
+    
+    # Train the vampire - increase random stats
+    stat_gains = {}
+    total_gain = 0
+    
+    for stat in found_vampire['stats']:
+        gain = random.randint(2, 8)
+        found_vampire['stats'][stat] += gain
+        stat_gains[stat] = gain
+        total_gain += gain
+    
+    # Update power
+    old_power = found_vampire['power']
+    found_vampire['power'] = calculate_power(found_vampire['stats'])
+    power_gain = found_vampire['power'] - old_power
+    
+    # Update last trained time
+    found_vampire['last_trained'] = datetime.now().isoformat()
+    
+    save_vampires(vampires)
+    
+    # Create result embed
+    embed = discord.Embed(
+        title="💪 Training Complete!",
+        description=f"**{found_vampire['name']}** has grown stronger!",
+        color=discord.Color.gold()
+    )
+    
+    embed.add_field(name="Vampire", value=f"`{found_vampire['id']}`\n{found_vampire['clan']}", inline=True)
+    embed.add_field(name="New Power", value=f"{found_vampire['power']} (+{power_gain})", inline=True)
+    
+    gains_text = "\n".join([f"**{stat.replace('_', ' ').title()}:** {found_vampire['stats'][stat]} (+{gain})" 
+                            for stat, gain in stat_gains.items()])
+    embed.add_field(name="Stat Gains", value=gains_text, inline=False)
+    
+    embed.set_footer(text="Train again in 1 hour!")
     
     await ctx.send(embed=embed)
 
