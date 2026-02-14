@@ -132,27 +132,33 @@ def create_vampire(owner_id, owner_name):
     
     return vampire
 
-def create_ai_vampire(difficulty):
-    """Create an AI vampire based on difficulty"""
+def create_ai_vampire():
+    """Create an AI vampire with random power between 330-5000"""
     first_name = random.choice(VAMPIRE_FIRST_NAMES)
     last_name = random.choice(VAMPIRE_LAST_NAMES)
     clan = random.choice(VAMPIRE_CLANS)
     
-    # Scale stats based on difficulty
-    if difficulty == "easy":
-        stat_range = (40, 80)
-    elif difficulty == "medium":
-        stat_range = (60, 90)
-    else:  # hard
-        stat_range = (70, 110)
+    # Generate random target power
+    target_power = random.randint(330, 5000)
     
-    stats = {
-        "strength": random.randint(stat_range[0], stat_range[1]),
-        "speed": random.randint(stat_range[0], stat_range[1]),
-        "intelligence": random.randint(stat_range[0], stat_range[1]),
-        "blood_power": random.randint(stat_range[0], stat_range[1]),
-        "defense": random.randint(stat_range[0], stat_range[1])
-    }
+    # Distribute power across 5 stats
+    # Each stat gets approximately 1/5 of target power with some randomness
+    remaining_power = target_power
+    stats = {}
+    
+    stat_names = ["strength", "speed", "intelligence", "blood_power", "defense"]
+    
+    for i, stat in enumerate(stat_names):
+        if i == len(stat_names) - 1:
+            # Last stat gets whatever is remaining
+            stats[stat] = remaining_power
+        else:
+            # Random portion of remaining power
+            min_val = int(remaining_power * 0.15)
+            max_val = int(remaining_power * 0.25)
+            stat_value = random.randint(min_val, max_val)
+            stats[stat] = stat_value
+            remaining_power -= stat_value
     
     return {
         "name": f"{first_name} {last_name}",
@@ -286,8 +292,8 @@ async def send_mission(ctx, vampire_id: str):
     # Select random mission
     mission = random.choice(MISSIONS)
     
-    # Create AI opponent
-    ai_vampire = create_ai_vampire(mission['difficulty'])
+    # Create AI opponent with power between 330-5000
+    ai_vampire = create_ai_vampire()
     
     # Simulate battle
     result = simulate_battle(found_vampire, ai_vampire)
