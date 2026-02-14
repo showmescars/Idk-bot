@@ -1,29 +1,21 @@
 import discord
-from discord.ext import commands, tasks
+from discord.ext import commands
 import json
 import os
 import random
-from datetime import datetime, timedelta
+from datetime import datetime
 from dotenv import load_dotenv
 import asyncio
 
-# Load environment variables
-
 load_dotenv()
-
-# Bot setup
 
 intents = discord.Intents.default()
 intents.message_content = True
 bot = commands.Bot(command_prefix=’!’, intents=intents, help_command=None)
 
-# Files
-
 VAMPIRES_FILE = ‘vampires.json’
 BATTLES_FILE = ‘battles.json’
 USER_VAMPIRES_FILE = ‘user_vampires.json’
-
-# Vampire name components for generation
 
 FIRST_NAMES = [
 “Vladimir”, “Dracula”, “Lestat”, “Armand”, “Magnus”, “Lucian”, “Corvinus”,
@@ -87,10 +79,7 @@ POWERS = [
 “Weather Control”, “Necromancy”, “Shape Shifting”, “Time Dilation”
 ]
 
-# Load/Save functions
-
 def load_json(filename, default=None):
-“”“Load JSON file with error handling”””
 if default is None:
 default = {}
 try:
@@ -102,21 +91,17 @@ print(f”Error loading {filename}: {e}”)
 return default
 
 def save_json(filename, data):
-“”“Save JSON file with error handling”””
 try:
 with open(filename, ‘w’) as f:
 json.dump(data, f, indent=4)
 except Exception as e:
 print(f”Error saving {filename}: {e}”)
 
-# Initialize data
-
 vampires_db = load_json(VAMPIRES_FILE, {})
 battles_history = load_json(BATTLES_FILE, [])
 user_vampires = load_json(USER_VAMPIRES_FILE, {})
 
 def generate_vampire():
-“”“Generate a random vampire with stats and background”””
 first_name = random.choice(FIRST_NAMES)
 last_name = random.choice(LAST_NAMES)
 title = random.choice(VAMPIRE_TITLES)
@@ -145,7 +130,6 @@ vampire = {
     'creator': None
 }
 
-# Calculate overall power level
 total_stats = sum(vampire['stats'].values())
 vampire['power_level'] = total_stats
 vampire['rank'] = get_rank(total_stats)
@@ -154,22 +138,20 @@ return vampire
 ```
 
 def get_rank(power_level):
-“”“Determine vampire rank based on power level”””
 if power_level >= 550:
-return “🌟 Ancient Elder”
+return “Ancient Elder”
 elif power_level >= 500:
-return “👑 Vampire Lord”
+return “Vampire Lord”
 elif power_level >= 450:
-return “⚔️ Master Vampire”
+return “Master Vampire”
 elif power_level >= 400:
-return “🗡️ Veteran Vampire”
+return “Veteran Vampire”
 elif power_level >= 350:
-return “🦇 Skilled Vampire”
+return “Skilled Vampire”
 else:
-return “🩸 Fledgling Vampire”
+return “Fledgling Vampire”
 
 def create_vampire_embed(vampire):
-“”“Create a detailed embed for a vampire”””
 embed = discord.Embed(
 title=f”🧛 {vampire[‘full_name’]}”,
 description=f”*{vampire[‘origin’]}*”,
@@ -178,19 +160,19 @@ timestamp=datetime.now()
 )
 
 ```
-embed.add_field(name="👤 Age", value=f"{vampire['age']} years", inline=True)
-embed.add_field(name="⚡ Power Level", value=f"{vampire['power_level']}", inline=True)
-embed.add_field(name="🏆 Rank", value=vampire['rank'], inline=True)
+embed.add_field(name="Age", value=f"{vampire['age']} years", inline=True)
+embed.add_field(name="Power Level", value=f"{vampire['power_level']}", inline=True)
+embed.add_field(name="Rank", value=vampire['rank'], inline=True)
 
 stats_text = "\n".join([f"**{stat.title()}**: {value}" for stat, value in vampire['stats'].items()])
-embed.add_field(name="📊 Stats", value=stats_text, inline=False)
+embed.add_field(name="Stats", value=stats_text, inline=False)
 
-embed.add_field(name="🧠 Personality", value=vampire['personality'], inline=False)
+embed.add_field(name="Personality", value=vampire['personality'], inline=False)
 
 powers_text = ", ".join(vampire['powers'])
-embed.add_field(name="✨ Powers", value=powers_text, inline=False)
+embed.add_field(name="Powers", value=powers_text, inline=False)
 
-embed.add_field(name="🎮 Record", value=f"Wins: {vampire['wins']} | Losses: {vampire['losses']}", inline=False)
+embed.add_field(name="Record", value=f"Wins: {vampire['wins']} | Losses: {vampire['losses']}", inline=False)
 
 embed.set_footer(text=f"Vampire ID: {vampire['id']}")
 
@@ -198,13 +180,11 @@ return embed
 ```
 
 def simulate_battle(vamp1, vamp2):
-“”“Simulate a battle between two vampires”””
 battle_log = []
-battle_log.append(f”⚔️ **BATTLE BEGINS!** ⚔️”)
+battle_log.append(“⚔️ **BATTLE BEGINS!** ⚔️”)
 battle_log.append(f”**{vamp1[‘name’]}** vs **{vamp2[‘name’]}**\n”)
 
 ```
-# Battle rounds
 rounds = random.randint(3, 7)
 v1_hp = 100
 v2_hp = 100
@@ -212,7 +192,6 @@ v2_hp = 100
 for round_num in range(1, rounds + 1):
     battle_log.append(f"\n**--- Round {round_num} ---**")
     
-    # Vampire 1 attacks
     power1 = random.choice(vamp1['powers'])
     damage1 = random.randint(10, 25) + (vamp1['stats']['strength'] // 10)
     v2_hp -= damage1
@@ -224,7 +203,6 @@ for round_num in range(1, rounds + 1):
         
     battle_log.append(f"   {vamp2['name']}: {max(0, v2_hp)} HP remaining")
     
-    # Vampire 2 attacks
     power2 = random.choice(vamp2['powers'])
     damage2 = random.randint(10, 25) + (vamp2['stats']['strength'] // 10)
     v1_hp -= damage2
@@ -236,7 +214,6 @@ for round_num in range(1, rounds + 1):
         
     battle_log.append(f"   {vamp1['name']}: {max(0, v1_hp)} HP remaining")
 
-# Determine winner
 if v1_hp > v2_hp:
     winner = vamp1
     loser = vamp2
@@ -249,8 +226,6 @@ else:
 return winner, loser, "\n".join(battle_log)
 ```
 
-# Bot events
-
 @bot.event
 async def on_ready():
 print(f’{bot.user} has connected to Discord!’)
@@ -260,7 +235,6 @@ print(’——’)
 
 @bot.event
 async def on_command_error(ctx, error):
-“”“Handle command errors”””
 if isinstance(error, commands.CommandNotFound):
 return
 elif isinstance(error, commands.MissingRequiredArgument):
@@ -273,7 +247,6 @@ await ctx.send(f”❌ An error occurred: {str(error)}”)
 
 @bot.command(name=‘help’)
 async def help_command(ctx):
-“”“Display help information”””
 embed = discord.Embed(
 title=“🧛 Vampire Battle Bot Commands”,
 description=“Generate vampire characters and watch them battle!”,
@@ -281,54 +254,19 @@ color=discord.Color.dark_red()
 )
 
 ```
-embed.add_field(
-    name="!generate or !gen",
-    value="Generate a random vampire character",
-    inline=False
-)
-
-embed.add_field(
-    name="!battle <vampire_id_1> <vampire_id_2>",
-    value="Make two vampires fight each other",
-    inline=False
-)
-
-embed.add_field(
-    name="!random_battle or !rb",
-    value="Generate two random vampires and make them fight",
-    inline=False
-)
-
-embed.add_field(
-    name="!view <vampire_id>",
-    value="View detailed information about a vampire",
-    inline=False
-)
-
-embed.add_field(
-    name="!myvampires or !mv",
-    value="View all vampires you've generated",
-    inline=False
-)
-
-embed.add_field(
-    name="!leaderboard or !lb",
-    value="View the top vampires by wins",
-    inline=False
-)
-
-embed.add_field(
-    name="!stats",
-    value="View battle statistics",
-    inline=False
-)
+embed.add_field(name="!generate or !gen", value="Generate a random vampire character", inline=False)
+embed.add_field(name="!battle <vampire_id_1> <vampire_id_2>", value="Make two vampires fight each other", inline=False)
+embed.add_field(name="!random_battle or !rb", value="Generate two random vampires and make them fight", inline=False)
+embed.add_field(name="!view <vampire_id>", value="View detailed information about a vampire", inline=False)
+embed.add_field(name="!myvampires or !mv", value="View all vampires you've generated", inline=False)
+embed.add_field(name="!leaderboard or !lb", value="View the top vampires by wins", inline=False)
+embed.add_field(name="!stats", value="View battle statistics", inline=False)
 
 await ctx.send(embed=embed)
 ```
 
 @bot.command(name=‘generate’, aliases=[‘gen’])
 async def generate_vampire_cmd(ctx):
-“”“Generate a random vampire”””
 try:
 vampire = generate_vampire()
 vampire[‘creator’] = str(ctx.author.id)
@@ -337,7 +275,6 @@ vampire[‘creator’] = str(ctx.author.id)
     vampires_db[vampire['id']] = vampire
     save_json(VAMPIRES_FILE, vampires_db)
     
-    # Add to user's vampires
     user_id = str(ctx.author.id)
     if user_id not in user_vampires:
         user_vampires[user_id] = []
@@ -347,7 +284,7 @@ vampire[‘creator’] = str(ctx.author.id)
     embed = create_vampire_embed(vampire)
     embed.set_author(name=f"Generated by {ctx.author.display_name}", icon_url=ctx.author.avatar.url if ctx.author.avatar else None)
     
-    await ctx.send(f"🧛 A new vampire has been summoned from the darkness!", embed=embed)
+    await ctx.send("🧛 A new vampire has been summoned from the darkness!", embed=embed)
 except Exception as e:
     print(f"Error in generate command: {e}")
     await ctx.send("❌ An error occurred while generating the vampire.")
@@ -355,7 +292,6 @@ except Exception as e:
 
 @bot.command(name=‘view’)
 async def view_vampire(ctx, vampire_id: str = None):
-“”“View a specific vampire”””
 if vampire_id is None:
 await ctx.send(“❌ Please provide a vampire ID! Usage: `!view <vampire_id>`”)
 return
@@ -376,7 +312,6 @@ except Exception as e:
 
 @bot.command(name=‘battle’)
 async def battle_vampires(ctx, vamp_id_1: str = None, vamp_id_2: str = None):
-“”“Battle two vampires”””
 if vamp_id_1 is None or vamp_id_2 is None:
 await ctx.send(“❌ Please provide two vampire IDs! Usage: `!battle <vampire_id_1> <vampire_id_2>`”)
 return
@@ -394,7 +329,6 @@ try:
     vamp1 = vampires_db[vamp_id_1]
     vamp2 = vampires_db[vamp_id_2]
     
-    # Battle announcement
     embed = discord.Embed(
         title="⚔️ VAMPIRE BATTLE ARENA ⚔️",
         description=f"**{vamp1['name']}** ({vamp1['rank']})\n🆚\n**{vamp2['name']}** ({vamp2['rank']})",
@@ -404,15 +338,12 @@ try:
     await ctx.send("🌙 The moon rises... A battle is about to begin!", embed=embed)
     await asyncio.sleep(2)
     
-    # Simulate battle
     winner, loser, battle_log = simulate_battle(vamp1, vamp2)
     
-    # Update records
     vampires_db[winner['id']]['wins'] += 1
     vampires_db[loser['id']]['losses'] += 1
     save_json(VAMPIRES_FILE, vampires_db)
     
-    # Save battle history
     battle_record = {
         'timestamp': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
         'vampire1': vamp1['name'],
@@ -423,7 +354,6 @@ try:
     battles_history.append(battle_record)
     save_json(BATTLES_FILE, battles_history)
     
-    # Send battle log in chunks if needed
     if len(battle_log) > 2000:
         chunks = [battle_log[i:i+2000] for i in range(0, len(battle_log), 2000)]
         for chunk in chunks:
@@ -432,7 +362,6 @@ try:
     else:
         await ctx.send(battle_log)
     
-    # Send winner embed
     winner_embed = discord.Embed(
         title=f"👑 {winner['name']} WINS!",
         description=f"**New Record**: {vampires_db[winner['id']]['wins']} Wins - {vampires_db[winner['id']]['losses']} Losses",
@@ -447,7 +376,6 @@ except Exception as e:
 
 @bot.command(name=‘random_battle’, aliases=[‘rb’])
 async def random_battle(ctx):
-“”“Generate two random vampires and make them fight”””
 try:
 await ctx.send(“🌙 Summoning two vampires from the darkness…”)
 
@@ -462,7 +390,6 @@ await ctx.send(“🌙 Summoning two vampires from the darkness…”)
     
     save_json(VAMPIRES_FILE, vampires_db)
     
-    # Show vampires
     embed1 = create_vampire_embed(vamp1)
     embed1.set_author(name="Challenger 1")
     await ctx.send(embed=embed1)
@@ -475,7 +402,6 @@ await ctx.send(“🌙 Summoning two vampires from the darkness…”)
     
     await asyncio.sleep(2)
     
-    # Battle announcement
     battle_embed = discord.Embed(
         title="⚔️ RANDOM BATTLE ARENA ⚔️",
         description=f"**{vamp1['name']}**\n🆚\n**{vamp2['name']}**",
@@ -485,15 +411,12 @@ await ctx.send(“🌙 Summoning two vampires from the darkness…”)
     await ctx.send("⚡ Let the battle begin!", embed=battle_embed)
     await asyncio.sleep(2)
     
-    # Simulate battle
     winner, loser, battle_log = simulate_battle(vamp1, vamp2)
     
-    # Update records
     vampires_db[winner['id']]['wins'] += 1
     vampires_db[loser['id']]['losses'] += 1
     save_json(VAMPIRES_FILE, vampires_db)
     
-    # Save battle history
     battle_record = {
         'timestamp': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
         'vampire1': vamp1['name'],
@@ -504,7 +427,6 @@ await ctx.send(“🌙 Summoning two vampires from the darkness…”)
     battles_history.append(battle_record)
     save_json(BATTLES_FILE, battles_history)
     
-    # Send battle log
     if len(battle_log) > 2000:
         chunks = [battle_log[i:i+2000] for i in range(0, len(battle_log), 2000)]
         for chunk in chunks:
@@ -513,7 +435,6 @@ await ctx.send(“🌙 Summoning two vampires from the darkness…”)
     else:
         await ctx.send(battle_log)
     
-    # Send winner embed
     winner_embed = discord.Embed(
         title=f"👑 {winner['name']} IS VICTORIOUS!",
         description=f"**Record**: {vampires_db[winner['id']]['wins']} Wins - {vampires_db[winner['id']]['losses']} Losses",
@@ -528,7 +449,6 @@ except Exception as e:
 
 @bot.command(name=‘myvampires’, aliases=[‘mv’])
 async def my_vampires(ctx):
-“”“View all vampires created by the user”””
 try:
 user_id = str(ctx.author.id)
 
@@ -560,14 +480,12 @@ except Exception as e:
 
 @bot.command(name=‘leaderboard’, aliases=[‘lb’])
 async def leaderboard(ctx):
-“”“Show top vampires by wins”””
 try:
 if not vampires_db:
 await ctx.send(“❌ No vampires have been created yet!”)
 return
 
 ```
-    # Sort vampires by wins
     sorted_vampires = sorted(vampires_db.values(), key=lambda x: x['wins'], reverse=True)[:10]
     
     embed = discord.Embed(
@@ -592,7 +510,6 @@ except Exception as e:
 
 @bot.command(name=‘stats’)
 async def battle_stats(ctx):
-“”“Show overall battle statistics”””
 try:
 total_vampires = len(vampires_db)
 total_battles = len(battles_history)
@@ -631,8 +548,6 @@ except Exception as e:
     print(f"Error in stats command: {e}")
     await ctx.send("❌ An error occurred while fetching statistics.")
 ```
-
-# Run the bot
 
 if **name** == “**main**”:
 TOKEN = os.getenv(‘DISCORD_TOKEN’)
