@@ -1,1 +1,0 @@
-worker: python vampire_bot.py
