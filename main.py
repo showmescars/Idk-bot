@@ -92,6 +92,12 @@ def save_vampires(vampires):
 
 vampires = load_vampires()
 
+def generate_short_id():
+    """Generate a short 6-character ID"""
+    import string
+    chars = string.ascii_uppercase + string.digits
+    return ''.join(random.choice(chars) for _ in range(6))
+
 def generate_vampire_stats():
     return {
         "strength": random.randint(50, 100),
@@ -111,7 +117,7 @@ def create_vampire(owner_id, owner_name):
     stats = generate_vampire_stats()
     
     vampire = {
-        "id": f"vamp_{owner_id}_{int(datetime.now().timestamp() * 1000)}",
+        "id": generate_short_id(),
         "name": f"{first_name} {last_name}",
         "clan": clan,
         "stats": stats,
@@ -215,19 +221,18 @@ async def make_vampire(ctx):
     save_vampires(vampires)
     
     v = vampire
-    vampire_number = len(vampires[user_id])
     
     embed = discord.Embed(
         title="🧛 Vampire Created!",
         description=f"**{v['name']}** has risen from the grave!",
         color=discord.Color.dark_red()
     )
+    embed.add_field(name="ID", value=f"`{v['id']}`", inline=True)
     embed.add_field(name="Clan", value=v['clan'], inline=True)
     embed.add_field(name="Power", value=v['power'], inline=True)
     embed.add_field(name="Record", value=f"{v['wins']}W - {v['losses']}L", inline=True)
-    embed.add_field(name="Number", value=f"#{vampire_number}", inline=False)
     embed.add_field(name="Stats", value=f"**Strength:** {v['stats']['strength']}\n**Speed:** {v['stats']['speed']}\n**Intelligence:** {v['stats']['intelligence']}\n**Blood Power:** {v['stats']['blood_power']}\n**Defense:** {v['stats']['defense']}", inline=False)
-    embed.set_footer(text=f"Use ?mission {vampire_number} to send on a mission!")
+    embed.set_footer(text=f"Use ?mission {v['id']} to send on a mission!")
     
     await ctx.send(embed=embed)
 
@@ -248,33 +253,34 @@ async def list_vampires(ctx):
         color=discord.Color.dark_red()
     )
     
-    for idx, v in enumerate(user_vamps, 1):
+    for v in user_vamps:
         embed.add_field(
-            name=f"#{idx} - {v['name']}",
+            name=f"{v['name']} - `{v['id']}`",
             value=f"Clan: {v['clan']}\nPower: {v['power']}\nRecord: {v['wins']}W - {v['losses']}L",
             inline=True
         )
     
-    embed.set_footer(text="Use ?mission <number> to send a vampire on a mission!")
+    embed.set_footer(text="Use ?mission <ID> to send a vampire on a mission!")
     
     await ctx.send(embed=embed)
 
 @bot.command(name='mission')
-async def send_mission(ctx, vampire_number: int):
+async def send_mission(ctx, vampire_id: str):
     """Send your vampire on a random mission to fight AI vampires"""
     
-    # Find the vampire by number
+    # Find the vampire by ID
     user_id = str(ctx.author.id)
+    found_vampire = None
     
-    if user_id not in vampires or len(vampires[user_id]) == 0:
-        await ctx.send("❌ You don't have any vampires! Use `?make` to create one.")
+    if user_id in vampires:
+        for v in vampires[user_id]:
+            if v['id'].upper() == vampire_id.upper():
+                found_vampire = v
+                break
+    
+    if not found_vampire:
+        await ctx.send("❌ Vampire not found! Use `?list` to see your vampires and their IDs.")
         return
-    
-    if vampire_number < 1 or vampire_number > len(vampires[user_id]):
-        await ctx.send(f"❌ Invalid vampire number! You have {len(vampires[user_id])} vampires. Use `?list` to see them.")
-        return
-    
-    found_vampire = vampires[user_id][vampire_number - 1]
     
     # Select random mission
     mission = random.choice(MISSIONS)
@@ -308,7 +314,7 @@ async def send_mission(ctx, vampire_number: int):
     
     embed.add_field(
         name="Your Vampire",
-        value=f"**{found_vampire['name']}** (#{vampire_number})\nClan: {found_vampire['clan']}\nPower: {found_vampire['power']}\nCombat Score: {result['v1_score']}",
+        value=f"**{found_vampire['name']}** (`{found_vampire['id']}`)\nClan: {found_vampire['clan']}\nPower: {found_vampire['power']}\nCombat Score: {result['v1_score']}",
         inline=True
     )
     
