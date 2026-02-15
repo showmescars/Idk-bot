@@ -66,6 +66,16 @@ def save_characters(characters):
     with open(CHARACTERS_FILE, 'w') as f:
         json.dump(characters, f, indent=4)
 
+# Generate unique 6-digit ID
+def generate_unique_id():
+    characters = load_characters()
+    existing_ids = [char.get('character_id') for char in characters.values() if 'character_id' in char]
+    
+    while True:
+        new_id = str(random.randint(100000, 999999))
+        if new_id not in existing_ids:
+            return new_id
+
 characters = load_characters()
 
 @bot.event
@@ -95,7 +105,7 @@ async def make_character(ctx):
         # Display existing character
         embed = discord.Embed(
             title=char['name'],
-            description=f"Owner: {ctx.author.name}",
+            description=f"Owner: {ctx.author.name}\nID: `{char['character_id']}`",
             color=discord.Color.red()
         )
         
@@ -112,6 +122,9 @@ async def make_character(ctx):
     last_name = random.choice(LAST_NAMES)
     character_name = f"{first_name} {last_name}"
     
+    # Generate unique character ID
+    character_id = generate_unique_id()
+    
     # Generate random power level (10 to 100)
     power_level = random.randint(10, 100)
     
@@ -121,6 +134,7 @@ async def make_character(ctx):
     
     # Create character data
     character_data = {
+        "character_id": character_id,
         "name": character_name,
         "username": str(ctx.author),
         "user_id": user_id,
@@ -136,7 +150,7 @@ async def make_character(ctx):
     # Display new character
     embed = discord.Embed(
         title=character_name,
-        description=f"Owner: {ctx.author.name}",
+        description=f"Owner: {ctx.author.name}\nID: `{character_id}`",
         color=discord.Color.green()
     )
     
