@@ -161,6 +161,34 @@ async def make_character(ctx):
     
     await ctx.send(embed=embed)
 
+# Show command - Shows your character
+@bot.command(name='show')
+async def show_character(ctx):
+    """Show your character"""
+    
+    user_id = str(ctx.author.id)
+    
+    # Check if user has a character
+    if user_id not in characters:
+        await ctx.send("You don't have a character yet! Use `?make` to create one.")
+        return
+    
+    char = characters[user_id]
+    
+    # Display character
+    embed = discord.Embed(
+        title=char['name'],
+        description=f"Owner: {ctx.author.name}\nID: `{char['character_id']}`",
+        color=discord.Color.blue()
+    )
+    
+    embed.add_field(name="Power Level", value=f"{char['power_level']}", inline=False)
+    
+    skills_text = "\n".join([f"- {skill}" for skill in char['skills']])
+    embed.add_field(name="Skills", value=skills_text, inline=False)
+    
+    await ctx.send(embed=embed)
+
 # Run the bot
 if __name__ == "__main__":
     load_dotenv()
