@@ -189,6 +189,102 @@ async def show_character(ctx):
     
     await ctx.send(embed=embed)
 
+# Fight command - Fight random AI characters
+@bot.command(name='fight')
+async def fight_character(ctx):
+    """Fight a random AI character - you can win or lose!"""
+    
+    user_id = str(ctx.author.id)
+    
+    # Check if user has a character
+    if user_id not in characters:
+        await ctx.send("You don't have a character yet! Use `?make` to create one.")
+        return
+    
+    player_char = characters[user_id]
+    
+    # Generate random AI opponent
+    ai_first_name = random.choice(FIRST_NAMES)
+    ai_last_name = random.choice(LAST_NAMES)
+    ai_name = f"{ai_first_name} {ai_last_name}"
+    ai_power_level = random.randint(10, 100)
+    ai_num_skills = random.randint(3, 5)
+    ai_skills = random.sample(SKILLS, ai_num_skills)
+    
+    # Battle embed - show both fighters
+    battle_embed = discord.Embed(
+        title="BATTLE START",
+        description="The fight is about to begin!",
+        color=discord.Color.orange()
+    )
+    
+    battle_embed.add_field(
+        name=f"{player_char['name']} (YOU)",
+        value=f"Power Level: {player_char['power_level']}\nSkills: {', '.join(player_char['skills'][:2])}...",
+        inline=True
+    )
+    
+    battle_embed.add_field(
+        name=f"{ai_name} (AI)",
+        value=f"Power Level: {ai_power_level}\nSkills: {', '.join(ai_skills[:2])}...",
+        inline=True
+    )
+    
+    await ctx.send(embed=battle_embed)
+    
+    # Calculate win chance based on power levels
+    player_power = player_char['power_level']
+    total_power = player_power + ai_power_level
+    player_win_chance = (player_power / total_power) * 100
+    
+    # Add some randomness (30% random factor)
+    random_factor = random.randint(-15, 15)
+    final_win_chance = max(10, min(90, player_win_chance + random_factor))
+    
+    # Determine winner
+    roll = random.randint(1, 100)
+    player_wins = roll <= final_win_chance
+    
+    # Result embed
+    if player_wins:
+        result_embed = discord.Embed(
+            title="VICTORY",
+            description=f"{player_char['name']} has defeated {ai_name}!",
+            color=discord.Color.green()
+        )
+        
+        result_embed.add_field(name="Your Power Level", value=f"{player_power}", inline=True)
+        result_embed.add_field(name="Enemy Power Level", value=f"{ai_power_level}", inline=True)
+        result_embed.add_field(name="Win Chance", value=f"{final_win_chance:.1f}%", inline=True)
+        result_embed.add_field(
+            name="Battle Summary",
+            value=f"{player_char['name']} emerged victorious and lives to fight another day!",
+            inline=False
+        )
+        
+        await ctx.send(embed=result_embed)
+    else:
+        result_embed = discord.Embed(
+            title="DEFEAT",
+            description=f"{player_char['name']} has been defeated by {ai_name}!",
+            color=discord.Color.red()
+        )
+        
+        result_embed.add_field(name="Your Power Level", value=f"{player_power}", inline=True)
+        result_embed.add_field(name="Enemy Power Level", value=f"{ai_power_level}", inline=True)
+        result_embed.add_field(name="Win Chance", value=f"{final_win_chance:.1f}%", inline=True)
+        result_embed.add_field(
+            name="Battle Summary",
+            value=f"{player_char['name']} has fallen in battle and is no more...\n\nYour character has been deleted. Use `?make` to create a new one.",
+            inline=False
+        )
+        
+        await ctx.send(embed=result_embed)
+        
+        # Delete the character
+        del characters[user_id]
+        save_characters(characters)
+
 # Run the bot
 if __name__ == "__main__":
     load_dotenv()
