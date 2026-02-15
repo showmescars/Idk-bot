@@ -67,7 +67,7 @@ def save_credits(credits):
 def check_credits(user_id):
     """Check if user has credits available or if cooldown has passed"""
     credits = load_credits()
-    
+    
     if user_id not in credits:
         # New user, give them max credits
         credits[user_id] = {
@@ -76,19 +76,19 @@ def check_credits(user_id):
         }
         save_credits(credits)
         return MAX_CREDITS, None
-    
+    
     user_data = credits[user_id]
     current_credits = user_data["credits"]
-    
+    
     # If they have credits, return them
     if current_credits > 0:
         return current_credits, None
-    
+    
     # Check if cooldown has passed
     last_refill = datetime.fromisoformat(user_data["last_refill"])
     time_passed = datetime.now() - last_refill
     cooldown_duration = timedelta(minutes=CREDIT_COOLDOWN_MINUTES)
-    
+    
     if time_passed >= cooldown_duration:
         # Cooldown passed, refill credits
         credits[user_id]["credits"] = MAX_CREDITS
@@ -104,19 +104,19 @@ def check_credits(user_id):
 def use_credit(user_id):
     """Deduct one credit from user"""
     credits = load_credits()
-    
+    
     if user_id not in credits:
         credits[user_id] = {
             "credits": MAX_CREDITS,
             "last_refill": datetime.now().isoformat()
         }
-    
+    
     credits[user_id]["credits"] -= CREDIT_COST
-    
+    
     # If credits hit 0, start the cooldown timer
     if credits[user_id]["credits"] == 0:
         credits[user_id]["last_refill"] = datetime.now().isoformat()
-    
+    
     save_credits(credits)
 
 # Generate unique 6-digit ID
@@ -126,13 +126,13 @@ def generate_vampire_id(vampires):
         if vampire_id not in vampires:
             return vampire_id
 
-# Generate AI opponent based on player power (DYNAMIC AND VARIED)
+# Generate AI opponent based on player power (IMPROVED SCALING)
 def generate_ai_opponent(player_power):
-    """Generate an AI opponent with dynamic power - not always matching player"""
-    
+    """Generate an AI opponent that scales with player power - can go up to 100k"""
+    
     # AI names pool (expanded)
     ai_names = [
-        "Marcus the Merciless", "Elena the Ruthless", "Drakon the Savage", 
+        "Marcus the Merciless", "Elena the Ruthless", "Drakon the Savage", 
         "Nyx the Deadly", "Kain the Brutal", "Sable the Vicious",
         "Cyrus the Cruel", "Morrigan the Fierce", "Vex the Relentless",
         "Azrael the Destroyer", "Valeria the Bloodletter", "Theron the Merciless",
@@ -143,373 +143,20 @@ def generate_ai_opponent(player_power):
         "Belladonna the Profane", "Cassius the Corrupted", "Nero the Vile",
         "Isolde the Vengeful", "Draven the Malevolent", "Xander the Apostate"
     ]
-    
-    # DYNAMIC power tiers - NOT always matched to player
-    roll = random.randint(1, 100)
-    
-    if roll <= 15:  # 15% chance - Much weaker opponent
-        min_power = max(60, int(player_power * 0.30))
-        max_power = max(80, int(player_power * 0.60))
-        
-    elif roll <= 35:  # 20% chance - Weaker opponent
-        min_power = max(70, int(player_power * 0.60))
-        max_power = max(90, int(player_power * 0.85))
-        
-    elif roll <= 65:  # 30% chance - Fairly matched
-        min_power = max(80, int(player_power * 0.85))
-        max_power = int(player_power * 1.15)
-        
-    elif roll <= 85:  # 20% chance - Stronger opponent
-        min_power = int(player_power * 1.15)
-        max_power = int(player_power * 1.50)
-        
-    else:  # 15% chance - Much stronger opponent
-        min_power = int(player_power * 1.50)
-        max_power = int(player_power * 2.00)
-    
-    # Ensure bounds
-    min_power = max(60, min(min_power, 100000))
-    max_power = max(min_power + 10, min(max_power, 100000))
-    
-    # Generate AI power with randomness
+    
+    # Scale AI power based on player power with extended range
+    # AI power range: player_power ± 20-30%
+    min_variance = 0.70  # AI can be 30% weaker
+    max_variance = 1.30  # AI can be 30% stronger
+    
+    # Calculate AI power range
+    min_power = int(player_power * min_variance)
+    max_power = int(player_power * max_variance)
+    
+    # Ensure minimum of 60 and maximum of 100,000
+    min_power = max(60, min_power)
+    max_power = min(100000, max_power)
+    
     ai_power = random.randint(min_power, max_power)
-    
-    # Add extra variance (±5%) to make it unpredictable
-    variance = random.uniform(0.95, 1.05)
-    ai_power = int(ai_power * variance)
-    
-    # Final bounds
-    ai_power = max(60, min(ai_power, 100000))
-    
-    return {
-        "name": random.choice(ai_names),
-        "power": ai_power,
-        "is_ai": True
-    }
-
-@bot.event
-async def on_ready():
-    print(f'{bot.user} has connected to Discord!')
-
-@bot.command(name='make')
-async def make_vampire(ctx):
-    """Create a new vampire"""
-    
-    # Block command in specific channel
-    if ctx.channel.id == BLOCKED_CHANNEL_ID:
-        await ctx.send("❌ This command is disabled in this channel.")
-        return
-    
-    vampires = load_vampires()
-    user_id = str(ctx.author.id)
-    
-    # Check if user already has a vampire
-    if user_id in vampires:
-        await ctx.send(f"❌ You already have a vampire! Use `?stats` to view it.")
-        return
-    
-    # Generate varied starting power
-    roll = random.randint(1, 100)
-    if roll <= 40:
-        starting_power = random.randint(80, 120)
-    elif roll <= 75:
-        starting_power = random.randint(120, 180)
-    elif roll <= 95:
-        starting_power = random.randint(180, 250)
-    else:
-        starting_power = random.randint(250, 350)
-    
-    # Create new vampire
-    vampire_id = generate_vampire_id(vampires)
-    vampires[user_id] = {
-        "id": vampire_id,
-        "username": ctx.author.name,
-        "power": starting_power,
-        "wins": 0,
-        "losses": 0,
-        "created_at": datetime.now().isoformat()
-    }
-    
-    save_vampires(vampires)
-    
-    embed = discord.Embed(
-        title="🧛 Vampire Created!",
-        description=f"**{ctx.author.name}** has risen from the shadows!",
-        color=discord.Color.red()
-    )
-    embed.add_field(name="Vampire ID", value=f"`{vampire_id}`", inline=True)
-    embed.add_field(name="Power Level", value=f"⚡ **{starting_power}**", inline=True)
-    embed.add_field(name="Record", value="0-0", inline=True)
-    embed.set_footer(text="Use ?fight to battle other vampires!")
-    
-    await ctx.send(embed=embed)
-
-@bot.command(name='stats')
-async def show_stats(ctx, member: discord.Member = None):
-    """Show vampire stats for yourself or another user"""
-    
-    target = member or ctx.author
-    vampires = load_vampires()
-    user_id = str(target.id)
-    
-    if user_id not in vampires:
-        await ctx.send(f"❌ {target.name} doesn't have a vampire yet! Use `?make` to create one.")
-        return
-    
-    vampire = vampires[user_id]
-    total_battles = vampire["wins"] + vampire["losses"]
-    win_rate = (vampire["wins"] / total_battles * 100) if total_battles > 0 else 0
-    
-    embed = discord.Embed(
-        title=f"🧛 {target.name}'s Vampire Stats",
-        color=discord.Color.dark_red()
-    )
-    embed.add_field(name="Vampire ID", value=f"`{vampire['id']}`", inline=True)
-    embed.add_field(name="Power Level", value=f"⚡ **{vampire['power']}**", inline=True)
-    embed.add_field(name="Record", value=f"🏆 {vampire['wins']}W - {vampire['losses']}L", inline=True)
-    embed.add_field(name="Win Rate", value=f"📊 {win_rate:.1f}%", inline=True)
-    embed.add_field(name="Total Battles", value=f"⚔️ {total_battles}", inline=True)
-    
-    await ctx.send(embed=embed)
-
-@bot.command(name='fight')
-async def fight(ctx):
-    """Fight an AI opponent"""
-    
-    # Block command in specific channel
-    if ctx.channel.id == BLOCKED_CHANNEL_ID:
-        await ctx.send("❌ This command is disabled in this channel.")
-        return
-    
-    vampires = load_vampires()
-    user_id = str(ctx.author.id)
-    
-    # Check if user has a vampire
-    if user_id not in vampires:
-        await ctx.send("❌ You need to create a vampire first! Use `?make` to create one.")
-        return
-    
-    # Check credits
-    current_credits, time_remaining = check_credits(user_id)
-    
-    if current_credits == 0:
-        minutes = int(time_remaining.total_seconds() // 60)
-        seconds = int(time_remaining.total_seconds() % 60)
-        await ctx.send(f"❌ You're out of fight credits! Next refill in **{minutes}m {seconds}s**")
-        return
-    
-    # Use a credit
-    use_credit(user_id)
-    remaining_credits = current_credits - 1
-    
-    player_vampire = vampires[user_id]
-    player_power = player_vampire["power"]
-    
-    # Generate AI opponent with DYNAMIC power
-    ai_opponent = generate_ai_opponent(player_power)
-    ai_power = ai_opponent["power"]
-    
-    # Battle calculation
-    power_diff = player_power - ai_power
-    
-    # Base win chance
-    if power_diff > 0:
-        win_chance = 50 + min(40, power_diff / player_power * 100)
-    else:
-        win_chance = 50 - min(40, abs(power_diff) / ai_power * 100)
-    
-    # Add randomness (±10%)
-    win_chance = max(5, min(95, win_chance + random.uniform(-10, 10)))
-    
-    # Determine winner
-    battle_result = random.random() * 100 < win_chance
-    
-    # Calculate power change
-    if battle_result:  # Player wins
-        # Power gain based on opponent strength
-        if ai_power < player_power * 0.7:
-            power_gain = random.randint(3, 8)
-        elif ai_power < player_power * 0.9:
-            power_gain = random.randint(8, 15)
-        elif ai_power < player_power * 1.1:
-            power_gain = random.randint(10, 20)
-        elif ai_power < player_power * 1.5:
-            power_gain = random.randint(20, 30)
-        else:
-            power_gain = random.randint(30, 50)
-        
-        vampires[user_id]["power"] += power_gain
-        vampires[user_id]["wins"] += 1
-        result_color = discord.Color.green()
-        result_emoji = "🎉"
-        result_text = "VICTORY!"
-        power_change = f"+{power_gain}"
-        
-    else:  # Player loses
-        # Power loss (less harsh for stronger opponents)
-        if ai_power < player_power * 0.7:
-            power_loss = random.randint(10, 20)
-        elif ai_power < player_power * 0.9:
-            power_loss = random.randint(8, 15)
-        elif ai_power < player_power * 1.1:
-            power_loss = random.randint(5, 10)
-        elif ai_power < player_power * 1.5:
-            power_loss = random.randint(3, 7)
-        else:
-            power_loss = random.randint(2, 5)
-        
-        vampires[user_id]["power"] = max(50, vampires[user_id]["power"] - power_loss)
-        vampires[user_id]["losses"] += 1
-        result_color = discord.Color.red()
-        result_emoji = "💀"
-        result_text = "DEFEAT!"
-        power_change = f"-{power_loss}"
-    
-    save_vampires(vampires)
-    
-    # Log battle
-    battle_log = {
-        "timestamp": datetime.now().isoformat(),
-        "player": ctx.author.name,
-        "player_power": player_power,
-        "opponent": ai_opponent["name"],
-        "opponent_power": ai_power,
-        "winner": ctx.author.name if battle_result else ai_opponent["name"],
-        "power_change": power_change
-    }
-    
-    logs = load_battle_logs()
-    logs.append(battle_log)
-    save_battle_logs(logs)
-    
-    # Create battle embed
-    embed = discord.Embed(
-        title=f"{result_emoji} {result_text}",
-        description=f"**{ctx.author.name}** vs **{ai_opponent['name']}**",
-        color=result_color
-    )
-    
-    embed.add_field(
-        name="Your Power",
-        value=f"⚡ {player_power}",
-        inline=True
-    )
-    embed.add_field(
-        name="Opponent Power",
-        value=f"⚡ {ai_power}",
-        inline=True
-    )
-    embed.add_field(
-        name="Power Change",
-        value=f"📊 {power_change}",
-        inline=True
-    )
-    embed.add_field(
-        name="New Power",
-        value=f"⚡ {vampires[user_id]['power']}",
-        inline=True
-    )
-    embed.add_field(
-        name="Credits Left",
-        value=f"🎫 {remaining_credits}/{MAX_CREDITS}",
-        inline=True
-    )
-    embed.add_field(
-        name="Win Chance",
-        value=f"📈 {win_chance:.1f}%",
-        inline=True
-    )
-    
-    await ctx.send(embed=embed)
-
-@bot.command(name='credits')
-async def check_fight_credits(ctx):
-    """Check your remaining fight credits"""
-    
-    user_id = str(ctx.author.id)
-    current_credits, time_remaining = check_credits(user_id)
-    
-    embed = discord.Embed(
-        title="🎫 Fight Credits",
-        description=f"**{ctx.author.name}'s Credits**",
-        color=discord.Color.blue()
-    )
-    
-    embed.add_field(
-        name="Available Credits",
-        value=f"🎫 {current_credits}/{MAX_CREDITS}",
-        inline=True
-    )
-    
-    if current_credits == 0 and time_remaining:
-        minutes = int(time_remaining.total_seconds() // 60)
-        seconds = int(time_remaining.total_seconds() % 60)
-        embed.add_field(
-            name="Next Refill",
-            value=f"⏰ {minutes}m {seconds}s",
-            inline=True
-        )
-    
-    embed.set_footer(text=f"Credits refill {CREDIT_COOLDOWN_MINUTES} minutes after reaching 0")
-    
-    await ctx.send(embed=embed)
-
-@bot.command(name='leaderboard')
-async def leaderboard(ctx):
-    """Show top 10 vampires by power"""
-    
-    vampires = load_vampires()
-    
-    if not vampires:
-        await ctx.send("❌ No vampires exist yet! Use `?make` to create one.")
-        return
-    
-    # Sort by power
-    sorted_vampires = sorted(
-        vampires.items(),
-        key=lambda x: x[1]["power"],
-        reverse=True
-    )[:10]
-    
-    embed = discord.Embed(
-        title="🏆 Vampire Leaderboard",
-        description="Top 10 Most Powerful Vampires",
-        color=discord.Color.gold()
-    )
-    
-    for i, (user_id, vampire) in enumerate(sorted_vampires, 1):
-        medal = "🥇" if i == 1 else "🥈" if i == 2 else "🥉" if i == 3 else f"{i}."
-        
-        record = f"{vampire['wins']}W-{vampire['losses']}L"
-        embed.add_field(
-            name=f"{medal} {vampire['username']}",
-            value=f"⚡ Power: **{vampire['power']}** | Record: {record}",
-            inline=False
-        )
-    
-    await ctx.send(embed=embed)
-
-@bot.command(name='reset')
-@commands.has_permissions(administrator=True)
-async def reset_vampire(ctx, member: discord.Member):
-    """Admin command to reset a user's vampire"""
-    
-    vampires = load_vampires()
-    user_id = str(member.id)
-    
-    if user_id not in vampires:
-        await ctx.send(f"❌ {member.name} doesn't have a vampire.")
-        return
-    
-    del vampires[user_id]
-    save_vampires(vampires)
-    
-    await ctx.send(f"✅ {member.name}'s vampire has been reset. They can create a new one with `?make`.")
-
-# Run the bot
-if __name__ == "__main__":
-    TOKEN = os.getenv('DISCORD_BOT_TOKEN')
-    if not TOKEN:
-        print("ERROR: No bot token found in environment variables!")
-    else:
-        bot.run(TOKEN)
+    
+    # Determine difficulty tier b
