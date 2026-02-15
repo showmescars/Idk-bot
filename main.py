@@ -15,70 +15,31 @@ intents.message_content = True
 bot = commands.Bot(command_prefix='?', intents=intents)
 
 # Files
-ACCOUNTS_FILE = 'accounts.json'
-LOGS_FILE = 'claim_logs.json'
-CREDITS_FILE = 'credits.json'
-WHITELIST_FILE = 'whitelist.json'
+VAMPIRES_FILE = 'vampires.json'
 
 # Blocked channel ID
 BLOCKED_CHANNEL_ID = 1470843481177198876
 
-# Credit settings
-STARTING_CREDITS = 15
-GEN_COST = 5
-
-# Load accounts
-def load_accounts():
-    if os.path.exists(ACCOUNTS_FILE):
-        with open(ACCOUNTS_FILE, 'r') as f:
+# Load vampires
+def load_vampires():
+    if os.path.exists(VAMPIRES_FILE):
+        with open(VAMPIRES_FILE, 'r') as f:
             return json.load(f)
     return {}
 
-# Save accounts
-def save_accounts(accounts):
-    with open(ACCOUNTS_FILE, 'w') as f:
-        json.dump(accounts, f, indent=4)
+# Save vampires
+def save_vampires(vampires):
+    with open(VAMPIRES_FILE, 'w') as f:
+        json.dump(vampires, f, indent=4)
 
-# Load logs
-def load_logs():
-    if os.path.exists(LOGS_FILE):
-        with open(LOGS_FILE, 'r') as f:
-            return json.load(f)
-    return []
+# Generate unique 6-digit ID
+def generate_vampire_id(vampires):
+    while True:
+        vampire_id = str(random.randint(100000, 999999))
+        if vampire_id not in vampires:
+            return vampire_id
 
-# Save logs
-def save_logs(logs):
-    with open(LOGS_FILE, 'w') as f:
-        json.dump(logs, f, indent=4)
-
-# Load credits
-def load_credits():
-    if os.path.exists(CREDITS_FILE):
-        with open(CREDITS_FILE, 'r') as f:
-            return json.load(f)
-    return {}
-
-# Save credits
-def save_credits(credits):
-    with open(CREDITS_FILE, 'w') as f:
-        json.dump(credits, f, indent=4)
-
-# Load whitelist
-def load_whitelist():
-    if os.path.exists(WHITELIST_FILE):
-        with open(WHITELIST_FILE, 'r') as f:
-            return json.load(f)
-    return []
-
-# Save whitelist
-def save_whitelist(whitelist):
-    with open(WHITELIST_FILE, 'w') as f:
-        json.dump(whitelist, f, indent=4)
-
-accounts = load_accounts()
-logs = load_logs()
-credits = load_credits()
-whitelist = load_whitelist()
+vampires = load_vampires()
 
 @bot.event
 async def on_ready():
@@ -89,7 +50,7 @@ async def on_ready():
 @bot.check
 async def globally_block_dms(ctx):
     if ctx.guild is None:
-        await ctx.send("🦇 Commands can only be used in servers, not in the shadows of DMs...")
+        await ctx.send("Commands can only be used in servers, not in the shadows of DMs...")
         return False
     return True
 
@@ -192,45 +153,71 @@ async def make_vampire(ctx):
     personality = random.choice(personalities)
     age = random.randint(150, 1500)
     
+    # Generate unique ID
+    vampire_id = generate_vampire_id(vampires)
+    
+    # Store vampire data
+    vampire_data = {
+        "id": vampire_id,
+        "first_name": first_name,
+        "last_name": last_name,
+        "title": title,
+        "age": age,
+        "origin": origin,
+        "power": power,
+        "weakness": weakness,
+        "personality": personality,
+        "created_by": str(ctx.author.id),
+        "created_at": datetime.now().isoformat()
+    }
+    
+    vampires[vampire_id] = vampire_data
+    save_vampires(vampires)
+    
     # Create embed
     embed = discord.Embed(
-        title=f"🦇 {first_name} {last_name} 🦇",
+        title=f"{first_name} {last_name}",
         description=f"*{title}*",
-        color=0x8B0000  # Dark red/blood color
+        color=0x8B0000
     )
     
     embed.add_field(
-        name="⚰️ Age",
+        name="ID",
+        value=f"#{vampire_id}",
+        inline=True
+    )
+    
+    embed.add_field(
+        name="Age",
         value=f"{age} years old",
         inline=True
     )
     
     embed.add_field(
-        name="🌙 Origin",
+        name="Origin",
         value=f"Born from {origin}",
         inline=False
     )
     
     embed.add_field(
-        name="💀 Dark Gift",
+        name="Dark Gift",
         value=f"Possesses {power}",
         inline=False
     )
     
     embed.add_field(
-        name="✝️ Fatal Flaw",
+        name="Fatal Flaw",
         value=f"However, {weakness}",
         inline=False
     )
     
     embed.add_field(
-        name="🎭 Nature",
+        name="Nature",
         value=personality.capitalize(),
         inline=False
     )
     
-    # Add atmospheric footer
-    embed.set_footer(text="🩸 The night is eternal, and so are we... 🩸")
+    embed.set_footer(text="The night is eternal, and so are we...")
     embed.timestamp = datetime.now()
     
     await ctx.send(embed=embed)
