@@ -408,6 +408,73 @@ async def fight_vampire(ctx, vampire_id: str = None):
     
     await ctx.send(embed=embed)
 
+# List command - Show all your vampires
+@bot.command(name='list')
+async def list_vampires(ctx):
+    """Display all vampires you have created"""
+    
+    user_id = str(ctx.author.id)
+    
+    # Filter vampires by creator
+    user_vampires = {vid: vdata for vid, vdata in vampires.items() if vdata.get("created_by") == user_id}
+    
+    if not user_vampires:
+        await ctx.send("You have not created any vampires yet. Use ``?make`` to create one.")
+        return
+    
+    # Separate alive and dead vampires
+    alive_vampires = {vid: vdata for vid, vdata in user_vampires.items() if vdata.get("status") == "alive"}
+    dead_vampires = {vid: vdata for vid, vdata in user_vampires.items() if vdata.get("status") == "dead"}
+    
+    # Create embed
+    embed = discord.Embed(
+        title=f"{ctx.author.name}'s Vampire Coven",
+        color=0x8B0000
+    )
+    
+    # Add alive vampires
+    if alive_vampires:
+        alive_list = ""
+        for vid, vdata in alive_vampires.items():
+            name = f"{vdata['first_name']} {vdata['last_name']}"
+            power = vdata.get('power_level', 100)
+            wins = vdata.get('wins', 0)
+            losses = vdata.get('losses', 0)
+            alive_list += f"``{vid}`` - **{name}**\n"
+            alive_list += f"Power: {power} | Record: {wins}W - {losses}L\n\n"
+        
+        embed.add_field(
+            name="Active Vampires",
+            value=alive_list,
+            inline=False
+        )
+    
+    # Add dead vampires
+    if dead_vampires:
+        dead_list = ""
+        for vid, vdata in dead_vampires.items():
+            name = f"{vdata['first_name']} {vdata['last_name']}"
+            wins = vdata.get('wins', 0)
+            losses = vdata.get('losses', 0)
+            dead_list += f"``{vid}`` - **{name}** [FALLEN]\n"
+            dead_list += f"Final Record: {wins}W - {losses}L\n\n"
+        
+        embed.add_field(
+            name="Fallen Vampires",
+            value=dead_list,
+            inline=False
+        )
+    
+    # Add summary
+    total = len(user_vampires)
+    alive_count = len(alive_vampires)
+    dead_count = len(dead_vampires)
+    
+    embed.set_footer(text=f"Total: {total} | Active: {alive_count} | Fallen: {dead_count}")
+    embed.timestamp = datetime.now()
+    
+    await ctx.send(embed=embed)
+
 # Run the bot
 if __name__ == "__main__":
     # Try to load from .env file (for local development)
