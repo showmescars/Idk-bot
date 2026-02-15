@@ -57,6 +57,19 @@ LAST_NAMES = [
 # Transfer requests storage (temporary, in-memory)
 transfer_requests = {}
 
+# Function to get vampire rank based on power level
+def get_vampire_rank(power_level):
+    if power_level <= 30:
+        return "Fledgling"
+    elif power_level <= 60:
+        return "Stalker"
+    elif power_level <= 100:
+        return "Nightlord"
+    elif power_level <= 150:
+        return "Elder"
+    else:  # 151-200
+        return "Ancient"
+
 # Load characters
 def load_characters():
     if os.path.exists(CHARACTERS_FILE):
@@ -129,6 +142,10 @@ async def make_character(ctx):
         
         embed.add_field(name="Blood Power", value=f"{char['power_level']}", inline=False)
         
+        # Add rank
+        rank = get_vampire_rank(char['power_level'])
+        embed.add_field(name="Rank", value=f"{rank}", inline=False)
+        
         skills_text = "\n".join([f"- {skill}" for skill in char['skills']])
         embed.add_field(name="Vampiric Abilities", value=skills_text, inline=False)
         
@@ -181,6 +198,10 @@ async def make_character(ctx):
     
     embed.add_field(name="Blood Power", value=f"{power_level}", inline=False)
     
+    # Add rank
+    rank = get_vampire_rank(power_level)
+    embed.add_field(name="Rank", value=f"{rank}", inline=False)
+    
     skills_text = "\n".join([f"- {skill}" for skill in selected_skills])
     embed.add_field(name="Vampiric Abilities", value=skills_text, inline=False)
     
@@ -212,6 +233,10 @@ async def show_character(ctx):
     
     embed.add_field(name="Blood Power", value=f"{char['power_level']}", inline=False)
     
+    # Add rank
+    rank = get_vampire_rank(char['power_level'])
+    embed.add_field(name="Rank", value=f"{rank}", inline=False)
+    
     skills_text = "\n".join([f"- {skill}" for skill in char['skills']])
     embed.add_field(name="Vampiric Abilities", value=skills_text, inline=False)
     
@@ -221,6 +246,60 @@ async def show_character(ctx):
     embed.add_field(name="Battle Record", value=f"{wins}W - {losses}L", inline=False)
     
     await ctx.send(embed=embed)
+
+# Rank command - Show vampire rank tiers
+@bot.command(name='rank')
+async def vampire_ranks(ctx):
+    """Display vampire rank tiers and power requirements"""
+    
+    rank_embed = discord.Embed(
+        title="VAMPIRE RANK TIERS",
+        description="As vampires grow in power, they ascend through ancient ranks",
+        color=discord.Color.dark_gold()
+    )
+    
+    rank_embed.add_field(
+        name="Fledgling",
+        value="Power: 0-30\nNewly turned vampires, still learning their abilities",
+        inline=False
+    )
+    
+    rank_embed.add_field(
+        name="Stalker",
+        value="Power: 31-60\nExperienced hunters of the night",
+        inline=False
+    )
+    
+    rank_embed.add_field(
+        name="Nightlord",
+        value="Power: 61-100\nMasters of darkness and blood",
+        inline=False
+    )
+    
+    rank_embed.add_field(
+        name="Elder",
+        value="Power: 101-150\nCenturies-old vampires of immense power",
+        inline=False
+    )
+    
+    rank_embed.add_field(
+        name="Ancient",
+        value="Power: 151-200\nLegendary vampires of unfathomable strength",
+        inline=False
+    )
+    
+    # Show user's current rank if they have a vampire
+    user_id = str(ctx.author.id)
+    if user_id in characters:
+        char = characters[user_id]
+        current_rank = get_vampire_rank(char['power_level'])
+        rank_embed.add_field(
+            name="Your Current Rank",
+            value=f"{char['name']} - **{current_rank}** (Power: {char['power_level']})",
+            inline=False
+        )
+    
+    await ctx.send(embed=rank_embed)
 
 # Train command - Train your vampire to become more powerful
 @bot.command(name='train')
@@ -268,6 +347,10 @@ async def train_vampire(ctx, character_id: str = None):
         new_power = 200
         power_gain = 200 - old_power
     
+    old_rank = get_vampire_rank(old_power)
+    new_rank = get_vampire_rank(new_power)
+    ranked_up = old_rank != new_rank
+    
     player_char['power_level'] = new_power
     
     # Random chance to learn a new skill (20% chance)
@@ -305,6 +388,13 @@ async def train_vampire(ctx, character_id: str = None):
         value=f"{old_power} → {new_power} (+{power_gain})",
         inline=False
     )
+    
+    if ranked_up:
+        result_embed.add_field(
+            name="RANK UP!",
+            value=f"{old_rank} → **{new_rank}**",
+            inline=False
+        )
     
     if learned_new_skill:
         result_embed.add_field(
@@ -454,6 +544,9 @@ async def blood_transfer(ctx, member: discord.Member = None):
         # Clear the request
         del transfer_requests[reverse_key]
         
+        # Get hybrid rank
+        hybrid_rank = get_vampire_rank(hybrid_power)
+        
         # Result embed
         result_embed = discord.Embed(
             title="HYBRID VAMPIRE BORN",
@@ -463,6 +556,7 @@ async def blood_transfer(ctx, member: discord.Member = None):
         
         result_embed.add_field(name="Hybrid Name", value=hybrid_name, inline=False)
         result_embed.add_field(name="Blood Power", value=f"{hybrid_power} (+{bonus} ritual bonus)", inline=False)
+        result_embed.add_field(name="Rank", value=f"{hybrid_rank}", inline=False)
         result_embed.add_field(name="Total Abilities", value=f"{len(all_skills)} abilities", inline=False)
         result_embed.add_field(name="Battle Record", value=f"{total_wins}W - 0L", inline=False)
         result_embed.add_field(
@@ -718,8 +812,9 @@ async def world_stats(ctx):
         for idx, vamp in enumerate(alive_list, 1):
             wins = vamp.get('wins', 0)
             losses = vamp.get('losses', 0)
+            rank = get_vampire_rank(vamp['power_level'])
             hybrid_tag = " [HYBRID]" if vamp.get('is_hybrid', False) else ""
-            alive_text += f"{idx}. **{vamp['name']}{hybrid_tag}**\nID: `{vamp['character_id']}` | Power: {vamp['power_level']} | Record: {wins}W-{losses}L\n\n"
+            alive_text += f"{idx}. **{vamp['name']}{hybrid_tag}**\nID: `{vamp['character_id']}` | {rank} | Power: {vamp['power_level']} | Record: {wins}W-{losses}L\n\n"
         
         combined_embed.add_field(name="\u200b", value=alive_text, inline=False)
     
@@ -732,7 +827,8 @@ async def world_stats(ctx):
         for vamp in recent_dead:
             wins = vamp.get('wins', 0)
             losses = vamp.get('losses', 0)
-            dead_text += f"**{vamp['name']}**\nID: `{vamp['character_id']}` | Power: {vamp['power_level']} | Record: {wins}W-{losses}L\nKilled by: {vamp.get('killed_by', 'Unknown')}\n\n"
+            rank = get_vampire_rank(vamp['power_level'])
+            dead_text += f"**{vamp['name']}**\nID: `{vamp['character_id']}` | {rank} | Power: {vamp['power_level']} | Record: {wins}W-{losses}L\nKilled by: {vamp.get('killed_by', 'Unknown')}\n\n"
         
         combined_embed.add_field(name="\u200b", value=dead_text, inline=False)
     
