@@ -112,6 +112,11 @@ async def make_character(ctx):
         skills_text = "\n".join([f"- {skill}" for skill in char['skills']])
         embed.add_field(name="Vampiric Abilities", value=skills_text, inline=False)
         
+        # Show record
+        wins = char.get('wins', 0)
+        losses = char.get('losses', 0)
+        embed.add_field(name="Battle Record", value=f"{wins}W - {losses}L", inline=False)
+        
         await ctx.send(embed=embed)
         return
     
@@ -138,6 +143,8 @@ async def make_character(ctx):
         "user_id": user_id,
         "power_level": power_level,
         "skills": selected_skills,
+        "wins": 0,
+        "losses": 0,
         "created_at": datetime.now().strftime('%Y-%m-%d %H:%M:%S')
     }
     
@@ -156,6 +163,9 @@ async def make_character(ctx):
     
     skills_text = "\n".join([f"- {skill}" for skill in selected_skills])
     embed.add_field(name="Vampiric Abilities", value=skills_text, inline=False)
+    
+    # Show initial record
+    embed.add_field(name="Battle Record", value="0W - 0L", inline=False)
     
     await ctx.send(embed=embed)
 
@@ -184,6 +194,11 @@ async def show_character(ctx):
     
     skills_text = "\n".join([f"- {skill}" for skill in char['skills']])
     embed.add_field(name="Vampiric Abilities", value=skills_text, inline=False)
+    
+    # Show record
+    wins = char.get('wins', 0)
+    losses = char.get('losses', 0)
+    embed.add_field(name="Battle Record", value=f"{wins}W - {losses}L", inline=False)
     
     await ctx.send(embed=embed)
 
@@ -255,6 +270,13 @@ async def fight_character(ctx, character_id: str = None):
     
     # Result embed
     if player_wins:
+        # Update wins
+        if 'wins' not in player_char:
+            player_char['wins'] = 0
+        player_char['wins'] += 1
+        characters[user_id] = player_char
+        save_characters(characters)
+        
         result_embed = discord.Embed(
             title="VICTORY",
             description=f"{player_char['name']} has drained {ai_name} of their blood!",
@@ -270,6 +292,11 @@ async def fight_character(ctx, character_id: str = None):
             inline=False
         )
         
+        # Show updated record
+        wins = player_char.get('wins', 0)
+        losses = player_char.get('losses', 0)
+        result_embed.add_field(name="New Record", value=f"{wins}W - {losses}L", inline=False)
+        
         await ctx.send(embed=result_embed)
     else:
         result_embed = discord.Embed(
@@ -281,6 +308,12 @@ async def fight_character(ctx, character_id: str = None):
         result_embed.add_field(name="Your Blood Power", value=f"{player_power}", inline=True)
         result_embed.add_field(name="Enemy Blood Power", value=f"{ai_power_level}", inline=True)
         result_embed.add_field(name="Win Chance", value=f"{final_win_chance:.1f}%", inline=True)
+        
+        # Show final record before deletion
+        wins = player_char.get('wins', 0)
+        losses = player_char.get('losses', 0)
+        result_embed.add_field(name="Final Record", value=f"{wins}W - {losses}L", inline=False)
+        
         result_embed.add_field(
             name="Battle Summary",
             value=f"{player_char['name']} has been staked through the heart and turned to ash...\n\nYour vampire has been destroyed. Use `?make` to create a new one.",
