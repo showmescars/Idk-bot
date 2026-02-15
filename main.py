@@ -219,6 +219,98 @@ async def show_character(ctx):
     
     await ctx.send(embed=embed)
 
+# Train command - Train your vampire to become more powerful
+@bot.command(name='train')
+async def train_vampire(ctx, character_id: str = None):
+    """Train your vampire to increase their power! Usage: ?train <character_id>"""
+    
+    # Check if character ID was provided
+    if character_id is None:
+        await ctx.send("Usage: `?train <character_id>`\nExample: `?train 123456`\n\nUse `?show` to see your vampire ID.")
+        return
+    
+    user_id = str(ctx.author.id)
+    
+    # Check if user has a vampire
+    if user_id not in characters:
+        await ctx.send("You don't have a vampire yet! Use `?make` to create one.")
+        return
+    
+    player_char = characters[user_id]
+    
+    # Verify the character ID matches
+    if player_char['character_id'] != character_id:
+        await ctx.send(f"Invalid vampire ID! Your vampire ID is `{player_char['character_id']}`")
+        return
+    
+    # Training embed
+    training_embed = discord.Embed(
+        title="TRAINING SESSION",
+        description=f"{player_char['name']} begins intense training in the shadows...",
+        color=discord.Color.blue()
+    )
+    
+    await ctx.send(embed=training_embed)
+    
+    # 3 second delay for training
+    await asyncio.sleep(3)
+    
+    # Random power increase (1 to 10)
+    power_gain = random.randint(1, 10)
+    old_power = player_char['power_level']
+    new_power = old_power + power_gain
+    
+    # Cap at 200
+    if new_power > 200:
+        new_power = 200
+        power_gain = 200 - old_power
+    
+    player_char['power_level'] = new_power
+    
+    # Random chance to learn a new skill (20% chance)
+    learned_new_skill = False
+    new_skill = None
+    
+    if random.randint(1, 100) <= 20 and len(player_char['skills']) < 10:
+        # Get skills the vampire doesn't have yet
+        available_skills = [skill for skill in SKILLS if skill not in player_char['skills']]
+        if available_skills:
+            new_skill = random.choice(available_skills)
+            player_char['skills'].append(new_skill)
+            learned_new_skill = True
+    
+    # Save updated vampire
+    characters[user_id] = player_char
+    save_characters(characters)
+    
+    # Results embed
+    result_embed = discord.Embed(
+        title="TRAINING COMPLETE",
+        description=f"{player_char['name']} has grown stronger!",
+        color=discord.Color.gold()
+    )
+    
+    result_embed.add_field(
+        name="Power Increase",
+        value=f"{old_power} → {new_power} (+{power_gain})",
+        inline=False
+    )
+    
+    if learned_new_skill:
+        result_embed.add_field(
+            name="New Ability Learned!",
+            value=f"{new_skill}",
+            inline=False
+        )
+    
+    result_embed.add_field(
+        name="Total Abilities",
+        value=f"{len(player_char['skills'])} abilities",
+        inline=False
+    )
+    
+    await ctx.send(embed=result_embed)
+
 # Fight command - Fight random vampire opponents
 @bot.command(name='fight')
 async def fight_character(ctx, character_id: str = None):
