@@ -17,41 +17,39 @@ bot = commands.Bot(command_prefix='?', intents=intents)
 # Files
 CHARACTERS_FILE = 'characters.json'
 
-# Skills pool
+# Vampire abilities pool
 SKILLS = [
-    "Super Strength", "Speed Blitz", "Fire Manipulation", "Ice Control",
-    "Lightning Strike", "Telekinesis", "Shadow Step", "Regeneration",
-    "Energy Blast", "Force Field", "Mind Reading", "Invisibility",
-    "Flight", "Time Slow", "Earth Manipulation", "Wind Control",
-    "Laser Vision", "Berserker Rage", "Illusion Casting", "Poison Touch",
-    "Gravity Control", "Weapon Mastery", "Martial Arts Expert", "Super Durability",
-    "Sonic Scream", "Acid Spit", "Diamond Skin", "Shapeshifting",
-    "Teleportation", "Blood Manipulation", "Bone Control", "Metal Bending",
-    "Plant Growth", "Water Bending", "Explosion", "Petrification",
-    "Curse", "Healing Touch", "Absorption", "Cloning"
+    "Blood Manipulation", "Shadow Travel", "Hypnotic Gaze", "Supernatural Speed",
+    "Enhanced Strength", "Regeneration", "Mist Form", "Bat Transformation",
+    "Mind Control", "Night Vision", "Wall Crawling", "Blood Drain",
+    "Immortality", "Shapeshifting", "Feral Claws", "Venomous Bite",
+    "Telepathy", "Superhuman Agility", "Blood Sense", "Darkness Manipulation",
+    "Charm", "Fear Inducement", "Enhanced Senses", "Undead Resilience",
+    "Thrall Creation", "Blood Healing", "Vampiric Speed", "Death Touch",
+    "Soul Drain", "Crimson Lightning", "Bloodlust Rage", "Eternal Youth",
+    "Mesmerize", "Bloodfire", "Cursed Bite", "Nightmare Inducement",
+    "Blood Wings", "Lunar Empowerment", "Corpse Animation", "Dark Pact"
 ]
 
-# Name pools
+# Vampire name pools
 FIRST_NAMES = [
-    "Axel", "Blaze", "Drake", "Ember", "Frost", "Gale", "Hunter", "Iron",
-    "Jade", "Kane", "Luna", "Magnus", "Nova", "Onyx", "Phoenix", "Raven",
-    "Shadow", "Storm", "Titan", "Vex", "Wolf", "Zane", "Ash", "Blade",
-    "Crimson", "Dante", "Echo", "Flint", "Hawk", "Iris", "Jett", "Kai",
-    "Lyra", "Maximus", "Nyx", "Orion", "Pierce", "Quinn", "Rex", "Sage",
-    "Thorn", "Viper", "Zara", "Atlas", "Celeste", "Dusk", "Elektra", "Fang",
-    "Glacier", "Havoc", "Inferno", "Jinx"
+    "Dracula", "Vladislav", "Carmilla", "Lestat", "Akasha", "Armand", "Blade", "Selene",
+    "Viktor", "Marcus", "Lucian", "Sonja", "Aro", "Caius", "Demetri", "Jane",
+    "Alec", "Elijah", "Klaus", "Rebekah", "Kol", "Finn", "Alaric", "Damon",
+    "Stefan", "Katherine", "Silas", "Qetsiyah", "Amara", "Niklaus", "Mikael", "Esther",
+    "Freya", "Dahlia", "Lucien", "Tristan", "Aurora", "Rayna", "Julian", "Lily",
+    "Valerie", "Nora", "Mary", "Beau", "Oscar", "Malcolm", "Sage", "Maddox",
+    "Atticus", "Greta", "Antoinette"
 ]
 
 LAST_NAMES = [
-    "Blackwood", "Stormborn", "Ironheart", "Shadowfang", "Firebrand", "Frostbane",
-    "Thunderstrike", "Nightshade", "Bloodmoon", "Steelheart", "Darkblade", "Windwalker",
-    "Stormbringer", "Flamekeeper", "Icebreaker", "Thunderfist", "Shadowclaw", "Ironfist",
-    "Nightwing", "Bloodstone", "Stormrider", "Fireborn", "Frostforge", "Thunderbolt",
-    "Darkheart", "Windstorm", "Stormguard", "Flameheart", "Icestorm", "Nightbringer",
-    "Bloodfang", "Steelborn", "Darkstorm", "Windblade", "Stormcaller", "Firewalker",
-    "Frostheart", "Thunderborn", "Shadowborn", "Ironborn", "Nightfall", "Bloodreaper",
-    "Stormforge", "Firestorm", "Iceborn", "Thunderclaw", "Darkfire", "Windborne",
-    "Stormbreaker", "Flamebringer"
+    "Tepes", "Drăculești", "Karnstein", "De Lioncourt", "Enkil", "Romanus", "Corvinus", "Nightshade",
+    "Von Doom", "Bloodworth", "Blackthorn", "Darkmore", "Volturi", "Mikaelson", "Salvatore", "Pierce",
+    "Bennett", "Forbes", "Lockwood", "Donovan", "Gilbert", "Fell", "Whitmore", "St. John",
+    "Ashford", "Bloodmoon", "Crimson", "Ravencroft", "Shadowend", "Duskbane", "Nocturne", "Grave",
+    "Morningstar", "Hellsing", "Alucard", "Belmont", "Castlevania", "Blackwood", "Von Carstein", "Draken",
+    "Mourning", "Eclipse", "Eventide", "Twilight", "Sanguine", "Hemlock", "Mortis", "Grimwood",
+    "Nightfall", "Darkholm"
 ]
 
 # Load characters
@@ -81,7 +79,7 @@ characters = load_characters()
 @bot.event
 async def on_ready():
     print(f'{bot.user} is online')
-    print('Character Generator Ready')
+    print('Vampire Generator Ready')
 
 # Check to block DM commands
 @bot.check
@@ -91,33 +89,33 @@ async def globally_block_dms(ctx):
         return False
     return True
 
-# Make command - Creates a character
+# Make command - Creates a vampire
 @bot.command(name='make')
 async def make_character(ctx):
-    """Generate a unique character with random name, skills and power level"""
+    """Generate a unique vampire with random abilities and power level"""
     
     user_id = str(ctx.author.id)
     
-    # Check if user already has a character
+    # Check if user already has a vampire
     if user_id in characters:
         char = characters[user_id]
         
-        # Display existing character
+        # Display existing vampire
         embed = discord.Embed(
             title=char['name'],
-            description=f"Owner: {ctx.author.name}\nID: `{char['character_id']}`",
-            color=discord.Color.red()
+            description=f"Owner: {ctx.author.name}\nID: `{char['character_id']}`\nRace: Vampire",
+            color=discord.Color.dark_red()
         )
         
-        embed.add_field(name="Power Level", value=f"{char['power_level']}", inline=False)
+        embed.add_field(name="Blood Power", value=f"{char['power_level']}", inline=False)
         
         skills_text = "\n".join([f"- {skill}" for skill in char['skills']])
-        embed.add_field(name="Skills", value=skills_text, inline=False)
+        embed.add_field(name="Vampiric Abilities", value=skills_text, inline=False)
         
         await ctx.send(embed=embed)
         return
     
-    # Generate random character name
+    # Generate random vampire name
     first_name = random.choice(FIRST_NAMES)
     last_name = random.choice(LAST_NAMES)
     character_name = f"{first_name} {last_name}"
@@ -128,11 +126,11 @@ async def make_character(ctx):
     # Generate random power level (10 to 100)
     power_level = random.randint(10, 100)
     
-    # Generate 3-5 random unique skills
+    # Generate 3-5 random unique vampiric abilities
     num_skills = random.randint(3, 5)
     selected_skills = random.sample(SKILLS, num_skills)
     
-    # Create character data
+    # Create vampire data
     character_data = {
         "character_id": character_id,
         "name": character_name,
@@ -143,77 +141,77 @@ async def make_character(ctx):
         "created_at": datetime.now().strftime('%Y-%m-%d %H:%M:%S')
     }
     
-    # Save character
+    # Save vampire
     characters[user_id] = character_data
     save_characters(characters)
     
-    # Display new character
+    # Display new vampire
     embed = discord.Embed(
         title=character_name,
-        description=f"Owner: {ctx.author.name}\nID: `{character_id}`",
-        color=discord.Color.green()
+        description=f"Owner: {ctx.author.name}\nID: `{character_id}`\nRace: Vampire",
+        color=discord.Color.dark_red()
     )
     
-    embed.add_field(name="Power Level", value=f"{power_level}", inline=False)
+    embed.add_field(name="Blood Power", value=f"{power_level}", inline=False)
     
     skills_text = "\n".join([f"- {skill}" for skill in selected_skills])
-    embed.add_field(name="Skills", value=skills_text, inline=False)
+    embed.add_field(name="Vampiric Abilities", value=skills_text, inline=False)
     
     await ctx.send(embed=embed)
 
-# Show command - Shows your character
+# Show command - Shows your vampire
 @bot.command(name='show')
 async def show_character(ctx):
-    """Show your character"""
+    """Show your vampire"""
     
     user_id = str(ctx.author.id)
     
-    # Check if user has a character
+    # Check if user has a vampire
     if user_id not in characters:
-        await ctx.send("You don't have a character yet! Use `?make` to create one.")
+        await ctx.send("You don't have a vampire yet! Use `?make` to create one.")
         return
     
     char = characters[user_id]
     
-    # Display character
+    # Display vampire
     embed = discord.Embed(
         title=char['name'],
-        description=f"Owner: {ctx.author.name}\nID: `{char['character_id']}`",
-        color=discord.Color.blue()
+        description=f"Owner: {ctx.author.name}\nID: `{char['character_id']}`\nRace: Vampire",
+        color=discord.Color.dark_red()
     )
     
-    embed.add_field(name="Power Level", value=f"{char['power_level']}", inline=False)
+    embed.add_field(name="Blood Power", value=f"{char['power_level']}", inline=False)
     
     skills_text = "\n".join([f"- {skill}" for skill in char['skills']])
-    embed.add_field(name="Skills", value=skills_text, inline=False)
+    embed.add_field(name="Vampiric Abilities", value=skills_text, inline=False)
     
     await ctx.send(embed=embed)
 
-# Fight command - Fight random AI characters
+# Fight command - Fight random vampire opponents
 @bot.command(name='fight')
 async def fight_character(ctx, character_id: str = None):
-    """Fight a random AI character - you can win or lose! Usage: ?fight <character_id>"""
+    """Fight a random vampire - you can win or lose! Usage: ?fight <character_id>"""
     
     # Check if character ID was provided
     if character_id is None:
-        await ctx.send("Usage: `?fight <character_id>`\nExample: `?fight 123456`\n\nUse `?show` to see your character ID.")
+        await ctx.send("Usage: `?fight <character_id>`\nExample: `?fight 123456`\n\nUse `?show` to see your vampire ID.")
         return
     
     user_id = str(ctx.author.id)
     
-    # Check if user has a character
+    # Check if user has a vampire
     if user_id not in characters:
-        await ctx.send("You don't have a character yet! Use `?make` to create one.")
+        await ctx.send("You don't have a vampire yet! Use `?make` to create one.")
         return
     
     player_char = characters[user_id]
     
     # Verify the character ID matches
     if player_char['character_id'] != character_id:
-        await ctx.send(f"Invalid character ID! Your character ID is `{player_char['character_id']}`")
+        await ctx.send(f"Invalid vampire ID! Your vampire ID is `{player_char['character_id']}`")
         return
     
-    # Generate random AI opponent
+    # Generate random AI vampire opponent
     ai_first_name = random.choice(FIRST_NAMES)
     ai_last_name = random.choice(LAST_NAMES)
     ai_name = f"{ai_first_name} {ai_last_name}"
@@ -221,22 +219,22 @@ async def fight_character(ctx, character_id: str = None):
     ai_num_skills = random.randint(3, 5)
     ai_skills = random.sample(SKILLS, ai_num_skills)
     
-    # Battle embed - show both fighters
+    # Battle embed - show both vampires
     battle_embed = discord.Embed(
-        title="BATTLE START",
-        description="The fight is about to begin!",
-        color=discord.Color.orange()
+        title="BLOOD BATTLE",
+        description="Two vampires clash in the darkness!",
+        color=discord.Color.purple()
     )
     
     battle_embed.add_field(
         name=f"{player_char['name']} (YOU)",
-        value=f"Power Level: {player_char['power_level']}\nSkills: {', '.join(player_char['skills'][:2])}...",
+        value=f"Blood Power: {player_char['power_level']}\nAbilities: {', '.join(player_char['skills'][:2])}...",
         inline=True
     )
     
     battle_embed.add_field(
-        name=f"{ai_name} (AI)",
-        value=f"Power Level: {ai_power_level}\nSkills: {', '.join(ai_skills[:2])}...",
+        name=f"{ai_name} (ENEMY VAMPIRE)",
+        value=f"Blood Power: {ai_power_level}\nAbilities: {', '.join(ai_skills[:2])}...",
         inline=True
     )
     
@@ -259,16 +257,16 @@ async def fight_character(ctx, character_id: str = None):
     if player_wins:
         result_embed = discord.Embed(
             title="VICTORY",
-            description=f"{player_char['name']} has defeated {ai_name}!",
+            description=f"{player_char['name']} has drained {ai_name} of their blood!",
             color=discord.Color.green()
         )
         
-        result_embed.add_field(name="Your Power Level", value=f"{player_power}", inline=True)
-        result_embed.add_field(name="Enemy Power Level", value=f"{ai_power_level}", inline=True)
+        result_embed.add_field(name="Your Blood Power", value=f"{player_power}", inline=True)
+        result_embed.add_field(name="Enemy Blood Power", value=f"{ai_power_level}", inline=True)
         result_embed.add_field(name="Win Chance", value=f"{final_win_chance:.1f}%", inline=True)
         result_embed.add_field(
             name="Battle Summary",
-            value=f"{player_char['name']} emerged victorious and lives to fight another day!",
+            value=f"{player_char['name']} emerged victorious from the blood battle and survives to hunt another night!",
             inline=False
         )
         
@@ -276,22 +274,22 @@ async def fight_character(ctx, character_id: str = None):
     else:
         result_embed = discord.Embed(
             title="DEFEAT",
-            description=f"{player_char['name']} has been defeated by {ai_name}!",
+            description=f"{player_char['name']} has been destroyed by {ai_name}!",
             color=discord.Color.red()
         )
         
-        result_embed.add_field(name="Your Power Level", value=f"{player_power}", inline=True)
-        result_embed.add_field(name="Enemy Power Level", value=f"{ai_power_level}", inline=True)
+        result_embed.add_field(name="Your Blood Power", value=f"{player_power}", inline=True)
+        result_embed.add_field(name="Enemy Blood Power", value=f"{ai_power_level}", inline=True)
         result_embed.add_field(name="Win Chance", value=f"{final_win_chance:.1f}%", inline=True)
         result_embed.add_field(
             name="Battle Summary",
-            value=f"{player_char['name']} has fallen in battle and is no more...\n\nYour character has been deleted. Use `?make` to create a new one.",
+            value=f"{player_char['name']} has been staked through the heart and turned to ash...\n\nYour vampire has been destroyed. Use `?make` to create a new one.",
             inline=False
         )
         
         await ctx.send(embed=result_embed)
         
-        # Delete the character
+        # Delete the vampire
         del characters[user_id]
         save_characters(characters)
 
