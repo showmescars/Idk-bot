@@ -492,6 +492,228 @@ async def make_vampire(ctx):
     
     await ctx.send(embed=embed)
 
+# Transfer Soul command - Combine two vampires
+@bot.command(name='transfer')
+async def transfer_soul(ctx, vampire_id_1: str = None, vampire_id_2: str = None):
+    """Combine two vampires into one powerful entity. Both vampires will be sacrificed."""
+    
+    if vampire_id_1 is None or vampire_id_2 is None:
+        await ctx.send("Usage: ``?transfer <vampire_id_1> <vampire_id_2>``")
+        return
+    
+    # Check if both vampires exist
+    if vampire_id_1 not in vampires:
+        await ctx.send(f"Vampire with ID ``{vampire_id_1}`` not found.")
+        return
+    
+    if vampire_id_2 not in vampires:
+        await ctx.send(f"Vampire with ID ``{vampire_id_2}`` not found.")
+        return
+    
+    # Can't transfer same vampire
+    if vampire_id_1 == vampire_id_2:
+        await ctx.send("You cannot transfer a vampire's soul into itself.")
+        return
+    
+    vampire_1 = vampires[vampire_id_1]
+    vampire_2 = vampires[vampire_id_2]
+    
+    user_id = str(ctx.author.id)
+    
+    # Check ownership
+    if vampire_1["created_by"] != user_id:
+        await ctx.send(f"You don't own the vampire with ID ``{vampire_id_1}``.")
+        return
+    
+    if vampire_2["created_by"] != user_id:
+        await ctx.send(f"You don't own the vampire with ID ``{vampire_id_2}``.")
+        return
+    
+    # Check if both are alive
+    if vampire_1.get("status") == "dead":
+        await ctx.send(f"**{vampire_1['first_name']} {vampire_1['last_name']}** is already dead and cannot be used in soul transfer.")
+        return
+    
+    if vampire_2.get("status") == "dead":
+        await ctx.send(f"**{vampire_2['first_name']} {vampire_2['last_name']}** is already dead and cannot be used in soul transfer.")
+        return
+    
+    # Calculate new vampire stats
+    combined_power = vampire_1["power_level"] + vampire_2["power_level"]
+    # Add bonus power for the ritual (20-30% of combined power)
+    bonus_multiplier = random.uniform(1.20, 1.30)
+    new_power = int(combined_power * bonus_multiplier)
+    
+    combined_wins = vampire_1.get("wins", 0) + vampire_2.get("wins", 0)
+    combined_losses = vampire_1.get("losses", 0) + vampire_2.get("losses", 0)
+    combined_kills = vampire_1.get("kill_count", 0) + vampire_2.get("kill_count", 0)
+    
+    # Collect all earned titles
+    all_titles = vampire_1.get("earned_titles", []) + vampire_2.get("earned_titles", [])
+    
+    # Generate new vampire with combined aspects
+    first_names = [
+        "Vladislav", "Crimson", "Nocturne", "Draven", "Lazarus", 
+        "Seraphina", "Raven", "Lucian", "Morgana", "Viktor",
+        "Evangeline", "Thorne", "Lilith", "Dante", "Isolde",
+        "Damien", "Celeste", "Raphael", "Selene", "Corvus",
+        "Cassius", "Belladonna", "Alaric", "Nyx", "Soren",
+        "Valentina", "Dorian", "Mystique", "Kieran", "Octavia",
+        "Zephyr", "Persephone", "Caine", "Rowena", "Lucien"
+    ]
+    
+    last_names = [
+        "Bloodworth", "Nightshade", "Darkmore", "Ravencroft", "Blackthorn",
+        "Shadowmere", "Duskwood", "Grimwood", "Moonwhisper", "Darkholme",
+        "Bloodmoon", "Nightbane", "Ashenmoor", "Crowley", "Blackwell",
+        "Thornfield", "Nightfall", "Veilwalker", "Deathwhisper", "Shadowveil",
+        "Grimsbane", "Darkhaven", "Nightfang", "Bloodraven", "Darkwyn"
+    ]
+    
+    # Special titles for transferred souls
+    transfer_titles = [
+        "The Reborn",
+        "The Amalgamation",
+        "The Twin Soul",
+        "The Transcendent",
+        "The Ascended",
+        "The Unified",
+        "The Fused",
+        "The Evolved",
+        "The Merged",
+        "The Combined Essence"
+    ]
+    
+    new_first_name = random.choice(first_names)
+    new_last_name = random.choice(last_names)
+    new_title = random.choice(transfer_titles)
+    new_age = max(vampire_1["age"], vampire_2["age"]) + random.randint(100, 500)
+    
+    # Combine origins
+    origin_text = f"a forbidden soul transfer ritual between {vampire_1['first_name']} {vampire_1['last_name']} and {vampire_2['first_name']} {vampire_2['last_name']}"
+    
+    # Choose random power and weakness from both
+    new_power = random.choice([vampire_1["power"], vampire_2["power"]])
+    new_weakness = random.choice([vampire_1["weakness"], vampire_2["weakness"]])
+    new_personality = random.choice([vampire_1["personality"], vampire_2["personality"]])
+    
+    # Generate new ID
+    new_vampire_id = generate_vampire_id(vampires)
+    
+    # Create new vampire
+    new_vampire_data = {
+        "id": new_vampire_id,
+        "first_name": new_first_name,
+        "last_name": new_last_name,
+        "title": new_title,
+        "age": new_age,
+        "origin": origin_text,
+        "power": new_power,
+        "weakness": new_weakness,
+        "personality": new_personality,
+        "created_by": user_id,
+        "created_at": datetime.now().isoformat(),
+        "power_level": new_power,
+        "wins": combined_wins,
+        "losses": combined_losses,
+        "status": "alive",
+        "earned_titles": all_titles,
+        "total_power_gained": vampire_1.get("total_power_gained", 0) + vampire_2.get("total_power_gained", 0),
+        "total_power_lost": vampire_1.get("total_power_lost", 0) + vampire_2.get("total_power_lost", 0),
+        "highest_power": new_power,
+        "kill_count": combined_kills,
+        "transferred_from": [vampire_id_1, vampire_id_2]
+    }
+    
+    # Delete old vampires
+    del vampires[vampire_id_1]
+    del vampires[vampire_id_2]
+    
+    # Add new vampire
+    vampires[new_vampire_id] = new_vampire_data
+    save_vampires(vampires)
+    
+    # Create ritual embed
+    embed = discord.Embed(
+        title="SOUL TRANSFER RITUAL COMPLETE",
+        description=f"The souls of **{vampire_1['first_name']} {vampire_1['last_name']}** and **{vampire_2['first_name']} {vampire_2['last_name']}** have been fused in a dark ritual. Both have perished, but from their essence rises a new being of immense power...",
+        color=0x9400D3  # Dark purple for mystical ritual
+    )
+    
+    embed.add_field(
+        name="",
+        value="",
+        inline=False
+    )
+    
+    embed.add_field(
+        name="The Reborn Vampire",
+        value=f"**{new_first_name} {new_last_name}**\n*{new_title}*",
+        inline=False
+    )
+    
+    embed.add_field(
+        name="ID",
+        value=f"``{new_vampire_id}``",
+        inline=True
+    )
+    
+    embed.add_field(
+        name="Power Level",
+        value=f"**{new_power}**",
+        inline=True
+    )
+    
+    embed.add_field(
+        name="Age",
+        value=f"{new_age} years",
+        inline=True
+    )
+    
+    embed.add_field(
+        name="Ritual Results",
+        value=f"Combined Power: {combined_power}\n"
+              f"Ritual Bonus: +{new_power - combined_power}\n"
+              f"Total Power: **{new_power}**",
+        inline=False
+    )
+    
+    embed.add_field(
+        name="Inherited Record",
+        value=f"Wins: {combined_wins} | Losses: {combined_losses} | Kills: {combined_kills}",
+        inline=False
+    )
+    
+    if all_titles:
+        embed.add_field(
+            name="Inherited Titles",
+            value=" | ".join(all_titles),
+            inline=False
+        )
+    
+    embed.add_field(
+        name="Origin",
+        value=f"Born from {origin_text}",
+        inline=False
+    )
+    
+    embed.add_field(
+        name="Inherited Gift",
+        value=f"Possesses {new_power}",
+        inline=False
+    )
+    
+    embed.add_field(
+        name="Inherited Flaw",
+        value=f"However, {new_weakness}",
+        inline=False
+    )
+    
+    embed.set_footer(text="Two souls become one... The ritual is complete.")
+    embed.timestamp = datetime.now()
+    
+    await ctx.send(embed=embed)
+
 # Fight command - Battle against AI vampire
 @bot.command(name='fight')
 async def fight_vampire(ctx, vampire_id: str = None):
@@ -912,6 +1134,14 @@ async def vampire_stats(ctx, vampire_id: str = None):
         value=vampire['personality'].capitalize(),
         inline=False
     )
+    
+    # Check if this vampire was created from soul transfer
+    if "transferred_from" in vampire:
+        embed.add_field(
+            name="Soul Transfer Legacy",
+            value=f"Created from the souls of vampires ``{vampire['transferred_from'][0]}`` and ``{vampire['transferred_from'][1]}``",
+            inline=False
+        )
     
     # Calculate created time
     created_at = datetime.fromisoformat(vampire['created_at'])
