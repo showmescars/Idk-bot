@@ -54,6 +54,9 @@ LAST_NAMES = [
     "Nightfall", "Darkholm"
 ]
 
+# Transfer requests storage (temporary, in-memory)
+transfer_requests = {}
+
 # Load characters
 def load_characters():
     if os.path.exists(CHARACTERS_FILE):
@@ -311,6 +314,199 @@ async def train_vampire(ctx, character_id: str = None):
     
     await ctx.send(embed=result_embed)
 
+# Transfer command - Blood transfer ritual between two vampires
+@bot.command(name='transfer')
+async def blood_transfer(ctx, member: discord.Member = None):
+    """Initiate a blood transfer ritual with another vampire. Both vampires die and create a powerful hybrid! Usage: ?transfer @user"""
+    
+    if member is None:
+        await ctx.send("Usage: `?transfer @user`\nExample: `?transfer @JohnDoe`\n\nBoth vampires will be sacrificed to create a powerful hybrid vampire that both users can control!")
+        return
+    
+    # Can't transfer with yourself
+    if member.id == ctx.author.id:
+        await ctx.send("You cannot perform a blood transfer ritual with yourself!")
+        return
+    
+    initiator_id = str(ctx.author.id)
+    target_id = str(member.id)
+    
+    # Check if both users have vampires
+    if initiator_id not in characters:
+        await ctx.send("You don't have a vampire yet! Use `?make` to create one.")
+        return
+    
+    if target_id not in characters:
+        await ctx.send(f"{member.name} doesn't have a vampire yet!")
+        return
+    
+    initiator_char = characters[initiator_id]
+    target_char = characters[target_id]
+    
+    # Create transfer request
+    request_key = f"{initiator_id}_{target_id}"
+    
+    # Check if there's already a pending request FROM the target TO the initiator
+    reverse_key = f"{target_id}_{initiator_id}"
+    
+    if reverse_key in transfer_requests:
+        # Both agreed! Perform the transfer
+        await ctx.send(f"{ctx.author.mention} and {member.mention} - Both vampires have agreed to the blood transfer ritual!")
+        
+        # Ritual embed
+        ritual_embed = discord.Embed(
+            title="BLOOD TRANSFER RITUAL",
+            description=f"{initiator_char['name']} and {target_char['name']} begin the ancient blood ritual...\n\nTheir essences merge in darkness...",
+            color=discord.Color.dark_purple()
+        )
+        
+        ritual_embed.add_field(
+            name=f"{initiator_char['name']}",
+            value=f"Power: {initiator_char['power_level']} | Skills: {len(initiator_char['skills'])}",
+            inline=True
+        )
+        
+        ritual_embed.add_field(
+            name=f"{target_char['name']}",
+            value=f"Power: {target_char['power_level']} | Skills: {len(target_char['skills'])}",
+            inline=True
+        )
+        
+        await ctx.send(embed=ritual_embed)
+        
+        # 5 second ritual delay
+        await asyncio.sleep(5)
+        
+        # Create new hybrid vampire
+        # Generate new name
+        first_name = random.choice(FIRST_NAMES)
+        last_name = random.choice(LAST_NAMES)
+        hybrid_name = f"{first_name} {last_name}"
+        
+        # Generate new ID
+        hybrid_id = generate_unique_id()
+        
+        # Combine powers (average + bonus)
+        combined_power = initiator_char['power_level'] + target_char['power_level']
+        bonus = random.randint(10, 30)
+        hybrid_power = combined_power + bonus
+        
+        # Combine skills (all unique skills from both)
+        all_skills = list(set(initiator_char['skills'] + target_char['skills']))
+        
+        # Add 1-3 random new skills
+        available_skills = [skill for skill in SKILLS if skill not in all_skills]
+        if available_skills:
+            num_new_skills = min(random.randint(1, 3), len(available_skills))
+            new_skills = random.sample(available_skills, num_new_skills)
+            all_skills.extend(new_skills)
+        
+        # Combine wins
+        total_wins = initiator_char.get('wins', 0) + target_char.get('wins', 0)
+        
+        # Create hybrid vampire data
+        hybrid_data = {
+            "character_id": hybrid_id,
+            "name": hybrid_name,
+            "username": f"{ctx.author.name} & {member.name}",
+            "user_id": initiator_id,  # Primary owner
+            "shared_user_id": target_id,  # Secondary owner
+            "power_level": hybrid_power,
+            "skills": all_skills,
+            "wins": total_wins,
+            "losses": 0,
+            "created_at": datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+            "is_hybrid": True
+        }
+        
+        # Add old vampires to graveyard
+        old_vamp1 = initiator_char.copy()
+        old_vamp1['death_date'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        old_vamp1['killed_by'] = "Blood Transfer Ritual"
+        
+        old_vamp2 = target_char.copy()
+        old_vamp2['death_date'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        old_vamp2['killed_by'] = "Blood Transfer Ritual"
+        
+        graveyard.append(old_vamp1)
+        graveyard.append(old_vamp2)
+        save_graveyard(graveyard)
+        
+        # Delete old vampires
+        del characters[initiator_id]
+        del characters[target_id]
+        
+        # Save hybrid vampire for both users
+        characters[initiator_id] = hybrid_data
+        characters[target_id] = hybrid_data.copy()
+        characters[target_id]['user_id'] = target_id
+        characters[target_id]['shared_user_id'] = initiator_id
+        
+        save_characters(characters)
+        
+        # Clear the request
+        del transfer_requests[reverse_key]
+        
+        # Result embed
+        result_embed = discord.Embed(
+            title="HYBRID VAMPIRE BORN",
+            description=f"The ritual is complete! {hybrid_name} emerges from the darkness!\n\nBoth {ctx.author.mention} and {member.mention} can now use this vampire with ID: `{hybrid_id}`",
+            color=discord.Color.gold()
+        )
+        
+        result_embed.add_field(name="Hybrid Name", value=hybrid_name, inline=False)
+        result_embed.add_field(name="Blood Power", value=f"{hybrid_power} (+{bonus} ritual bonus)", inline=False)
+        result_embed.add_field(name="Total Abilities", value=f"{len(all_skills)} abilities", inline=False)
+        result_embed.add_field(name="Battle Record", value=f"{total_wins}W - 0L", inline=False)
+        result_embed.add_field(
+            name="Shared Ownership",
+            value=f"{ctx.author.name} and {member.name} both control this vampire",
+            inline=False
+        )
+        
+        await ctx.send(embed=result_embed)
+        
+    else:
+        # Create new request
+        transfer_requests[request_key] = {
+            "initiator": ctx.author.id,
+            "target": member.id,
+            "timestamp": datetime.now()
+        }
+        
+        # Request embed
+        request_embed = discord.Embed(
+            title="BLOOD TRANSFER REQUEST",
+            description=f"{ctx.author.mention} has initiated a blood transfer ritual with {member.mention}!",
+            color=discord.Color.orange()
+        )
+        
+        request_embed.add_field(
+            name="Warning",
+            value="Both vampires will be sacrificed to create a powerful hybrid vampire that both users can control!",
+            inline=False
+        )
+        
+        request_embed.add_field(
+            name=f"{ctx.author.name}'s Vampire",
+            value=f"{initiator_char['name']} - Power: {initiator_char['power_level']}",
+            inline=True
+        )
+        
+        request_embed.add_field(
+            name=f"{member.name}'s Vampire",
+            value=f"{target_char['name']} - Power: {target_char['power_level']}",
+            inline=True
+        )
+        
+        request_embed.add_field(
+            name="To Accept",
+            value=f"{member.mention} use `?transfer {ctx.author.mention}` to accept and complete the ritual!",
+            inline=False
+        )
+        
+        await ctx.send(embed=request_embed)
+
 # Fight command - Fight random vampire opponents
 @bot.command(name='fight')
 async def fight_character(ctx, character_id: str = None):
@@ -386,6 +582,13 @@ async def fight_character(ctx, character_id: str = None):
         if 'wins' not in player_char:
             player_char['wins'] = 0
         player_char['wins'] += 1
+        
+        # If hybrid, update both users
+        if player_char.get('is_hybrid', False):
+            shared_user_id = player_char.get('shared_user_id')
+            if shared_user_id and shared_user_id in characters:
+                characters[shared_user_id]['wins'] = player_char['wins']
+        
         characters[user_id] = player_char
         save_characters(characters)
         
@@ -441,6 +644,12 @@ async def fight_character(ctx, character_id: str = None):
         graveyard.append(dead_vampire)
         save_graveyard(graveyard)
         
+        # If hybrid, delete from both users
+        if player_char.get('is_hybrid', False):
+            shared_user_id = player_char.get('shared_user_id')
+            if shared_user_id and shared_user_id in characters:
+                del characters[shared_user_id]
+        
         # Delete the vampire
         del characters[user_id]
         save_characters(characters)
@@ -492,8 +701,9 @@ async def world_stats(ctx):
         for idx, vamp in enumerate(alive_list, 1):
             wins = vamp.get('wins', 0)
             losses = vamp.get('losses', 0)
+            hybrid_tag = " [HYBRID]" if vamp.get('is_hybrid', False) else ""
             alive_embed.add_field(
-                name=f"{idx}. {vamp['name']}",
+                name=f"{idx}. {vamp['name']}{hybrid_tag}",
                 value=f"ID: `{vamp['character_id']}` | Power: {vamp['power_level']} | Record: {wins}W-{losses}L",
                 inline=False
             )
