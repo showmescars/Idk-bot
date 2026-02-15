@@ -16,6 +16,7 @@ bot = commands.Bot(command_prefix='?', intents=intents)
 
 # Files
 VAMPIRES_FILE = 'vampires.json'
+BATTLE_LOGS_FILE = 'battle_logs.json'
 
 # Blocked channel ID
 BLOCKED_CHANNEL_ID = 1470843481177198876
@@ -32,6 +33,18 @@ def save_vampires(vampires):
     with open(VAMPIRES_FILE, 'w') as f:
         json.dump(vampires, f, indent=4)
 
+# Load battle logs
+def load_battle_logs():
+    if os.path.exists(BATTLE_LOGS_FILE):
+        with open(BATTLE_LOGS_FILE, 'r') as f:
+            return json.load(f)
+    return []
+
+# Save battle logs
+def save_battle_logs(logs):
+    with open(BATTLE_LOGS_FILE, 'w') as f:
+        json.dump(logs, f, indent=4)
+
 # Generate unique 6-digit ID
 def generate_vampire_id(vampires):
     while True:
@@ -40,6 +53,7 @@ def generate_vampire_id(vampires):
             return vampire_id
 
 vampires = load_vampires()
+battle_logs = load_battle_logs()
 
 @bot.event
 async def on_ready():
@@ -168,7 +182,11 @@ async def make_vampire(ctx):
         "weakness": weakness,
         "personality": personality,
         "created_by": str(ctx.author.id),
-        "created_at": datetime.now().isoformat()
+        "created_at": datetime.now().isoformat(),
+        "power_level": 100,
+        "wins": 0,
+        "losses": 0,
+        "status": "alive"
     }
     
     vampires[vampire_id] = vampire_data
@@ -190,6 +208,12 @@ async def make_vampire(ctx):
     embed.add_field(
         name="Age",
         value=f"{age} years old",
+        inline=True
+    )
+    
+    embed.add_field(
+        name="Power Level",
+        value=f"{vampire_data['power_level']}",
         inline=True
     )
     
@@ -218,6 +242,168 @@ async def make_vampire(ctx):
     )
     
     embed.set_footer(text="The night is eternal, and so are we...")
+    embed.timestamp = datetime.now()
+    
+    await ctx.send(embed=embed)
+
+# Fight command - Battle against AI vampire
+@bot.command(name='fight')
+async def fight_vampire(ctx, vampire_id: str = None):
+    """Fight your vampire against an AI opponent"""
+    
+    if vampire_id is None:
+        await ctx.send("Usage: ``?fight <vampire_id>``")
+        return
+    
+    # Check if vampire exists
+    if vampire_id not in vampires:
+        await ctx.send(f"Vampire with ID ``{vampire_id}`` not found.")
+        return
+    
+    player_vampire = vampires[vampire_id]
+    
+    # Check if vampire is alive
+    if player_vampire.get("status") == "dead":
+        await ctx.send(f"**{player_vampire['first_name']} {player_vampire['last_name']}** has fallen in battle and cannot fight anymore.")
+        return
+    
+    # Check if user owns this vampire
+    if str(ctx.author.id) != player_vampire["created_by"]:
+        await ctx.send("You can only fight with vampires you created.")
+        return
+    
+    # Generate AI opponent
+    ai_names = ["Marcus the Merciless", "Elena the Ruthless", "Drakon the Savage", 
+                "Nyx the Deadly", "Kain the Brutal", "Sable the Vicious",
+                "Cyrus the Cruel", "Morrigan the Fierce", "Vex the Relentless",
+                "Azrael the Destroyer"]
+    
+    ai_name = random.choice(ai_names)
+    ai_power = random.randint(80, 150)
+    
+    player_power = player_vampire["power_level"]
+    
+    # Calculate win chance based on power levels
+    power_diff = player_power - ai_power
+    base_chance = 50
+    
+    # Adjust chance by power difference (each point = 0.5% chance adjustment)
+    win_chance = base_chance + (power_diff * 0.5)
+    
+    # Clamp between 20% and 80%
+    win_chance = max(20, min(80, win_chance))
+    
+    # Determine outcome
+    random_roll = random.randint(1, 100)
+    player_wins = random_roll <= win_chance
+    
+    # Battle narrative
+    battle_actions = [
+        "lunges forward with supernatural speed",
+        "unleashes a torrent of dark magic",
+        "transforms into mist to dodge an attack",
+        "strikes with ancient fury",
+        "summons shadows to bind their opponent",
+        "moves with predatory grace",
+        "channels centuries of bloodlust",
+        "delivers a devastating blow"
+    ]
+    
+    embed = discord.Embed(
+        title="BATTLE OF THE DAMNED",
+        color=0x8B0000
+    )
+    
+    embed.add_field(
+        name="Your Vampire",
+        value=f"**{player_vampire['first_name']} {player_vampire['last_name']}**\nPower: {player_power}",
+        inline=True
+    )
+    
+    embed.add_field(
+        name="Opponent",
+        value=f"**{ai_name}**\nPower: {ai_power}",
+        inline=True
+    )
+    
+    embed.add_field(
+        name="",
+        value="",
+        inline=False
+    )
+    
+    action1 = random.choice(battle_actions)
+    action2 = random.choice(battle_actions)
+    
+    battle_story = f"**{player_vampire['first_name']}** {action1}, while **{ai_name}** {action2}. "
+    battle_story += "The night trembles with their clash. "
+    
+    if player_wins:
+        # Player wins
+        power_gain = random.randint(5, 15)
+        player_vampire["power_level"] += power_gain
+        player_vampire["wins"] = player_vampire.get("wins", 0) + 1
+        
+        outcome = f"\n\n**VICTORY**\n\n**{player_vampire['first_name']} {player_vampire['last_name']}** emerges victorious, growing stronger from the battle.\n\n"
+        outcome += f"Power Level: {player_power} → {player_vampire['power_level']} (+{power_gain})"
+        
+        embed.color = 0x00FF00  # Green for victory
+        
+    else:
+        # Check if vampire dies (30% chance on loss)
+        death_roll = random.randint(1, 100)
+        if death_roll <= 30:
+            # Vampire dies
+            player_vampire["status"] = "dead"
+            player_vampire["losses"] = player_vampire.get("losses", 0) + 1
+            
+            outcome = f"\n\n**DEFEATED**\n\n**{player_vampire['first_name']} {player_vampire['last_name']}** has fallen in battle. "
+            outcome += f"The ancient vampire crumbles to dust, their immortal life finally ended.\n\nThis vampire can no longer fight."
+            
+            embed.color = 0x000000  # Black for death
+        else:
+            # Vampire survives but loses power
+            power_loss = random.randint(5, 10)
+            player_vampire["power_level"] = max(50, player_vampire["power_level"] - power_loss)
+            player_vampire["losses"] = player_vampire.get("losses", 0) + 1
+            
+            outcome = f"\n\n**DEFEAT**\n\n**{player_vampire['first_name']} {player_vampire['last_name']}** is defeated but survives to fight another night.\n\n"
+            outcome += f"Power Level: {player_power} → {player_vampire['power_level']} (-{power_loss})"
+            
+            embed.color = 0xFF0000  # Red for defeat
+    
+    embed.add_field(
+        name="Battle Report",
+        value=battle_story + outcome,
+        inline=False
+    )
+    
+    embed.add_field(
+        name="Record",
+        value=f"Wins: {player_vampire.get('wins', 0)} | Losses: {player_vampire.get('losses', 0)}",
+        inline=False
+    )
+    
+    # Save updated vampire data
+    vampires[vampire_id] = player_vampire
+    save_vampires(vampires)
+    
+    # Log battle
+    battle_log = {
+        "vampire_id": vampire_id,
+        "vampire_name": f"{player_vampire['first_name']} {player_vampire['last_name']}",
+        "opponent": ai_name,
+        "player_power": player_power,
+        "opponent_power": ai_power,
+        "outcome": "win" if player_wins else "loss",
+        "died": player_vampire.get("status") == "dead",
+        "timestamp": datetime.now().isoformat()
+    }
+    
+    battle_logs.append(battle_log)
+    save_battle_logs(battle_logs)
+    
+    embed.set_footer(text="Only the strongest survive the eternal night...")
     embed.timestamp = datetime.now()
     
     await ctx.send(embed=embed)
