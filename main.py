@@ -3,6 +3,7 @@ from discord.ext import commands
 import json
 import os
 import random
+import asyncio
 from datetime import datetime
 from dotenv import load_dotenv
 
@@ -16,6 +17,7 @@ bot = commands.Bot(command_prefix='?', intents=intents)
 
 # Files
 CHARACTERS_FILE = 'characters.json'
+GRAVEYARD_FILE = 'graveyard.json'
 
 # Vampire abilities pool
 SKILLS = [
@@ -64,10 +66,24 @@ def save_characters(characters):
     with open(CHARACTERS_FILE, 'w') as f:
         json.dump(characters, f, indent=4)
 
+# Load graveyard
+def load_graveyard():
+    if os.path.exists(GRAVEYARD_FILE):
+        with open(GRAVEYARD_FILE, 'r') as f:
+            return json.load(f)
+    return []
+
+# Save graveyard
+def save_graveyard(graveyard):
+    with open(GRAVEYARD_FILE, 'w') as f:
+        json.dump(graveyard, f, indent=4)
+
 # Generate unique 6-digit ID
 def generate_unique_id():
     characters = load_characters()
+    graveyard = load_graveyard()
     existing_ids = [char.get('character_id') for char in characters.values() if 'character_id' in char]
+    existing_ids += [char.get('character_id') for char in graveyard if 'character_id' in char]
     
     while True:
         new_id = str(random.randint(100000, 999999))
@@ -75,6 +91,7 @@ def generate_unique_id():
             return new_id
 
 characters = load_characters()
+graveyard = load_graveyard()
 
 @bot.event
 async def on_ready():
@@ -255,6 +272,9 @@ async def fight_character(ctx, character_id: str = None):
     
     await ctx.send(embed=battle_embed)
     
+    # 4 second delay before showing results
+    await asyncio.sleep(4)
+    
     # Calculate win chance based on power levels
     player_power = player_char['power_level']
     total_power = player_power + ai_power_level
@@ -322,9 +342,93 @@ async def fight_character(ctx, character_id: str = None):
         
         await ctx.send(embed=result_embed)
         
+        # Add to graveyard before deleting
+        dead_vampire = player_char.copy()
+        dead_vampire['death_date'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        dead_vampire['killed_by'] = ai_name
+        graveyard.append(dead_vampire)
+        save_graveyard(graveyard)
+        
         # Delete the vampire
         del characters[user_id]
         save_characters(characters)
+
+# Stats command - Shows world statistics
+@bot.command(name='stats')
+async def world_stats(ctx):
+    """View world statistics of all vampires alive and dead"""
+    
+    # Load current data
+    alive_vampires = load_characters()
+    dead_vampires = load_graveyard()
+    
+    # Calculate stats
+    total_alive = len(alive_vampires)
+    total_dead = len(dead_vampires)
+    total_vampires = total_alive + total_dead
+    
+    # Calculate total wins and losses
+    total_wins = sum(char.get('wins', 0) for char in alive_vampires.values())
+    total_losses = sum(char.get('wins', 0) for char in dead_vampires)
+    
+    # Main stats embed
+    stats_embed = discord.Embed(
+        title="VAMPIRE WORLD STATISTICS",
+        description="Global vampire data across all realms",
+        color=discord.Color.dark_purple()
+    )
+    
+    stats_embed.add_field(name="Total Vampires Created", value=f"{total_vampires}", inline=True)
+    stats_embed.add_field(name="Vampires Alive", value=f"{total_alive}", inline=True)
+    stats_embed.add_field(name="Vampires Destroyed", value=f"{total_dead}", inline=True)
+    stats_embed.add_field(name="Total Victories", value=f"{total_wins}", inline=True)
+    stats_embed.add_field(name="Total Defeats", value=f"{total_losses}", inline=True)
+    stats_embed.add_field(name="Total Battles", value=f"{total_wins + total_losses}", inline=True)
+    
+    await ctx.send(embed=stats_embed)
+    
+    # Show top 5 alive vampires by wins
+    if alive_vampires:
+        alive_list = sorted(alive_vampires.values(), key=lambda x: x.get('wins', 0), reverse=True)[:5]
+        
+        alive_embed = discord.Embed(
+            title="TOP LIVING VAMPIRES",
+            description="The strongest vampires still walking the earth",
+            color=discord.Color.green()
+        )
+        
+        for idx, vamp in enumerate(alive_list, 1):
+            wins = vamp.get('wins', 0)
+            losses = vamp.get('losses', 0)
+            alive_embed.add_field(
+                name=f"{idx}. {vamp['name']}",
+                value=f"ID: `{vamp['character_id']}` | Power: {vamp['power_level']} | Record: {wins}W-{losses}L",
+                inline=False
+            )
+        
+        await ctx.send(embed=alive_embed)
+    
+    # Show last 5 fallen vampires
+    if dead_vampires:
+        recent_dead = dead_vampires[-5:]
+        recent_dead.reverse()
+        
+        dead_embed = discord.Embed(
+            title="RECENTLY FALLEN VAMPIRES",
+            description="Those who met their end in battle",
+            color=discord.Color.dark_red()
+        )
+        
+        for vamp in recent_dead:
+            wins = vamp.get('wins', 0)
+            losses = vamp.get('losses', 0)
+            dead_embed.add_field(
+                name=f"{vamp['name']}",
+                value=f"ID: `{vamp['character_id']}` | Power: {vamp['power_level']} | Record: {wins}W-{losses}L\nKilled by: {vamp.get('killed_by', 'Unknown')}",
+                inline=False
+            )
+        
+        await ctx.send(embed=dead_embed)
 
 # Run the bot
 if __name__ == "__main__":
