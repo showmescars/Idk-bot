@@ -126,11 +126,11 @@ def generate_vampire_id(vampires):
         if vampire_id not in vampires:
             return vampire_id
 
-# Generate AI opponent with DYNAMIC and VARIED power levels
+# Generate AI opponent based on player power (DYNAMIC AND VARIED)
 def generate_ai_opponent(player_power):
-    """Generate an AI opponent with truly random power variance - NOT always matched"""
+    """Generate an AI opponent with dynamic power - not always matching player"""
     
-    # Expanded AI names pool
+    # AI names pool (expanded)
     ai_names = [
         "Marcus the Merciless", "Elena the Ruthless", "Drakon the Savage", 
         "Nyx the Deadly", "Kain the Brutal", "Sable the Vicious",
@@ -141,88 +141,59 @@ def generate_ai_opponent(player_power):
         "Seraphine the Void", "Lucien the Plague", "Morgath the Fallen",
         "Vesper the Nightbane", "Zephyr the Sinister", "Alaric the Cursed",
         "Belladonna the Profane", "Cassius the Corrupted", "Nero the Vile",
-        "Isolde the Vengeful", "Draven the Malevolent", "Xander the Apostate",
-        "Thorn the Bloodthirsty", "Raven the Nightstalker", "Viktor the Unholy",
-        "Lilith the Temptress", "Vladmir the Impaler", "Selene the Moonborn"
+        "Isolde the Vengeful", "Draven the Malevolent", "Xander the Apostate"
     ]
     
-    # DYNAMIC POWER SCALING - Multiple tiers with different probabilities
-    # This creates varied matchups instead of always matched opponents
-    
+    # DYNAMIC power tiers - NOT always matched to player
     roll = random.randint(1, 100)
     
-    if roll <= 15:  # 15% chance - Much weaker opponent (easy win)
-        min_power = max(50, int(player_power * 0.30))
+    if roll <= 15:  # 15% chance - Much weaker opponent
+        min_power = max(60, int(player_power * 0.30))
         max_power = max(80, int(player_power * 0.60))
-        difficulty = "Weak"
         
     elif roll <= 35:  # 20% chance - Weaker opponent
-        min_power = max(60, int(player_power * 0.60))
+        min_power = max(70, int(player_power * 0.60))
         max_power = max(90, int(player_power * 0.85))
-        difficulty = "Below Average"
         
-    elif roll <= 65:  # 30% chance - Fairly matched (±15%)
-        min_power = max(70, int(player_power * 0.85))
+    elif roll <= 65:  # 30% chance - Fairly matched
+        min_power = max(80, int(player_power * 0.85))
         max_power = int(player_power * 1.15)
-        difficulty = "Matched"
         
     elif roll <= 85:  # 20% chance - Stronger opponent
         min_power = int(player_power * 1.15)
         max_power = int(player_power * 1.50)
-        difficulty = "Strong"
         
-    else:  # 15% chance - Much stronger opponent (challenge)
+    else:  # 15% chance - Much stronger opponent
         min_power = int(player_power * 1.50)
         max_power = int(player_power * 2.00)
-        difficulty = "Powerful"
     
     # Ensure bounds
-    min_power = max(50, min(min_power, 100000))
+    min_power = max(60, min(min_power, 100000))
     max_power = max(min_power + 10, min(max_power, 100000))
     
-    # Generate final AI power with some randomness within the range
+    # Generate AI power with randomness
     ai_power = random.randint(min_power, max_power)
     
-    # Add additional random variance (±5%) to make it less predictable
+    # Add extra variance (±5%) to make it unpredictable
     variance = random.uniform(0.95, 1.05)
     ai_power = int(ai_power * variance)
     
-    # Final bounds check
-    ai_power = max(50, min(ai_power, 100000))
+    # Final bounds
+    ai_power = max(60, min(ai_power, 100000))
     
-    ai_opponent = {
+    return {
         "name": random.choice(ai_names),
         "power": ai_power,
-        "difficulty": difficulty,
         "is_ai": True
     }
-    
-    return ai_opponent
-
-# Generate random starting power for new vampires (MORE VARIED)
-def generate_starting_power():
-    """Generate varied starting power - not always the same"""
-    
-    # Multiple tiers for starting power
-    roll = random.randint(1, 100)
-    
-    if roll <= 40:  # 40% chance - Low starter
-        return random.randint(80, 120)
-    elif roll <= 75:  # 35% chance - Medium starter
-        return random.randint(120, 180)
-    elif roll <= 95:  # 20% chance - High starter
-        return random.randint(180, 250)
-    else:  # 5% chance - Lucky starter
-        return random.randint(250, 350)
 
 @bot.event
 async def on_ready():
     print(f'{bot.user} has connected to Discord!')
-    print(f'Bot is ready to battle!')
 
 @bot.command(name='make')
 async def make_vampire(ctx):
-    """Create a new vampire with VARIED starting power"""
+    """Create a new vampire"""
     
     # Block command in specific channel
     if ctx.channel.id == BLOCKED_CHANNEL_ID:
@@ -238,7 +209,15 @@ async def make_vampire(ctx):
         return
     
     # Generate varied starting power
-    starting_power = generate_starting_power()
+    roll = random.randint(1, 100)
+    if roll <= 40:
+        starting_power = random.randint(80, 120)
+    elif roll <= 75:
+        starting_power = random.randint(120, 180)
+    elif roll <= 95:
+        starting_power = random.randint(180, 250)
+    else:
+        starting_power = random.randint(250, 350)
     
     # Create new vampire
     vampire_id = generate_vampire_id(vampires)
@@ -295,7 +274,7 @@ async def show_stats(ctx, member: discord.Member = None):
 
 @bot.command(name='fight')
 async def fight(ctx):
-    """Fight an AI opponent with DYNAMIC power scaling"""
+    """Fight an AI opponent"""
     
     # Block command in specific channel
     if ctx.channel.id == BLOCKED_CHANNEL_ID:
@@ -326,38 +305,38 @@ async def fight(ctx):
     player_vampire = vampires[user_id]
     player_power = player_vampire["power"]
     
-    # Generate DYNAMIC AI opponent
+    # Generate AI opponent with DYNAMIC power
     ai_opponent = generate_ai_opponent(player_power)
     ai_power = ai_opponent["power"]
     
-    # Battle calculation with some randomness
+    # Battle calculation
     power_diff = player_power - ai_power
     
-    # Base win chance based on power difference
+    # Base win chance
     if power_diff > 0:
         win_chance = 50 + min(40, power_diff / player_power * 100)
     else:
         win_chance = 50 - min(40, abs(power_diff) / ai_power * 100)
     
-    # Add randomness factor (±10%)
+    # Add randomness (±10%)
     win_chance = max(5, min(95, win_chance + random.uniform(-10, 10)))
     
-    # Determine battle outcome
+    # Determine winner
     battle_result = random.random() * 100 < win_chance
     
-    # Power gain/loss with VARIED amounts
+    # Calculate power change
     if battle_result:  # Player wins
-        # Bigger rewards for beating stronger opponents
-        if ai_opponent["difficulty"] == "Weak":
-            power_gain = random.randint(2, 5)
-        elif ai_opponent["difficulty"] == "Below Average":
-            power_gain = random.randint(5, 10)
-        elif ai_opponent["difficulty"] == "Matched":
+        # Power gain based on opponent strength
+        if ai_power < player_power * 0.7:
+            power_gain = random.randint(3, 8)
+        elif ai_power < player_power * 0.9:
             power_gain = random.randint(8, 15)
-        elif ai_opponent["difficulty"] == "Strong":
-            power_gain = random.randint(15, 25)
-        else:  # Powerful
-            power_gain = random.randint(25, 40)
+        elif ai_power < player_power * 1.1:
+            power_gain = random.randint(10, 20)
+        elif ai_power < player_power * 1.5:
+            power_gain = random.randint(20, 30)
+        else:
+            power_gain = random.randint(30, 50)
         
         vampires[user_id]["power"] += power_gain
         vampires[user_id]["wins"] += 1
@@ -367,17 +346,17 @@ async def fight(ctx):
         power_change = f"+{power_gain}"
         
     else:  # Player loses
-        # Smaller losses for losing to stronger opponents
-        if ai_opponent["difficulty"] == "Weak":
+        # Power loss (less harsh for stronger opponents)
+        if ai_power < player_power * 0.7:
+            power_loss = random.randint(10, 20)
+        elif ai_power < player_power * 0.9:
             power_loss = random.randint(8, 15)
-        elif ai_opponent["difficulty"] == "Below Average":
-            power_loss = random.randint(5, 12)
-        elif ai_opponent["difficulty"] == "Matched":
-            power_loss = random.randint(3, 8)
-        elif ai_opponent["difficulty"] == "Strong":
+        elif ai_power < player_power * 1.1:
+            power_loss = random.randint(5, 10)
+        elif ai_power < player_power * 1.5:
+            power_loss = random.randint(3, 7)
+        else:
             power_loss = random.randint(2, 5)
-        else:  # Powerful
-            power_loss = random.randint(1, 3)
         
         vampires[user_id]["power"] = max(50, vampires[user_id]["power"] - power_loss)
         vampires[user_id]["losses"] += 1
@@ -395,7 +374,6 @@ async def fight(ctx):
         "player_power": player_power,
         "opponent": ai_opponent["name"],
         "opponent_power": ai_power,
-        "difficulty": ai_opponent["difficulty"],
         "winner": ctx.author.name if battle_result else ai_opponent["name"],
         "power_change": power_change
     }
@@ -422,11 +400,6 @@ async def fight(ctx):
         inline=True
     )
     embed.add_field(
-        name="Difficulty",
-        value=f"🎯 {ai_opponent['difficulty']}",
-        inline=True
-    )
-    embed.add_field(
         name="Power Change",
         value=f"📊 {power_change}",
         inline=True
@@ -441,15 +414,17 @@ async def fight(ctx):
         value=f"🎫 {remaining_credits}/{MAX_CREDITS}",
         inline=True
     )
-    
-    # Add win chance indicator
-    embed.set_footer(text=f"Win chance was {win_chance:.1f}% | Power diff: {power_diff:+d}")
+    embed.add_field(
+        name="Win Chance",
+        value=f"📈 {win_chance:.1f}%",
+        inline=True
+    )
     
     await ctx.send(embed=embed)
 
 @bot.command(name='credits')
 async def check_fight_credits(ctx):
-    """Check your remaining fight credits and cooldown"""
+    """Check your remaining fight credits"""
     
     user_id = str(ctx.author.id)
     current_credits, time_remaining = check_credits(user_id)
@@ -472,18 +447,6 @@ async def check_fight_credits(ctx):
         embed.add_field(
             name="Next Refill",
             value=f"⏰ {minutes}m {seconds}s",
-            inline=True
-        )
-    elif current_credits < MAX_CREDITS:
-        embed.add_field(
-            name="Cooldown",
-            value=f"Use all credits to start timer",
-            inline=True
-        )
-    else:
-        embed.add_field(
-            name="Status",
-            value=f"✅ Fully Charged!",
             inline=True
         )
     
