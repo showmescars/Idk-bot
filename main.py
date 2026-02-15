@@ -186,7 +186,8 @@ async def make_vampire(ctx):
         "power_level": 100,
         "wins": 0,
         "losses": 0,
-        "status": "alive"
+        "status": "alive",
+        "earned_titles": []
     }
     
     vampires[vampire_id] = vampire_data
@@ -338,14 +339,51 @@ async def fight_vampire(ctx, vampire_id: str = None):
     battle_story = f"**{player_vampire['first_name']}** {action1}, while **{ai_name}** {action2}. "
     battle_story += "The night trembles with their clash. "
     
+    title_earned = False
+    new_title = ""
+    
     if player_wins:
         # Player wins
         power_gain = random.randint(5, 15)
         player_vampire["power_level"] += power_gain
         player_vampire["wins"] = player_vampire.get("wins", 0) + 1
         
+        # Check if vampire earned a title (10+ wins and no title yet)
+        if player_vampire["wins"] >= 10 and len(player_vampire.get("earned_titles", [])) == 0:
+            # Award a legendary title
+            legendary_titles = [
+                "The Conqueror",
+                "The Invincible",
+                "The Legend",
+                "The Champion",
+                "The Destroyer",
+                "The Undefeated",
+                "The Terror",
+                "The Sovereign",
+                "The Apex Predator",
+                "The Warlord",
+                "The Dominator",
+                "The Supreme",
+                "The Vanquisher",
+                "The Dreadlord",
+                "The Immortal King"
+            ]
+            
+            new_title = random.choice(legendary_titles)
+            
+            if "earned_titles" not in player_vampire:
+                player_vampire["earned_titles"] = []
+            
+            player_vampire["earned_titles"].append(new_title)
+            title_earned = True
+        
         outcome = f"\n\n**VICTORY**\n\n**{player_vampire['first_name']} {player_vampire['last_name']}** emerges victorious, growing stronger from the battle.\n\n"
         outcome += f"Power Level: {player_power} → {player_vampire['power_level']} (+{power_gain})"
+        
+        if title_earned:
+            outcome += f"\n\n**LEGENDARY ACHIEVEMENT UNLOCKED**\n"
+            outcome += f"After {player_vampire['wins']} victories, **{player_vampire['first_name']}** has earned the title:\n"
+            outcome += f"**{new_title}**"
         
         embed.color = 0x00FF00  # Green for victory
         
@@ -397,6 +435,7 @@ async def fight_vampire(ctx, vampire_id: str = None):
         "opponent_power": ai_power,
         "outcome": "win" if player_wins else "loss",
         "died": player_vampire.get("status") == "dead",
+        "title_earned": new_title if title_earned else None,
         "timestamp": datetime.now().isoformat()
     }
     
@@ -440,7 +479,12 @@ async def list_vampires(ctx):
             power = vdata.get('power_level', 100)
             wins = vdata.get('wins', 0)
             losses = vdata.get('losses', 0)
-            alive_list += f"``{vid}`` - **{name}**\n"
+            
+            # Check for earned titles
+            earned_titles = vdata.get('earned_titles', [])
+            title_display = f" - {earned_titles[0]}" if earned_titles else ""
+            
+            alive_list += f"``{vid}`` - **{name}**{title_display}\n"
             alive_list += f"Power: {power} | Record: {wins}W - {losses}L\n\n"
         
         embed.add_field(
@@ -456,7 +500,12 @@ async def list_vampires(ctx):
             name = f"{vdata['first_name']} {vdata['last_name']}"
             wins = vdata.get('wins', 0)
             losses = vdata.get('losses', 0)
-            dead_list += f"``{vid}`` - **{name}** [FALLEN]\n"
+            
+            # Check for earned titles
+            earned_titles = vdata.get('earned_titles', [])
+            title_display = f" - {earned_titles[0]}" if earned_titles else ""
+            
+            dead_list += f"``{vid}`` - **{name}**{title_display} [FALLEN]\n"
             dead_list += f"Final Record: {wins}W - {losses}L\n\n"
         
         embed.add_field(
