@@ -3,7 +3,7 @@ from discord.ext import commands
 import json
 import os
 import random
-from datetime import datetime, timedelta
+from datetime import datetime
 from dotenv import load_dotenv
 
 # Load environment variables
@@ -15,148 +15,116 @@ intents.message_content = True
 bot = commands.Bot(command_prefix='?', intents=intents)
 
 # Files
-VAMPIRES_FILE = 'vampires.json'
-BATTLE_LOGS_FILE = 'battle_logs.json'
-CREDITS_FILE = 'credits.json'
+CHARACTERS_FILE = 'characters.json'
 
-# Blocked channel ID
-BLOCKED_CHANNEL_ID = 1470843481177198876
+# Skills pool
+SKILLS = [
+    "Super Strength", "Speed Blitz", "Fire Manipulation", "Ice Control",
+    "Lightning Strike", "Telekinesis", "Shadow Step", "Regeneration",
+    "Energy Blast", "Force Field", "Mind Reading", "Invisibility",
+    "Flight", "Time Slow", "Earth Manipulation", "Wind Control",
+    "Laser Vision", "Berserker Rage", "Illusion Casting", "Poison Touch",
+    "Gravity Control", "Weapon Mastery", "Martial Arts Expert", "Super Durability",
+    "Sonic Scream", "Acid Spit", "Diamond Skin", "Shapeshifting",
+    "Teleportation", "Blood Manipulation", "Bone Control", "Metal Bending",
+    "Plant Growth", "Water Bending", "Explosion", "Petrification",
+    "Curse", "Healing Touch", "Absorption", "Cloning"
+]
 
-# Credit settings
-MAX_CREDITS = 3
-CREDIT_COST = 1
-CREDIT_COOLDOWN_MINUTES = 30
-
-# Load vampires
-def load_vampires():
-    if os.path.exists(VAMPIRES_FILE):
-        with open(VAMPIRES_FILE, 'r') as f:
+# Load characters
+def load_characters():
+    if os.path.exists(CHARACTERS_FILE):
+        with open(CHARACTERS_FILE, 'r') as f:
             return json.load(f)
     return {}
 
-# Save vampires
-def save_vampires(vampires):
-    with open(VAMPIRES_FILE, 'w') as f:
-        json.dump(vampires, f, indent=4)
+# Save characters
+def save_characters(characters):
+    with open(CHARACTERS_FILE, 'w') as f:
+        json.dump(characters, f, indent=4)
 
-# Load battle logs
-def load_battle_logs():
-    if os.path.exists(BATTLE_LOGS_FILE):
-        with open(BATTLE_LOGS_FILE, 'r') as f:
-            return json.load(f)
-    return []
+characters = load_characters()
 
-# Save battle logs
-def save_battle_logs(logs):
-    with open(BATTLE_LOGS_FILE, 'w') as f:
-        json.dump(logs, f, indent=4)
+@bot.event
+async def on_ready():
+    print(f'{bot.user} is online')
+    print('Character Generator Ready')
 
-# Load credits
-def load_credits():
-    if os.path.exists(CREDITS_FILE):
-        with open(CREDITS_FILE, 'r') as f:
-            return json.load(f)
-    return {}
+# Check to block DM commands
+@bot.check
+async def globally_block_dms(ctx):
+    if ctx.guild is None:
+        await ctx.send("Commands can only be used in servers, not DMs")
+        return False
+    return True
 
-# Save credits
-def save_credits(credits):
-    with open(CREDITS_FILE, 'w') as f:
-        json.dump(credits, f, indent=4)
+# Make command - Creates a character
+@bot.command(name='make')
+async def make_character(ctx):
+    """Generate a unique character with random skills and power level"""
+    
+    user_id = str(ctx.author.id)
+    
+    # Check if user already has a character
+    if user_id in characters:
+        char = characters[user_id]
+        
+        # Display existing character
+        embed = discord.Embed(
+            title=f"{ctx.author.name}'s Character",
+            color=discord.Color.red()
+        )
+        
+        embed.add_field(name="Power Level", value=f"{char['power_level']}", inline=False)
+        
+        skills_text = "\n".join([f"- {skill}" for skill in char['skills']])
+        embed.add_field(name="Skills", value=skills_text, inline=False)
+        
+        await ctx.send(embed=embed)
+        return
+    
+    # Generate random power level (10 to 100)
+    power_level = random.randint(10, 100)
+    
+    # Generate 3-5 random unique skills
+    num_skills = random.randint(3, 5)
+    selected_skills = random.sample(SKILLS, num_skills)
+    
+    # Create character data
+    character_data = {
+        "username": str(ctx.author),
+        "user_id": user_id,
+        "power_level": power_level,
+        "skills": selected_skills,
+        "created_at": datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    }
+    
+    # Save character
+    characters[user_id] = character_data
+    save_characters(characters)
+    
+    # Display new character
+    embed = discord.Embed(
+        title=f"{ctx.author.name}'s Character",
+        color=discord.Color.green()
+    )
+    
+    embed.add_field(name="Power Level", value=f"{power_level}", inline=False)
+    
+    skills_text = "\n".join([f"- {skill}" for skill in selected_skills])
+    embed.add_field(name="Skills", value=skills_text, inline=False)
+    
+    await ctx.send(embed=embed)
 
-# Check and update credits
-def check_credits(user_id):
-    """Check if user has credits available or if cooldown has passed"""
-    credits = load_credits()
-    
-    if user_id not in credits:
-        # New user, give them max credits
-        credits[user_id] = {
-            "credits": MAX_CREDITS,
-            "last_refill": datetime.now().isoformat()
-        }
-        save_credits(credits)
-        return MAX_CREDITS, None
-    
-    user_data = credits[user_id]
-    current_credits = user_data["credits"]
-    
-    # If they have credits, return them
-    if current_credits > 0:
-        return current_credits, None
-    
-    # Check if cooldown has passed
-    last_refill = datetime.fromisoformat(user_data["last_refill"])
-    time_passed = datetime.now() - last_refill
-    cooldown_duration = timedelta(minutes=CREDIT_COOLDOWN_MINUTES)
-    
-    if time_passed >= cooldown_duration:
-        # Cooldown passed, refill credits
-        credits[user_id]["credits"] = MAX_CREDITS
-        credits[user_id]["last_refill"] = datetime.now().isoformat()
-        save_credits(credits)
-        return MAX_CREDITS, None
+# Run the bot
+if __name__ == "__main__":
+    load_dotenv()
+    TOKEN = os.getenv('DISCORD_TOKEN')
+    
+    if TOKEN is None:
+        print("ERROR: DISCORD_TOKEN not found!")
+        print("For local: Create a .env file with DISCORD_TOKEN=your_token")
+        print("For Railway: Add DISCORD_TOKEN in the Variables tab")
     else:
-        # Still on cooldown
-        time_remaining = cooldown_duration - time_passed
-        return 0, time_remaining
-
-# Use a credit
-def use_credit(user_id):
-    """Deduct one credit from user"""
-    credits = load_credits()
-    
-    if user_id not in credits:
-        credits[user_id] = {
-            "credits": MAX_CREDITS,
-            "last_refill": datetime.now().isoformat()
-        }
-    
-    credits[user_id]["credits"] -= CREDIT_COST
-    
-    # If credits hit 0, start the cooldown timer
-    if credits[user_id]["credits"] == 0:
-        credits[user_id]["last_refill"] = datetime.now().isoformat()
-    
-    save_credits(credits)
-
-# Generate unique 6-digit ID
-def generate_vampire_id(vampires):
-    while True:
-        vampire_id = str(random.randint(100000, 999999))
-        if vampire_id not in vampires:
-            return vampire_id
-
-# Generate AI opponent based on player power (IMPROVED SCALING)
-def generate_ai_opponent(player_power):
-    """Generate an AI opponent that scales with player power - can go up to 100k"""
-    
-    # AI names pool (expanded)
-    ai_names = [
-        "Marcus the Merciless", "Elena the Ruthless", "Drakon the Savage", 
-        "Nyx the Deadly", "Kain the Brutal", "Sable the Vicious",
-        "Cyrus the Cruel", "Morrigan the Fierce", "Vex the Relentless",
-        "Azrael the Destroyer", "Valeria the Bloodletter", "Theron the Merciless",
-        "Ravenna the Shadow", "Darius the Ancient", "Lysandra the Wicked",
-        "Cain the Accursed", "Octavia the Dread", "Grimwald the Eternal",
-        "Seraphine the Void", "Lucien the Plague", "Morgath the Fallen",
-        "Vesper the Nightbane", "Zephyr the Sinister", "Alaric the Cursed",
-        "Belladonna the Profane", "Cassius the Corrupted", "Nero the Vile",
-        "Isolde the Vengeful", "Draven the Malevolent", "Xander the Apostate"
-    ]
-    
-    # Scale AI power based on player power with extended range
-    # AI power range: player_power ± 20-30%
-    min_variance = 0.70  # AI can be 30% weaker
-    max_variance = 1.30  # AI can be 30% stronger
-    
-    # Calculate AI power range
-    min_power = int(player_power * min_variance)
-    max_power = int(player_power * max_variance)
-    
-    # Ensure minimum of 60 and maximum of 100,000
-    min_power = max(60, min_power)
-    max_power = min(100000, max_power)
-    
-    ai_power = random.randint(min_power, max_power)
-    
-    # Determine difficulty tier b
+        print("Token found! Starting bot...")
+        bot.run(TOKEN)
