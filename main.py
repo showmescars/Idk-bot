@@ -52,6 +52,58 @@ def generate_vampire_id(vampires):
         if vampire_id not in vampires:
             return vampire_id
 
+# Generate AI opponent based on player power
+def generate_ai_opponent(player_power):
+    """Generate an AI opponent that scales with player power"""
+    
+    # AI names pool (expanded)
+    ai_names = [
+        "Marcus the Merciless", "Elena the Ruthless", "Drakon the Savage", 
+        "Nyx the Deadly", "Kain the Brutal", "Sable the Vicious",
+        "Cyrus the Cruel", "Morrigan the Fierce", "Vex the Relentless",
+        "Azrael the Destroyer", "Valeria the Bloodletter", "Theron the Merciless",
+        "Ravenna the Shadow", "Darius the Ancient", "Lysandra the Wicked",
+        "Cain the Accursed", "Octavia the Dread", "Grimwald the Eternal",
+        "Seraphine the Void", "Lucien the Plague", "Morgath the Fallen",
+        "Vesper the Nightbane", "Zephyr the Sinister", "Alaric the Cursed",
+        "Belladonna the Profane", "Cassius the Corrupted", "Nero the Vile",
+        "Isolde the Vengeful", "Draven the Malevolent", "Xander the Apostate"
+    ]
+    
+    ai_name = random.choice(ai_names)
+    
+    # Scale AI power based on player power
+    if player_power < 100:
+        # Weak opponents for struggling vampires
+        ai_power = random.randint(60, 90)
+        difficulty = "Novice"
+    elif player_power < 120:
+        # Balanced opponents
+        ai_power = random.randint(80, 110)
+        difficulty = "Apprentice"
+    elif player_power < 150:
+        # Moderate challenge
+        ai_power = random.randint(100, 140)
+        difficulty = "Adept"
+    elif player_power < 180:
+        # Tough opponents
+        ai_power = random.randint(130, 170)
+        difficulty = "Veteran"
+    elif player_power < 220:
+        # Very strong opponents
+        ai_power = random.randint(160, 210)
+        difficulty = "Master"
+    elif player_power < 280:
+        # Elite opponents
+        ai_power = random.randint(200, 260)
+        difficulty = "Elite"
+    else:
+        # Legendary opponents for the strongest
+        ai_power = random.randint(250, 320)
+        difficulty = "Legendary"
+    
+    return ai_name, ai_power, difficulty
+
 vampires = load_vampires()
 battle_logs = load_battle_logs()
 
@@ -85,24 +137,31 @@ async def block_specific_channel(ctx):
 async def make_vampire(ctx):
     """Create a random vampire character with backstory"""
     
-    # Vampire name components
+    # Vampire name components (expanded)
     first_names = [
         "Vladislav", "Crimson", "Nocturne", "Draven", "Lazarus", 
         "Seraphina", "Raven", "Lucian", "Morgana", "Viktor",
         "Evangeline", "Thorne", "Lilith", "Dante", "Isolde",
-        "Damien", "Celeste", "Raphael", "Selene", "Corvus"
+        "Damien", "Celeste", "Raphael", "Selene", "Corvus",
+        "Cassius", "Belladonna", "Alaric", "Nyx", "Soren",
+        "Valentina", "Dorian", "Mystique", "Kieran", "Octavia",
+        "Zephyr", "Persephone", "Caine", "Rowena", "Lucien"
     ]
     
     last_names = [
         "Bloodworth", "Nightshade", "Darkmore", "Ravencroft", "Blackthorn",
         "Shadowmere", "Duskwood", "Grimwood", "Moonwhisper", "Darkholme",
-        "Bloodmoon", "Nightbane", "Ashenmoor", "Crowley", "Blackwell"
+        "Bloodmoon", "Nightbane", "Ashenmoor", "Crowley", "Blackwell",
+        "Thornfield", "Nightfall", "Veilwalker", "Deathwhisper", "Shadowveil",
+        "Grimsbane", "Darkhaven", "Nightfang", "Bloodraven", "Darkwyn"
     ]
     
     titles = [
         "The Eternal", "The Cursed", "The Ancient", "The Forsaken", "The Immortal",
         "The Undying", "The Bloodthirsty", "The Shadowed", "The Forgotten", "The Damned",
-        "Lord of Shadows", "Mistress of Night", "The Moonborn", "The Nightstalker", "The Pale"
+        "Lord of Shadows", "Mistress of Night", "The Moonborn", "The Nightstalker", "The Pale",
+        "The Profane", "The Sinister", "The Dreadful", "The Malevolent", "The Corrupted",
+        "The Vile", "The Wretched", "The Accursed", "The Harbinger", "The Scourge"
     ]
     
     origins = [
@@ -115,7 +174,15 @@ async def make_vampire(ctx):
         "the ruins of a Romanian fortress",
         "a haunted manor in Scotland",
         "the underground crypts of Prague",
-        "a cursed bloodline dating back to the Crusades"
+        "a cursed bloodline dating back to the Crusades",
+        "the plague-ridden streets of medieval Venice",
+        "an abandoned cathedral in the Black Forest",
+        "the frozen wastes of Siberia",
+        "the blood-soaked battlefields of the Ottoman Empire",
+        "a secret society in Renaissance Italy",
+        "the haunted moors of Ireland",
+        "an occult ritual gone wrong in Salem",
+        "the shadowy alleys of Constantinople"
     ]
     
     powers = [
@@ -128,7 +195,15 @@ async def make_vampire(ctx):
         "control over wolves and ravens",
         "the gift of prophecy through blood",
         "immunity to most mortal weapons",
-        "the ability to drain life force from a distance"
+        "the ability to drain life force from a distance",
+        "manipulation of weather and storms",
+        "the power to induce nightmares in victims",
+        "shapeshifting into mist or fog",
+        "telekinetic control over objects",
+        "the ability to speak with the dead",
+        "regeneration from near-fatal wounds",
+        "mind reading and thought manipulation",
+        "summoning of undead servants"
     ]
     
     weaknesses = [
@@ -141,7 +216,15 @@ async def make_vampire(ctx):
         "loses power during the new moon",
         "vulnerable to fire",
         "bound to their ancestral bloodline",
-        "cursed to feel the pain of every life they've taken"
+        "cursed to feel the pain of every life they've taken",
+        "must sleep in their native soil",
+        "cannot see their reflection",
+        "weakened by the sound of church bells",
+        "vulnerable to hawthorn stakes",
+        "loses strength in the presence of pure love",
+        "cursed to count grains of rice when spilled",
+        "cannot cross salt lines",
+        "weakened during daylight hours even indoors"
     ]
     
     personalities = [
@@ -154,7 +237,12 @@ async def make_vampire(ctx):
         "elegant and refined, clinging to aristocratic traditions",
         "chaotic and unpredictable, reveling in their monstrous nature",
         "remorseful and seeking redemption for past sins",
-        "calculating and strategic, playing the long game of immortality"
+        "calculating and strategic, playing the long game of immortality",
+        "sadistic and cruel, taking pleasure in suffering",
+        "mysterious and enigmatic, hiding their true intentions",
+        "honorable yet deadly, following an ancient code",
+        "obsessive and possessive over their territory",
+        "charming yet dangerous, a perfect predator"
     ]
     
     # Generate random vampire
@@ -187,7 +275,11 @@ async def make_vampire(ctx):
         "wins": 0,
         "losses": 0,
         "status": "alive",
-        "earned_titles": []
+        "earned_titles": [],
+        "total_power_gained": 0,
+        "total_power_lost": 0,
+        "highest_power": 100,
+        "kill_count": 0
     }
     
     vampires[vampire_id] = vampire_data
@@ -273,16 +365,9 @@ async def fight_vampire(ctx, vampire_id: str = None):
         await ctx.send("You can only fight with vampires you created.")
         return
     
-    # Generate AI opponent
-    ai_names = ["Marcus the Merciless", "Elena the Ruthless", "Drakon the Savage", 
-                "Nyx the Deadly", "Kain the Brutal", "Sable the Vicious",
-                "Cyrus the Cruel", "Morrigan the Fierce", "Vex the Relentless",
-                "Azrael the Destroyer"]
-    
-    ai_name = random.choice(ai_names)
-    ai_power = random.randint(80, 150)
-    
+    # Generate AI opponent that scales with player power
     player_power = player_vampire["power_level"]
+    ai_name, ai_power, difficulty = generate_ai_opponent(player_power)
     
     # Calculate win chance based on power levels
     power_diff = player_power - ai_power
@@ -298,7 +383,7 @@ async def fight_vampire(ctx, vampire_id: str = None):
     random_roll = random.randint(1, 100)
     player_wins = random_roll <= win_chance
     
-    # Battle narrative
+    # Battle narrative (expanded)
     battle_actions = [
         "lunges forward with supernatural speed",
         "unleashes a torrent of dark magic",
@@ -307,11 +392,35 @@ async def fight_vampire(ctx, vampire_id: str = None):
         "summons shadows to bind their opponent",
         "moves with predatory grace",
         "channels centuries of bloodlust",
-        "delivers a devastating blow"
+        "delivers a devastating blow",
+        "conjures a storm of blood",
+        "phases through reality itself",
+        "calls upon the power of the damned",
+        "strikes with unholy precision",
+        "manipulates time to gain advantage",
+        "drains the very life from the air",
+        "unleashes a primal scream that shakes the earth",
+        "summons spectral wolves to attack",
+        "creates illusions to confuse their foe",
+        "channels raw vampiric essence"
     ]
+    
+    battle_locations = [
+        "beneath a blood moon in an abandoned graveyard",
+        "in the ruins of an ancient cathedral",
+        "atop a fog-shrouded mountain peak",
+        "within the depths of a forgotten crypt",
+        "in the shadows of a cursed forest",
+        "on the battlements of a crumbling castle",
+        "in a realm between life and death",
+        "within a circle of standing stones"
+    ]
+    
+    location = random.choice(battle_locations)
     
     embed = discord.Embed(
         title="BATTLE OF THE DAMNED",
+        description=f"*{location}*",
         color=0x8B0000
     )
     
@@ -323,7 +432,7 @@ async def fight_vampire(ctx, vampire_id: str = None):
     
     embed.add_field(
         name="Opponent",
-        value=f"**{ai_name}**\nPower: {ai_power}",
+        value=f"**{ai_name}**\nPower: {ai_power}\nDifficulty: {difficulty}",
         inline=True
     )
     
@@ -344,9 +453,33 @@ async def fight_vampire(ctx, vampire_id: str = None):
     
     if player_wins:
         # Player wins
-        power_gain = random.randint(5, 15)
+        # Scale power gain based on difficulty
+        if difficulty == "Novice":
+            power_gain = random.randint(3, 8)
+        elif difficulty == "Apprentice":
+            power_gain = random.randint(5, 12)
+        elif difficulty == "Adept":
+            power_gain = random.randint(8, 15)
+        elif difficulty == "Veteran":
+            power_gain = random.randint(12, 20)
+        elif difficulty == "Master":
+            power_gain = random.randint(15, 25)
+        elif difficulty == "Elite":
+            power_gain = random.randint(20, 30)
+        else:  # Legendary
+            power_gain = random.randint(25, 40)
+        
         player_vampire["power_level"] += power_gain
         player_vampire["wins"] = player_vampire.get("wins", 0) + 1
+        player_vampire["total_power_gained"] = player_vampire.get("total_power_gained", 0) + power_gain
+        
+        # Update highest power
+        if player_vampire["power_level"] > player_vampire.get("highest_power", 100):
+            player_vampire["highest_power"] = player_vampire["power_level"]
+        
+        # 50% chance to increase kill count
+        if random.randint(1, 2) == 1:
+            player_vampire["kill_count"] = player_vampire.get("kill_count", 0) + 1
         
         # Check if vampire earned a title (10+ wins and no title yet)
         if player_vampire["wins"] >= 10 and len(player_vampire.get("earned_titles", [])) == 0:
@@ -366,7 +499,12 @@ async def fight_vampire(ctx, vampire_id: str = None):
                 "The Supreme",
                 "The Vanquisher",
                 "The Dreadlord",
-                "The Immortal King"
+                "The Immortal King",
+                "The Deathbringer",
+                "The Unstoppable",
+                "The Merciless",
+                "The Absolute",
+                "The Executioner"
             ]
             
             new_title = random.choice(legendary_titles)
@@ -404,6 +542,7 @@ async def fight_vampire(ctx, vampire_id: str = None):
             power_loss = random.randint(5, 10)
             player_vampire["power_level"] = max(50, player_vampire["power_level"] - power_loss)
             player_vampire["losses"] = player_vampire.get("losses", 0) + 1
+            player_vampire["total_power_lost"] = player_vampire.get("total_power_lost", 0) + power_loss
             
             outcome = f"\n\n**DEFEAT**\n\n**{player_vampire['first_name']} {player_vampire['last_name']}** is defeated but survives to fight another night.\n\n"
             outcome += f"Power Level: {player_power} → {player_vampire['power_level']} (-{power_loss})"
@@ -418,7 +557,7 @@ async def fight_vampire(ctx, vampire_id: str = None):
     
     embed.add_field(
         name="Record",
-        value=f"Wins: {player_vampire.get('wins', 0)} | Losses: {player_vampire.get('losses', 0)}",
+        value=f"Wins: {player_vampire.get('wins', 0)} | Losses: {player_vampire.get('losses', 0)} | Kills: {player_vampire.get('kill_count', 0)}",
         inline=False
     )
     
@@ -433,6 +572,7 @@ async def fight_vampire(ctx, vampire_id: str = None):
         "opponent": ai_name,
         "player_power": player_power,
         "opponent_power": ai_power,
+        "difficulty": difficulty,
         "outcome": "win" if player_wins else "loss",
         "died": player_vampire.get("status") == "dead",
         "title_earned": new_title if title_earned else None,
@@ -479,13 +619,14 @@ async def list_vampires(ctx):
             power = vdata.get('power_level', 100)
             wins = vdata.get('wins', 0)
             losses = vdata.get('losses', 0)
+            kills = vdata.get('kill_count', 0)
             
             # Check for earned titles
             earned_titles = vdata.get('earned_titles', [])
             title_display = f" - {earned_titles[0]}" if earned_titles else ""
             
             alive_list += f"``{vid}`` - **{name}**{title_display}\n"
-            alive_list += f"Power: {power} | Record: {wins}W - {losses}L\n\n"
+            alive_list += f"Power: {power} | Record: {wins}W - {losses}L | Kills: {kills}\n\n"
         
         embed.add_field(
             name="Active Vampires",
@@ -500,13 +641,14 @@ async def list_vampires(ctx):
             name = f"{vdata['first_name']} {vdata['last_name']}"
             wins = vdata.get('wins', 0)
             losses = vdata.get('losses', 0)
+            highest_power = vdata.get('highest_power', 100)
             
             # Check for earned titles
             earned_titles = vdata.get('earned_titles', [])
             title_display = f" - {earned_titles[0]}" if earned_titles else ""
             
             dead_list += f"``{vid}`` - **{name}**{title_display} [FALLEN]\n"
-            dead_list += f"Final Record: {wins}W - {losses}L\n\n"
+            dead_list += f"Final Record: {wins}W - {losses}L | Peak Power: {highest_power}\n\n"
         
         embed.add_field(
             name="Fallen Vampires",
@@ -520,6 +662,107 @@ async def list_vampires(ctx):
     dead_count = len(dead_vampires)
     
     embed.set_footer(text=f"Total: {total} | Active: {alive_count} | Fallen: {dead_count}")
+    embed.timestamp = datetime.now()
+    
+    await ctx.send(embed=embed)
+
+# Stats command - Show detailed vampire stats
+@bot.command(name='stats')
+async def vampire_stats(ctx, vampire_id: str = None):
+    """Display detailed statistics for a specific vampire"""
+    
+    if vampire_id is None:
+        await ctx.send("Usage: ``?stats <vampire_id>``")
+        return
+    
+    # Check if vampire exists
+    if vampire_id not in vampires:
+        await ctx.send(f"Vampire with ID ``{vampire_id}`` not found.")
+        return
+    
+    vampire = vampires[vampire_id]
+    
+    # Check if user owns this vampire
+    if str(ctx.author.id) != vampire["created_by"]:
+        await ctx.send("You can only view stats for vampires you created.")
+        return
+    
+    # Create detailed stats embed
+    embed = discord.Embed(
+        title=f"{vampire['first_name']} {vampire['last_name']}",
+        description=f"*{vampire['title']}*",
+        color=0x8B0000 if vampire.get('status') == 'alive' else 0x000000
+    )
+    
+    # Check for earned titles
+    earned_titles = vampire.get('earned_titles', [])
+    if earned_titles:
+        embed.description += f"\n**{earned_titles[0]}**"
+    
+    embed.add_field(
+        name="ID",
+        value=f"``{vampire_id}``",
+        inline=True
+    )
+    
+    embed.add_field(
+        name="Status",
+        value=vampire.get('status', 'alive').upper(),
+        inline=True
+    )
+    
+    embed.add_field(
+        name="Age",
+        value=f"{vampire['age']} years",
+        inline=True
+    )
+    
+    embed.add_field(
+        name="Combat Statistics",
+        value=f"Power Level: **{vampire.get('power_level', 100)}**\n"
+              f"Peak Power: **{vampire.get('highest_power', 100)}**\n"
+              f"Wins: **{vampire.get('wins', 0)}**\n"
+              f"Losses: **{vampire.get('losses', 0)}**\n"
+              f"Kills: **{vampire.get('kill_count', 0)}**\n"
+              f"Win Rate: **{round((vampire.get('wins', 0) / max(1, vampire.get('wins', 0) + vampire.get('losses', 0))) * 100, 1)}%**",
+        inline=True
+    )
+    
+    embed.add_field(
+        name="Power Progression",
+        value=f"Total Gained: **+{vampire.get('total_power_gained', 0)}**\n"
+              f"Total Lost: **-{vampire.get('total_power_lost', 0)}**\n"
+              f"Net Change: **{vampire.get('total_power_gained', 0) - vampire.get('total_power_lost', 0):+d}**",
+        inline=True
+    )
+    
+    embed.add_field(
+        name="Origin",
+        value=f"Born from {vampire['origin']}",
+        inline=False
+    )
+    
+    embed.add_field(
+        name="Dark Gift",
+        value=f"Possesses {vampire['power']}",
+        inline=False
+    )
+    
+    embed.add_field(
+        name="Fatal Flaw",
+        value=f"However, {vampire['weakness']}",
+        inline=False
+    )
+    
+    embed.add_field(
+        name="Nature",
+        value=vampire['personality'].capitalize(),
+        inline=False
+    )
+    
+    # Calculate created time
+    created_at = datetime.fromisoformat(vampire['created_at'])
+    embed.set_footer(text=f"Created on {created_at.strftime('%B %d, %Y')}")
     embed.timestamp = datetime.now()
     
     await ctx.send(embed=embed)
