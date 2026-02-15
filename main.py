@@ -104,10 +104,8 @@ def simulate_battle(attacker_name, attacker_power, attacker_skills, defender_nam
     attacker_hp = 100 + (attacker_power * 0.5)
     defender_hp = 100 + (defender_power * 0.5)
     
-    for round_num in range(1, 4):
-        if attacker_hp <= 0 or defender_hp <= 0:
-            break
-            
+    round_num = 1
+    while round_num <= 3 and attacker_hp > 0 and defender_hp > 0:
         # Attacker's turn
         atk_skill = random.choice(attacker_skills)
         atk_skill_power = SKILLS[atk_skill]["offensive"]
@@ -124,6 +122,7 @@ def simulate_battle(attacker_name, attacker_power, attacker_skills, defender_nam
             "attacker": attacker_name,
             "action": f"uses {atk_skill}",
             "damage": int(final_damage),
+            "target": defender_name,
             "target_hp": max(0, int(defender_hp))
         })
         
@@ -146,8 +145,11 @@ def simulate_battle(attacker_name, attacker_power, attacker_skills, defender_nam
             "attacker": defender_name,
             "action": f"counters with {def_skill}",
             "damage": int(final_damage),
+            "target": attacker_name,
             "target_hp": max(0, int(attacker_hp))
         })
+        
+        round_num += 1
     
     # Determine winner
     if attacker_hp > defender_hp:
@@ -775,24 +777,43 @@ async def fight_character(ctx, character_id: str = None):
         ai_name, ai_power_level, ai_skills
     )
     
-    # Show battle rounds
+    # Group battle log by round to avoid duplication
+    current_round = None
+    round_actions = []
+    
     for log_entry in battle_result['battle_log']:
+        if log_entry['round'] != current_round:
+            # Send previous round if exists
+            if round_actions:
+                round_text = ""
+                for action in round_actions:
+                    round_text += f"**{action['attacker']}** {action['action']}!\nDamage: {action['damage']} HP | {action['target']} HP: {action['target_hp']}\n\n"
+                
+                round_embed = discord.Embed(
+                    title=f"Round {current_round}",
+                    description=round_text,
+                    color=discord.Color.orange()
+                )
+                
+                await ctx.send(embed=round_embed)
+                await asyncio.sleep(2)
+            
+            # Start new round
+            current_round = log_entry['round']
+            round_actions = []
+        
+        round_actions.append(log_entry)
+    
+    # Send last round
+    if round_actions:
+        round_text = ""
+        for action in round_actions:
+            round_text += f"**{action['attacker']}** {action['action']}!\nDamage: {action['damage']} HP | {action['target']} HP: {action['target_hp']}\n\n"
+        
         round_embed = discord.Embed(
-            title=f"Round {log_entry['round']}",
-            description=f"**{log_entry['attacker']}** {log_entry['action']}!",
+            title=f"Round {current_round}",
+            description=round_text,
             color=discord.Color.orange()
-        )
-        
-        round_embed.add_field(
-            name="Damage Dealt",
-            value=f"{log_entry['damage']} HP",
-            inline=True
-        )
-        
-        round_embed.add_field(
-            name="Target HP Remaining",
-            value=f"{log_entry['target_hp']} HP",
-            inline=True
         )
         
         await ctx.send(embed=round_embed)
