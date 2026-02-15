@@ -31,6 +31,29 @@ SKILLS = [
     "Curse", "Healing Touch", "Absorption", "Cloning"
 ]
 
+# Name pools
+FIRST_NAMES = [
+    "Axel", "Blaze", "Drake", "Ember", "Frost", "Gale", "Hunter", "Iron",
+    "Jade", "Kane", "Luna", "Magnus", "Nova", "Onyx", "Phoenix", "Raven",
+    "Shadow", "Storm", "Titan", "Vex", "Wolf", "Zane", "Ash", "Blade",
+    "Crimson", "Dante", "Echo", "Flint", "Hawk", "Iris", "Jett", "Kai",
+    "Lyra", "Maximus", "Nyx", "Orion", "Pierce", "Quinn", "Rex", "Sage",
+    "Thorn", "Viper", "Zara", "Atlas", "Celeste", "Dusk", "Elektra", "Fang",
+    "Glacier", "Havoc", "Inferno", "Jinx"
+]
+
+LAST_NAMES = [
+    "Blackwood", "Stormborn", "Ironheart", "Shadowfang", "Firebrand", "Frostbane",
+    "Thunderstrike", "Nightshade", "Bloodmoon", "Steelheart", "Darkblade", "Windwalker",
+    "Stormbringer", "Flamekeeper", "Icebreaker", "Thunderfist", "Shadowclaw", "Ironfist",
+    "Nightwing", "Bloodstone", "Stormrider", "Fireborn", "Frostforge", "Thunderbolt",
+    "Darkheart", "Windstorm", "Stormguard", "Flameheart", "Icestorm", "Nightbringer",
+    "Bloodfang", "Steelborn", "Darkstorm", "Windblade", "Stormcaller", "Firewalker",
+    "Frostheart", "Thunderborn", "Shadowborn", "Ironborn", "Nightfall", "Bloodreaper",
+    "Stormforge", "Firestorm", "Iceborn", "Thunderclaw", "Darkfire", "Windborne",
+    "Stormbreaker", "Flamebringer"
+]
+
 # Load characters
 def load_characters():
     if os.path.exists(CHARACTERS_FILE):
@@ -61,7 +84,7 @@ async def globally_block_dms(ctx):
 # Make command - Creates a character
 @bot.command(name='make')
 async def make_character(ctx):
-    """Generate a unique character with random skills and power level"""
+    """Generate a unique character with random name, skills and power level"""
     
     user_id = str(ctx.author.id)
     
@@ -71,7 +94,8 @@ async def make_character(ctx):
         
         # Display existing character
         embed = discord.Embed(
-            title=f"{ctx.author.name}'s Character",
+            title=char['name'],
+            description=f"Owner: {ctx.author.name}",
             color=discord.Color.red()
         )
         
@@ -83,6 +107,11 @@ async def make_character(ctx):
         await ctx.send(embed=embed)
         return
     
+    # Generate random character name
+    first_name = random.choice(FIRST_NAMES)
+    last_name = random.choice(LAST_NAMES)
+    character_name = f"{first_name} {last_name}"
+    
     # Generate random power level (10 to 100)
     power_level = random.randint(10, 100)
     
@@ -92,6 +121,7 @@ async def make_character(ctx):
     
     # Create character data
     character_data = {
+        "name": character_name,
         "username": str(ctx.author),
         "user_id": user_id,
         "power_level": power_level,
@@ -105,7 +135,8 @@ async def make_character(ctx):
     
     # Display new character
     embed = discord.Embed(
-        title=f"{ctx.author.name}'s Character",
+        title=character_name,
+        description=f"Owner: {ctx.author.name}",
         color=discord.Color.green()
     )
     
