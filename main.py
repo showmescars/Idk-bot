@@ -19,19 +19,49 @@ bot = commands.Bot(command_prefix='?', intents=intents)
 CHARACTERS_FILE = 'characters.json'
 GRAVEYARD_FILE = 'graveyard.json'
 
-# Vampire abilities pool
-SKILLS = [
-    "Blood Manipulation", "Shadow Travel", "Hypnotic Gaze", "Supernatural Speed",
-    "Enhanced Strength", "Regeneration", "Mist Form", "Bat Transformation",
-    "Mind Control", "Night Vision", "Wall Crawling", "Blood Drain",
-    "Immortality", "Shapeshifting", "Feral Claws", "Venomous Bite",
-    "Telepathy", "Superhuman Agility", "Blood Sense", "Darkness Manipulation",
-    "Charm", "Fear Inducement", "Enhanced Senses", "Undead Resilience",
-    "Thrall Creation", "Blood Healing", "Vampiric Speed", "Death Touch",
-    "Soul Drain", "Crimson Lightning", "Bloodlust Rage", "Eternal Youth",
-    "Mesmerize", "Bloodfire", "Cursed Bite", "Nightmare Inducement",
-    "Blood Wings", "Lunar Empowerment", "Corpse Animation", "Dark Pact"
-]
+# Vampire abilities pool with power ratings
+SKILLS = {
+    "Blood Manipulation": {"offensive": 8, "defensive": 6},
+    "Shadow Travel": {"offensive": 5, "defensive": 9},
+    "Hypnotic Gaze": {"offensive": 7, "defensive": 4},
+    "Supernatural Speed": {"offensive": 7, "defensive": 8},
+    "Enhanced Strength": {"offensive": 9, "defensive": 5},
+    "Regeneration": {"offensive": 3, "defensive": 10},
+    "Mist Form": {"offensive": 4, "defensive": 9},
+    "Bat Transformation": {"offensive": 5, "defensive": 7},
+    "Mind Control": {"offensive": 9, "defensive": 6},
+    "Night Vision": {"offensive": 6, "defensive": 5},
+    "Wall Crawling": {"offensive": 4, "defensive": 6},
+    "Blood Drain": {"offensive": 10, "defensive": 4},
+    "Immortality": {"offensive": 5, "defensive": 8},
+    "Shapeshifting": {"offensive": 6, "defensive": 8},
+    "Feral Claws": {"offensive": 8, "defensive": 5},
+    "Venomous Bite": {"offensive": 9, "defensive": 4},
+    "Telepathy": {"offensive": 7, "defensive": 6},
+    "Superhuman Agility": {"offensive": 7, "defensive": 8},
+    "Blood Sense": {"offensive": 6, "defensive": 7},
+    "Darkness Manipulation": {"offensive": 8, "defensive": 7},
+    "Charm": {"offensive": 7, "defensive": 5},
+    "Fear Inducement": {"offensive": 8, "defensive": 6},
+    "Enhanced Senses": {"offensive": 6, "defensive": 7},
+    "Undead Resilience": {"offensive": 4, "defensive": 9},
+    "Thrall Creation": {"offensive": 7, "defensive": 5},
+    "Blood Healing": {"offensive": 3, "defensive": 9},
+    "Vampiric Speed": {"offensive": 8, "defensive": 7},
+    "Death Touch": {"offensive": 10, "defensive": 3},
+    "Soul Drain": {"offensive": 9, "defensive": 5},
+    "Crimson Lightning": {"offensive": 10, "defensive": 5},
+    "Bloodlust Rage": {"offensive": 10, "defensive": 4},
+    "Eternal Youth": {"offensive": 4, "defensive": 8},
+    "Mesmerize": {"offensive": 8, "defensive": 5},
+    "Bloodfire": {"offensive": 9, "defensive": 5},
+    "Cursed Bite": {"offensive": 9, "defensive": 4},
+    "Nightmare Inducement": {"offensive": 7, "defensive": 6},
+    "Blood Wings": {"offensive": 7, "defensive": 8},
+    "Lunar Empowerment": {"offensive": 8, "defensive": 7},
+    "Corpse Animation": {"offensive": 7, "defensive": 6},
+    "Dark Pact": {"offensive": 9, "defensive": 6}
+}
 
 # Vampire name pools
 FIRST_NAMES = [
@@ -56,6 +86,82 @@ LAST_NAMES = [
 
 # Transfer requests storage (temporary, in-memory)
 transfer_requests = {}
+
+# Battle simulation function
+def simulate_battle(attacker_name, attacker_power, attacker_skills, defender_name, defender_power, defender_skills):
+    """Simulate a detailed battle between two vampires"""
+    
+    battle_log = []
+    
+    # Calculate offensive and defensive ratings
+    attacker_offense = sum(SKILLS[skill]["offensive"] for skill in attacker_skills) / len(attacker_skills)
+    attacker_defense = sum(SKILLS[skill]["defensive"] for skill in attacker_skills) / len(attacker_skills)
+    
+    defender_offense = sum(SKILLS[skill]["offensive"] for skill in defender_skills) / len(defender_skills)
+    defender_defense = sum(SKILLS[skill]["defensive"] for skill in defender_skills) / len(defender_skills)
+    
+    # Simulate 3 rounds of combat
+    attacker_hp = 100 + (attacker_power * 0.5)
+    defender_hp = 100 + (defender_power * 0.5)
+    
+    for round_num in range(1, 4):
+        if attacker_hp <= 0 or defender_hp <= 0:
+            break
+            
+        # Attacker's turn
+        atk_skill = random.choice(attacker_skills)
+        atk_skill_power = SKILLS[atk_skill]["offensive"]
+        
+        # Calculate damage
+        base_damage = (attacker_power * 0.3) + (atk_skill_power * 2) + random.randint(5, 15)
+        damage_reduction = defender_defense * 0.8
+        final_damage = max(5, base_damage - damage_reduction)
+        
+        defender_hp -= final_damage
+        
+        battle_log.append({
+            "round": round_num,
+            "attacker": attacker_name,
+            "action": f"uses {atk_skill}",
+            "damage": int(final_damage),
+            "target_hp": max(0, int(defender_hp))
+        })
+        
+        if defender_hp <= 0:
+            break
+        
+        # Defender's counter
+        def_skill = random.choice(defender_skills)
+        def_skill_power = SKILLS[def_skill]["offensive"]
+        
+        # Calculate counter damage
+        base_damage = (defender_power * 0.3) + (def_skill_power * 2) + random.randint(5, 15)
+        damage_reduction = attacker_defense * 0.8
+        final_damage = max(5, base_damage - damage_reduction)
+        
+        attacker_hp -= final_damage
+        
+        battle_log.append({
+            "round": round_num,
+            "attacker": defender_name,
+            "action": f"counters with {def_skill}",
+            "damage": int(final_damage),
+            "target_hp": max(0, int(attacker_hp))
+        })
+    
+    # Determine winner
+    if attacker_hp > defender_hp:
+        winner = attacker_name
+        winner_hp = int(attacker_hp)
+    else:
+        winner = defender_name
+        winner_hp = int(defender_hp)
+    
+    return {
+        "winner": winner,
+        "winner_hp": winner_hp,
+        "battle_log": battle_log
+    }
 
 # Function to get vampire rank based on power level
 def get_vampire_rank(power_level):
@@ -170,7 +276,7 @@ async def make_character(ctx):
     
     # Generate 3-5 random unique vampiric abilities
     num_skills = random.randint(3, 5)
-    selected_skills = random.sample(SKILLS, num_skills)
+    selected_skills = random.sample(list(SKILLS.keys()), num_skills)
     
     # Create vampire data
     character_data = {
@@ -359,7 +465,7 @@ async def train_vampire(ctx, character_id: str = None):
     
     if random.randint(1, 100) <= 20 and len(player_char['skills']) < 10:
         # Get skills the vampire doesn't have yet
-        available_skills = [skill for skill in SKILLS if skill not in player_char['skills']]
+        available_skills = [skill for skill in SKILLS.keys() if skill not in player_char['skills']]
         if available_skills:
             new_skill = random.choice(available_skills)
             player_char['skills'].append(new_skill)
@@ -492,7 +598,7 @@ async def blood_transfer(ctx, member: discord.Member = None):
         all_skills = list(set(initiator_char['skills'] + target_char['skills']))
         
         # Add 1-3 random new skills
-        available_skills = [skill for skill in SKILLS if skill not in all_skills]
+        available_skills = [skill for skill in SKILLS.keys() if skill not in all_skills]
         if available_skills:
             num_new_skills = min(random.randint(1, 3), len(available_skills))
             new_skills = random.sample(available_skills, num_new_skills)
@@ -608,10 +714,10 @@ async def blood_transfer(ctx, member: discord.Member = None):
         
         await ctx.send(embed=request_embed)
 
-# Fight command - Fight random vampire opponents
+# Fight command - Fight random vampire opponents with detailed combat
 @bot.command(name='fight')
 async def fight_character(ctx, character_id: str = None):
-    """Fight a random vampire - you can win or lose! Usage: ?fight <character_id>"""
+    """Fight a random vampire with detailed turn-based combat! Usage: ?fight <character_id>"""
     
     # Check if character ID was provided
     if character_id is None:
@@ -638,9 +744,9 @@ async def fight_character(ctx, character_id: str = None):
     ai_name = f"{ai_first_name} {ai_last_name}"
     ai_power_level = random.randint(10, 100)
     ai_num_skills = random.randint(3, 5)
-    ai_skills = random.sample(SKILLS, ai_num_skills)
+    ai_skills = random.sample(list(SKILLS.keys()), ai_num_skills)
     
-    # Battle embed - show both vampires
+    # Battle intro embed
     battle_embed = discord.Embed(
         title="BLOOD BATTLE",
         description="Two vampires clash in the darkness!",
@@ -649,33 +755,51 @@ async def fight_character(ctx, character_id: str = None):
     
     battle_embed.add_field(
         name=f"{player_char['name']} (YOU)",
-        value=f"Blood Power: {player_char['power_level']}\nAbilities: {', '.join(player_char['skills'][:2])}...",
+        value=f"Blood Power: {player_char['power_level']}\nRank: {get_vampire_rank(player_char['power_level'])}\nAbilities: {len(player_char['skills'])}",
         inline=True
     )
     
     battle_embed.add_field(
-        name=f"{ai_name} (ENEMY VAMPIRE)",
-        value=f"Blood Power: {ai_power_level}\nAbilities: {', '.join(ai_skills[:2])}...",
+        name=f"{ai_name} (ENEMY)",
+        value=f"Blood Power: {ai_power_level}\nRank: {get_vampire_rank(ai_power_level)}\nAbilities: {len(ai_skills)}",
         inline=True
     )
     
     await ctx.send(embed=battle_embed)
     
-    # 4 second delay before showing results
-    await asyncio.sleep(4)
+    # Simulate the battle
+    await asyncio.sleep(2)
     
-    # Calculate win chance based on power levels
-    player_power = player_char['power_level']
-    total_power = player_power + ai_power_level
-    player_win_chance = (player_power / total_power) * 100
+    battle_result = simulate_battle(
+        player_char['name'], player_char['power_level'], player_char['skills'],
+        ai_name, ai_power_level, ai_skills
+    )
     
-    # Add some randomness (30% random factor)
-    random_factor = random.randint(-15, 15)
-    final_win_chance = max(10, min(90, player_win_chance + random_factor))
+    # Show battle rounds
+    for log_entry in battle_result['battle_log']:
+        round_embed = discord.Embed(
+            title=f"Round {log_entry['round']}",
+            description=f"**{log_entry['attacker']}** {log_entry['action']}!",
+            color=discord.Color.orange()
+        )
+        
+        round_embed.add_field(
+            name="Damage Dealt",
+            value=f"{log_entry['damage']} HP",
+            inline=True
+        )
+        
+        round_embed.add_field(
+            name="Target HP Remaining",
+            value=f"{log_entry['target_hp']} HP",
+            inline=True
+        )
+        
+        await ctx.send(embed=round_embed)
+        await asyncio.sleep(2)
     
-    # Determine winner
-    roll = random.randint(1, 100)
-    player_wins = roll <= final_win_chance
+    # Determine if player won
+    player_wins = battle_result['winner'] == player_char['name']
     
     # Result embed
     if player_wins:
@@ -699,12 +823,9 @@ async def fight_character(ctx, character_id: str = None):
             color=discord.Color.green()
         )
         
-        result_embed.add_field(name="Your Blood Power", value=f"{player_power}", inline=True)
-        result_embed.add_field(name="Enemy Blood Power", value=f"{ai_power_level}", inline=True)
-        result_embed.add_field(name="Win Chance", value=f"{final_win_chance:.1f}%", inline=True)
         result_embed.add_field(
             name="Battle Summary",
-            value=f"{player_char['name']} emerged victorious from the blood battle and survives to hunt another night!",
+            value=f"{player_char['name']} emerged victorious with {battle_result['winner_hp']} HP remaining!",
             inline=False
         )
         
@@ -720,10 +841,6 @@ async def fight_character(ctx, character_id: str = None):
             description=f"{player_char['name']} has been destroyed by {ai_name}!",
             color=discord.Color.red()
         )
-        
-        result_embed.add_field(name="Your Blood Power", value=f"{player_power}", inline=True)
-        result_embed.add_field(name="Enemy Blood Power", value=f"{ai_power_level}", inline=True)
-        result_embed.add_field(name="Win Chance", value=f"{final_win_chance:.1f}%", inline=True)
         
         # Show final record before deletion
         wins = player_char.get('wins', 0)
