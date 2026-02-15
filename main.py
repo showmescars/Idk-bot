@@ -282,6 +282,13 @@ async def train_vampire(ctx, character_id: str = None):
             player_char['skills'].append(new_skill)
             learned_new_skill = True
     
+    # If hybrid, update both users
+    if player_char.get('is_hybrid', False):
+        shared_user_id = player_char.get('shared_user_id')
+        if shared_user_id and shared_user_id in characters:
+            characters[shared_user_id]['power_level'] = new_power
+            characters[shared_user_id]['skills'] = player_char['skills']
+    
     # Save updated vampire
     characters[user_id] = player_char
     save_characters(characters)
@@ -383,7 +390,7 @@ async def blood_transfer(ctx, member: discord.Member = None):
         last_name = random.choice(LAST_NAMES)
         hybrid_name = f"{first_name} {last_name}"
         
-        # Generate new ID
+        # Generate new ID (SINGLE ID for both users)
         hybrid_id = generate_unique_id()
         
         # Combine powers (average + bonus)
@@ -404,13 +411,13 @@ async def blood_transfer(ctx, member: discord.Member = None):
         # Combine wins
         total_wins = initiator_char.get('wins', 0) + target_char.get('wins', 0)
         
-        # Create hybrid vampire data
+        # Create SINGLE hybrid vampire data
         hybrid_data = {
             "character_id": hybrid_id,
             "name": hybrid_name,
             "username": f"{ctx.author.name} & {member.name}",
-            "user_id": initiator_id,  # Primary owner
-            "shared_user_id": target_id,  # Secondary owner
+            "user_id": initiator_id,
+            "shared_user_id": target_id,
             "power_level": hybrid_power,
             "skills": all_skills,
             "wins": total_wins,
@@ -436,7 +443,7 @@ async def blood_transfer(ctx, member: discord.Member = None):
         del characters[initiator_id]
         del characters[target_id]
         
-        # Save hybrid vampire for both users
+        # Save THE SAME hybrid vampire for both users (exact copy with swapped IDs)
         characters[initiator_id] = hybrid_data
         characters[target_id] = hybrid_data.copy()
         characters[target_id]['user_id'] = target_id
@@ -688,9 +695,19 @@ async def world_stats(ctx):
     
     await ctx.send(embed=stats_embed)
     
-    # Show top 5 alive vampires by wins
+    # Show top 5 alive vampires by wins (remove duplicates for hybrids)
     if alive_vampires:
-        alive_list = sorted(alive_vampires.values(), key=lambda x: x.get('wins', 0), reverse=True)[:5]
+        # Use character_id to deduplicate hybrids
+        seen_ids = set()
+        unique_vampires = []
+        
+        for vamp in alive_vampires.values():
+            char_id = vamp.get('character_id')
+            if char_id not in seen_ids:
+                seen_ids.add(char_id)
+                unique_vampires.append(vamp)
+        
+        alive_list = sorted(unique_vampires, key=lambda x: x.get('wins', 0), reverse=True)[:5]
         
         alive_embed = discord.Embed(
             title="TOP LIVING VAMPIRES",
