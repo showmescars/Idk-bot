@@ -255,7 +255,64 @@ async def check_user_credits(ctx):
     
     await ctx.send(embed=embed)
 
-# Make command - Vampire character creator
+# Give credits command (ADMIN ONLY - BY USER ID)
+@bot.command(name='givecredits')
+@commands.has_permissions(administrator=True)
+async def give_credits(ctx, user_id: str = None, amount: int = None):
+    """Admin command to give credits to a user by their ID"""
+    
+    if user_id is None or amount is None:
+        await ctx.send("Usage: ``?givecredits <user_id> <amount>``\nExample: ``?givecredits 123456789012345678 5``")
+        return
+    
+    if amount <= 0:
+        await ctx.send("Amount must be greater than 0.")
+        return
+    
+    # Try to fetch the user to verify they exist
+    try:
+        member = await bot.fetch_user(int(user_id))
+    except:
+        await ctx.send(f"Could not find user with ID ``{user_id}``. Please check the ID and try again.")
+        return
+    
+    credits = load_credits()
+    
+    # Initialize user if they don't exist
+    if user_id not in credits:
+        credits[user_id] = {
+            "credits": MAX_CREDITS,
+            "last_refill": datetime.now().isoformat()
+        }
+    
+    # Add credits
+    old_credits = credits[user_id]["credits"]
+    credits[user_id]["credits"] += amount
+    new_credits = credits[user_id]["credits"]
+    
+    save_credits(credits)
+    
+    embed = discord.Embed(
+        title="Credits Granted",
+        description=f"Successfully gave **{amount}** credits to **{member.name}** (``{user_id}``)",
+        color=0x00FF00
+    )
+    
+    embed.add_field(
+        name="Previous Balance",
+        value=f"{old_credits} credits",
+        inline=True
+    )
+    
+    embed.add_field(
+        name="New Balance",
+        value=f"{new_credits} credits",
+        inline=True
+    )
+    
+    await ctx.send(embed=embed)
+
+# Make command - Vampire character creator (WITH RANDOM POWER 100-100K)
 @bot.command(name='make')
 async def make_vampire(ctx):
     """Create a random vampire character with backstory"""
@@ -409,6 +466,9 @@ async def make_vampire(ctx):
     personality = random.choice(personalities)
     age = random.randint(150, 1500)
     
+    # RANDOM POWER LEVEL: 100 to 100,000
+    starting_power = random.randint(100, 100000)
+    
     # Generate unique ID
     vampire_id = generate_vampire_id(vampires)
     
@@ -425,14 +485,14 @@ async def make_vampire(ctx):
         "personality": personality,
         "created_by": str(ctx.author.id),
         "created_at": datetime.now().isoformat(),
-        "power_level": 100,
+        "power_level": starting_power,
         "wins": 0,
         "losses": 0,
         "status": "alive",
         "earned_titles": [],
         "total_power_gained": 0,
         "total_power_lost": 0,
-        "highest_power": 100,
+        "highest_power": starting_power,
         "kill_count": 0
     }
     
