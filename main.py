@@ -492,22 +492,32 @@ async def make_vampire(ctx):
     
     await ctx.send(embed=embed)
 
-# Transfer Soul command - Combine two vampires
+# Transfer Soul command - Combine two vampires (FIXED)
 @bot.command(name='transfer')
-async def transfer_soul(ctx, vampire_id_1: str = None, vampire_id_2: str = None):
+async def transfer_soul(ctx, *, args=None):
     """Combine two vampires into one powerful entity. Both vampires will be sacrificed."""
     
-    if vampire_id_1 is None or vampire_id_2 is None:
-        await ctx.send("Usage: ``?transfer <vampire_id_1> <vampire_id_2>``")
+    if args is None:
+        await ctx.send("Usage: ``?transfer <vampire_id_1> <vampire_id_2>``\nExample: ``?transfer 123456 789012``")
         return
+    
+    # Split the arguments
+    parts = args.split()
+    
+    if len(parts) != 2:
+        await ctx.send(f"You provided {len(parts)} argument(s). Please provide exactly 2 vampire IDs.\nUsage: ``?transfer <vampire_id_1> <vampire_id_2>``")
+        return
+    
+    vampire_id_1 = parts[0].strip()
+    vampire_id_2 = parts[1].strip()
     
     # Check if both vampires exist
     if vampire_id_1 not in vampires:
-        await ctx.send(f"Vampire with ID ``{vampire_id_1}`` not found.")
+        await ctx.send(f"Vampire with ID ``{vampire_id_1}`` not found. Use ``?list`` to see your vampires.")
         return
     
     if vampire_id_2 not in vampires:
-        await ctx.send(f"Vampire with ID ``{vampire_id_2}`` not found.")
+        await ctx.send(f"Vampire with ID ``{vampire_id_2}`` not found. Use ``?list`` to see your vampires.")
         return
     
     # Can't transfer same vampire
@@ -593,7 +603,7 @@ async def transfer_soul(ctx, vampire_id_1: str = None, vampire_id_2: str = None)
     origin_text = f"a forbidden soul transfer ritual between {vampire_1['first_name']} {vampire_1['last_name']} and {vampire_2['first_name']} {vampire_2['last_name']}"
     
     # Choose random power and weakness from both
-    new_power = random.choice([vampire_1["power"], vampire_2["power"]])
+    new_power_ability = random.choice([vampire_1["power"], vampire_2["power"]])
     new_weakness = random.choice([vampire_1["weakness"], vampire_2["weakness"]])
     new_personality = random.choice([vampire_1["personality"], vampire_2["personality"]])
     
@@ -608,7 +618,7 @@ async def transfer_soul(ctx, vampire_id_1: str = None, vampire_id_2: str = None)
         "title": new_title,
         "age": new_age,
         "origin": origin_text,
-        "power": new_power,
+        "power": new_power_ability,
         "weakness": new_weakness,
         "personality": new_personality,
         "created_by": user_id,
@@ -699,7 +709,7 @@ async def transfer_soul(ctx, vampire_id_1: str = None, vampire_id_2: str = None)
     
     embed.add_field(
         name="Inherited Gift",
-        value=f"Possesses {new_power}",
+        value=f"Possesses {new_power_ability}",
         inline=False
     )
     
