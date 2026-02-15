@@ -183,7 +183,7 @@ async def make_vampire(ctx):
     
     embed.add_field(
         name="ID",
-        value=f"#{vampire_id}",
+        value=f"``{vampire_id}``",
         inline=True
     )
     
