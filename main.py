@@ -191,8 +191,13 @@ async def show_character(ctx):
 
 # Fight command - Fight random AI characters
 @bot.command(name='fight')
-async def fight_character(ctx):
-    """Fight a random AI character - you can win or lose!"""
+async def fight_character(ctx, character_id: str = None):
+    """Fight a random AI character - you can win or lose! Usage: ?fight <character_id>"""
+    
+    # Check if character ID was provided
+    if character_id is None:
+        await ctx.send("Usage: `?fight <character_id>`\nExample: `?fight 123456`\n\nUse `?show` to see your character ID.")
+        return
     
     user_id = str(ctx.author.id)
     
@@ -202,6 +207,11 @@ async def fight_character(ctx):
         return
     
     player_char = characters[user_id]
+    
+    # Verify the character ID matches
+    if player_char['character_id'] != character_id:
+        await ctx.send(f"Invalid character ID! Your character ID is `{player_char['character_id']}`")
+        return
     
     # Generate random AI opponent
     ai_first_name = random.choice(FIRST_NAMES)
