@@ -695,9 +695,14 @@ async def world_stats(ctx):
     
     await ctx.send(embed=stats_embed)
     
-    # Show top 5 alive vampires by wins (remove duplicates for hybrids)
+    # Combined embed with top living and recently fallen
+    combined_embed = discord.Embed(
+        title="VAMPIRE RANKINGS",
+        color=discord.Color.blurple()
+    )
+    
+    # Top 5 alive vampires (deduplicated)
     if alive_vampires:
-        # Use character_id to deduplicate hybrids
         seen_ids = set()
         unique_vampires = []
         
@@ -709,45 +714,29 @@ async def world_stats(ctx):
         
         alive_list = sorted(unique_vampires, key=lambda x: x.get('wins', 0), reverse=True)[:5]
         
-        alive_embed = discord.Embed(
-            title="TOP LIVING VAMPIRES",
-            description="The strongest vampires still walking the earth",
-            color=discord.Color.green()
-        )
-        
+        alive_text = "**TOP LIVING VAMPIRES**\nThe strongest vampires still walking the earth\n\n"
         for idx, vamp in enumerate(alive_list, 1):
             wins = vamp.get('wins', 0)
             losses = vamp.get('losses', 0)
             hybrid_tag = " [HYBRID]" if vamp.get('is_hybrid', False) else ""
-            alive_embed.add_field(
-                name=f"{idx}. {vamp['name']}{hybrid_tag}",
-                value=f"ID: `{vamp['character_id']}` | Power: {vamp['power_level']} | Record: {wins}W-{losses}L",
-                inline=False
-            )
+            alive_text += f"{idx}. **{vamp['name']}{hybrid_tag}**\nID: `{vamp['character_id']}` | Power: {vamp['power_level']} | Record: {wins}W-{losses}L\n\n"
         
-        await ctx.send(embed=alive_embed)
+        combined_embed.add_field(name="\u200b", value=alive_text, inline=False)
     
-    # Show last 5 fallen vampires
+    # Last 5 fallen vampires
     if dead_vampires:
         recent_dead = dead_vampires[-5:]
         recent_dead.reverse()
         
-        dead_embed = discord.Embed(
-            title="RECENTLY FALLEN VAMPIRES",
-            description="Those who met their end in battle",
-            color=discord.Color.dark_red()
-        )
-        
+        dead_text = "**RECENTLY FALLEN VAMPIRES**\nThose who met their end in battle\n\n"
         for vamp in recent_dead:
             wins = vamp.get('wins', 0)
             losses = vamp.get('losses', 0)
-            dead_embed.add_field(
-                name=f"{vamp['name']}",
-                value=f"ID: `{vamp['character_id']}` | Power: {vamp['power_level']} | Record: {wins}W-{losses}L\nKilled by: {vamp.get('killed_by', 'Unknown')}",
-                inline=False
-            )
+            dead_text += f"**{vamp['name']}**\nID: `{vamp['character_id']}` | Power: {vamp['power_level']} | Record: {wins}W-{losses}L\nKilled by: {vamp.get('killed_by', 'Unknown')}\n\n"
         
-        await ctx.send(embed=dead_embed)
+        combined_embed.add_field(name="\u200b", value=dead_text, inline=False)
+    
+    await ctx.send(embed=combined_embed)
 
 # Run the bot
 if __name__ == "__main__":
