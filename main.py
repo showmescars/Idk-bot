@@ -126,9 +126,9 @@ def generate_vampire_id(vampires):
         if vampire_id not in vampires:
             return vampire_id
 
-# Generate AI opponent based on player power
+# Generate AI opponent based on player power (IMPROVED SCALING)
 def generate_ai_opponent(player_power):
-    """Generate an AI opponent that scales with player power"""
+    """Generate an AI opponent that scales with player power - can go up to 100k"""
     
     # AI names pool (expanded)
     ai_names = [
@@ -144,37 +144,48 @@ def generate_ai_opponent(player_power):
         "Isolde the Vengeful", "Draven the Malevolent", "Xander the Apostate"
     ]
     
-    ai_name = random.choice(ai_names)
+    # Scale AI power based on player power with extended range
+    # AI power range: player_power ± 20-30%
+    min_variance = 0.70  # AI can be 30% weaker
+    max_variance = 1.30  # AI can be 30% stronger
     
-    # Scale AI power based on player power
-    if player_power < 100:
-        # Weak opponents for struggling vampires
-        ai_power = random.randint(60, 90)
+    # Calculate AI power range
+    min_power = int(player_power * min_variance)
+    max_power = int(player_power * max_variance)
+    
+    # Ensure minimum of 60 and maximum of 100,000
+    min_power = max(60, min_power)
+    max_power = min(100000, max_power)
+    
+    ai_power = random.randint(min_power, max_power)
+    
+    # Determine difficulty tier based on AI power level
+    if ai_power < 100:
         difficulty = "Novice"
-    elif player_power < 120:
-        # Balanced opponents
-        ai_power = random.randint(80, 110)
+    elif ai_power < 150:
         difficulty = "Apprentice"
-    elif player_power < 150:
-        # Moderate challenge
-        ai_power = random.randint(100, 140)
+    elif ai_power < 250:
         difficulty = "Adept"
-    elif player_power < 180:
-        # Tough opponents
-        ai_power = random.randint(130, 170)
+    elif ai_power < 500:
         difficulty = "Veteran"
-    elif player_power < 220:
-        # Very strong opponents
-        ai_power = random.randint(160, 210)
+    elif ai_power < 1000:
         difficulty = "Master"
-    elif player_power < 280:
-        # Elite opponents
-        ai_power = random.randint(200, 260)
+    elif ai_power < 2500:
         difficulty = "Elite"
-    else:
-        # Legendary opponents for the strongest
-        ai_power = random.randint(250, 320)
+    elif ai_power < 5000:
+        difficulty = "Champion"
+    elif ai_power < 10000:
         difficulty = "Legendary"
+    elif ai_power < 25000:
+        difficulty = "Mythic"
+    elif ai_power < 50000:
+        difficulty = "Ancient"
+    elif ai_power < 75000:
+        difficulty = "Primordial"
+    else:
+        difficulty = "Godlike"
+    
+    ai_name = random.choice(ai_names)
     
     return ai_name, ai_power, difficulty
 
@@ -724,7 +735,7 @@ async def transfer_soul(ctx, *, args=None):
     
     await ctx.send(embed=embed)
 
-# Fight command - Battle against AI vampire
+# Fight command - Battle against AI vampire (IMPROVED POWER SCALING & REWARDS)
 @bot.command(name='fight')
 async def fight_vampire(ctx, vampire_id: str = None):
     """Fight your vampire against an AI opponent"""
@@ -837,22 +848,32 @@ async def fight_vampire(ctx, vampire_id: str = None):
     new_title = ""
     
     if player_wins:
-        # Player wins
-        # Scale power gain based on difficulty
+        # Player wins - IMPROVED POWER SCALING
+        # Power gain scales with difficulty tier
         if difficulty == "Novice":
             power_gain = random.randint(3, 8)
         elif difficulty == "Apprentice":
             power_gain = random.randint(5, 12)
         elif difficulty == "Adept":
-            power_gain = random.randint(8, 15)
+            power_gain = random.randint(8, 18)
         elif difficulty == "Veteran":
-            power_gain = random.randint(12, 20)
+            power_gain = random.randint(15, 30)
         elif difficulty == "Master":
-            power_gain = random.randint(15, 25)
+            power_gain = random.randint(25, 50)
         elif difficulty == "Elite":
-            power_gain = random.randint(20, 30)
-        else:  # Legendary
-            power_gain = random.randint(25, 40)
+            power_gain = random.randint(40, 80)
+        elif difficulty == "Champion":
+            power_gain = random.randint(70, 150)
+        elif difficulty == "Legendary":
+            power_gain = random.randint(120, 250)
+        elif difficulty == "Mythic":
+            power_gain = random.randint(200, 500)
+        elif difficulty == "Ancient":
+            power_gain = random.randint(400, 1000)
+        elif difficulty == "Primordial":
+            power_gain = random.randint(800, 2000)
+        else:  # Godlike
+            power_gain = random.randint(1500, 4000)
         
         player_vampire["power_level"] += power_gain
         player_vampire["wins"] = player_vampire.get("wins", 0) + 1
