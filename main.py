@@ -256,7 +256,7 @@ async def make_character(ctx):
         "gang_affiliation": gang_affiliation,
         "set_name": set_name,
         "kills": 0,
-        "kill_list": [],  # NEW: Track who this member has killed
+        "kill_list": [],
         "created_at": datetime.now().strftime('%Y-%m-%d %H:%M:%S')
     }
     
@@ -270,16 +270,47 @@ async def make_character(ctx):
     # Display new gang member
     embed = discord.Embed(
         title="GANG MEMBER CREATED",
-        description=f"**{character_name}**",
+        description=f"A new soldier has joined the streets",
         color=gang_color
     )
     
-    embed.add_field(name="Owner", value=ctx.author.name, inline=True)
-    embed.add_field(name="ID", value=f"`{character_id}`", inline=True)
-    embed.add_field(name="Gang Affiliation", value=f"{gang_affiliation}", inline=True)
-    embed.add_field(name="Set", value=f"{set_name}", inline=True)
+    embed.add_field(
+        name="━━━━━━━━━━━━━━━━━━━━━━",
+        value=f"**{character_name}**",
+        inline=False
+    )
     
-    embed.set_footer(text="A new soldier hit the streets")
+    embed.add_field(
+        name="Owner",
+        value=ctx.author.name,
+        inline=True
+    )
+    
+    embed.add_field(
+        name="Member ID",
+        value=f"`{character_id}`",
+        inline=True
+    )
+    
+    embed.add_field(
+        name="━━━━━━━━━━━━━━━━━━━━━━",
+        value="",
+        inline=False
+    )
+    
+    embed.add_field(
+        name="Gang Affiliation",
+        value=gang_affiliation,
+        inline=True
+    )
+    
+    embed.add_field(
+        name="Set",
+        value=set_name,
+        inline=True
+    )
+    
+    embed.set_footer(text=f"Use ?slide {character_id} to get active")
     
     await ctx.send(embed=embed)
 
@@ -302,8 +333,8 @@ async def show_members(ctx):
     
     # Main embed
     embed = discord.Embed(
-        title=f"{ctx.author.name}'s Gang Members",
-        description=f"Total Members: {len(user_members)}",
+        title=f"{ctx.author.name}'s Gang Roster",
+        description=f"Total active members: {len(user_members)}",
         color=discord.Color.dark_purple()
     )
     
@@ -314,28 +345,26 @@ async def show_members(ctx):
         
         kills = member.get('kills', 0)
         
-        value_text = (
-            f"**ID:** `{member['character_id']}`\n"
-            f"**Kills:** {kills}\n"
-            f"**Gang:** {member.get('gang_affiliation', 'Unknown')}\n"
-            f"**Set:** {member.get('set_name', 'Unknown')}\n"
-            f"**Status:** {jail_status}"
-        )
+        member_info = f"ID: `{member['character_id']}`\n"
+        member_info += f"Bodies: {kills}\n"
+        member_info += f"Gang: {member.get('gang_affiliation', 'Unknown')}\n"
+        member_info += f"Set: {member.get('set_name', 'Unknown')}\n"
+        member_info += f"Status: {jail_status}"
         
         if in_jail:
             remaining = get_jail_time_remaining(member)
             if remaining:
                 minutes = int(remaining.total_seconds() // 60)
                 seconds = int(remaining.total_seconds() % 60)
-                value_text += f"\n**Time Left:** {minutes}m {seconds}s"
+                member_info += f"\nRelease: {minutes}m {seconds}s"
         
         embed.add_field(
-            name=f"{member['name']}",
-            value=value_text,
+            name=f"━━ {member['name']}",
+            value=member_info,
             inline=True
         )
     
-    embed.set_footer(text="Use ?crew for crew battles | ?slide <id> for solo | ?list <id> for kill list")
+    embed.set_footer(text="Commands: ?crew | ?slide <id> | ?list <id>")
     
     await ctx.send(embed=embed)
 
@@ -368,14 +397,14 @@ async def list_kills(ctx, character_id: str = None):
     
     # Create embed
     embed = discord.Embed(
-        title=f"KILL LIST - {player_char['name']}",
-        description=f"**Total Bodies:** {total_kills}",
+        title=f"KILL LIST",
+        description=f"{player_char['name']} has {total_kills} bodies on record",
         color=gang_color
     )
     
     embed.add_field(
-        name="Gang Member Info",
-        value=f"**Gang:** {player_char.get('gang_affiliation', 'Unknown')}\n**Set:** {player_char.get('set_name', 'Unknown')}",
+        name="━━━━━━━━━━━━━━━━━━━━━━",
+        value=f"Gang: {player_char.get('gang_affiliation', 'Unknown')}\nSet: {player_char.get('set_name', 'Unknown')}",
         inline=False
     )
     
@@ -383,15 +412,15 @@ async def list_kills(ctx, character_id: str = None):
         # Sort by date (most recent first)
         sorted_kills = sorted(kill_list, key=lambda x: x.get('date', ''), reverse=True)
         
-        # Display kills (limit to 25 fields due to Discord embed limits)
-        display_limit = 25
+        # Display kills (limit to 20 fields due to Discord embed limits)
+        display_limit = 20
         
         for idx, kill in enumerate(sorted_kills):
             if idx >= display_limit:
                 remaining = len(sorted_kills) - display_limit
                 embed.add_field(
-                    name=f"... and {remaining} more",
-                    value="Too many bodies to display",
+                    name="━━━━━━━━━━━━━━━━━━━━━━",
+                    value=f"+ {remaining} more bodies not shown",
                     inline=False
                 )
                 break
@@ -409,20 +438,23 @@ async def list_kills(ctx, character_id: str = None):
             except:
                 formatted_date = kill_date
             
-            field_value = f"**Gang:** {victim_gang}\n**Set:** {victim_set}\n**Date:** {formatted_date}"
+            field_value = f"{victim_name}\n"
+            field_value += f"Gang: {victim_gang}\n"
+            field_value += f"Set: {victim_set}\n"
+            field_value += f"Date: {formatted_date}"
             
             if kill_type == "revenge":
-                field_value += "\n**Type:** Revenge Kill"
+                field_value += "\nType: REVENGE MISSION"
             
             embed.add_field(
-                name=f"#{idx + 1} - {victim_name}",
+                name=f"━━ Body #{idx + 1}",
                 value=field_value,
                 inline=True
             )
     else:
         embed.add_field(
-            name="No Bodies",
-            value=f"{player_char['name']} hasn't caught any bodies yet.",
+            name="━━━━━━━━━━━━━━━━━━━━━━",
+            value=f"{player_char['name']} is clean, no bodies caught yet",
             inline=False
         )
     
@@ -463,19 +495,32 @@ async def crew_battle(ctx):
     
     # Crew intro embed
     intro_embed = discord.Embed(
-        title="CREW WAR",
-        description=f"**{ctx.author.name}'s Crew** encounters a rival {rival_gang} crew in enemy territory!",
+        title="CREW WAR INITIATED",
+        description=f"{ctx.author.name}'s crew encounters a rival {rival_gang} crew in enemy territory",
         color=rival_gang_color
     )
     
     # Player crew info
+    intro_embed.add_field(
+        name=f"━━ YOUR CREW ({len(available_members)} members)",
+        value="",
+        inline=False
+    )
+    
     player_crew_text = ""
     for member in available_members:
-        player_crew_text += f"**{member['name']}** - Kills: {member.get('kills', 0)}\n"
+        player_crew_text += f"{member['name']} - Bodies: {member.get('kills', 0)}\n"
     
     intro_embed.add_field(
-        name=f"YOUR CREW ({len(available_members)} members)",
+        name="Active Members",
         value=player_crew_text,
+        inline=False
+    )
+    
+    # Rival crew info
+    intro_embed.add_field(
+        name=f"━━ ENEMY CREW - {rival_set} ({len(rival_crew)} members)",
+        value="",
         inline=False
     )
     
@@ -485,34 +530,40 @@ async def crew_battle(ctx):
     
     for idx, rival_member in enumerate(rival_crew):
         if idx < display_limit:
-            rival_crew_text += f"**{rival_member['name']}**\n"
+            rival_crew_text += f"{rival_member['name']}\n"
         elif idx == display_limit:
             remaining = len(rival_crew) - display_limit
             rival_crew_text += f"... and {remaining} more members\n"
             break
     
     intro_embed.add_field(
-        name=f"RIVAL CREW - {rival_set} ({len(rival_crew)} members)",
+        name="Rival Members",
         value=rival_crew_text,
         inline=False
     )
     
     # Crew size comparison
+    intro_embed.add_field(
+        name="━━━━━━━━━━━━━━━━━━━━━━",
+        value="",
+        inline=False
+    )
+    
     size_diff = len(available_members) - len(rival_crew)
     if size_diff > 0:
-        size_advantage = f"You outnumber them by {size_diff} members"
+        size_advantage = f"Numbers advantage: +{size_diff} members"
     elif size_diff < 0:
-        size_advantage = f"They outnumber you by {abs(size_diff)} members"
+        size_advantage = f"Outnumbered by: {abs(size_diff)} members"
     else:
-        size_advantage = "Equal numbers"
+        size_advantage = "Equal numbers on both sides"
     
     intro_embed.add_field(
-        name="Numbers",
+        name="Battle Assessment",
         value=size_advantage,
         inline=False
     )
     
-    intro_embed.set_footer(text="The crew war begins...")
+    intro_embed.set_footer(text="The confrontation is about to begin...")
     
     await ctx.send(embed=intro_embed)
     await asyncio.sleep(4)
@@ -541,22 +592,27 @@ async def crew_battle(ctx):
     if player_won:
         outcome_embed = discord.Embed(
             title="CREW WAR VICTORY",
-            description=f"**{ctx.author.name}'s Crew** has defeated the {rival_set} crew of {len(rival_crew)} members!",
+            description=f"{ctx.author.name}'s crew successfully defeated the {rival_set} and secured the territory",
             color=discord.Color.green()
         )
-        
     else:
         outcome_embed = discord.Embed(
             title="CREW WAR DEFEAT",
-            description=f"**{ctx.author.name}'s Crew** was defeated by the {rival_set} crew of {len(rival_crew)} members!",
+            description=f"{ctx.author.name}'s crew was overwhelmed by the {rival_set} and forced to retreat",
             color=discord.Color.red()
         )
+    
+    outcome_embed.add_field(
+        name="━━━━━━━━━━━━━━━━━━━━━━",
+        value="",
+        inline=False
+    )
     
     # Show casualties
     if casualties:
         casualty_text = ""
         for member in casualties:
-            casualty_text += f"{member['name']} (Kills: {member.get('kills', 0)})\n"
+            casualty_text += f"{member['name']} - Bodies: {member.get('kills', 0)}\n"
             
             # Add to graveyard
             dead_member = member.copy()
@@ -568,7 +624,7 @@ async def crew_battle(ctx):
             del characters[member['character_id']]
         
         outcome_embed.add_field(
-            name=f"CASUALTIES ({len(casualties)} members)",
+            name=f"CASUALTIES ({len(casualties)} members lost)",
             value=casualty_text,
             inline=False
         )
@@ -577,17 +633,23 @@ async def crew_battle(ctx):
         save_characters(characters)
     else:
         outcome_embed.add_field(
-            name="CASUALTIES",
-            value="All crew members survived!",
+            name="NO CASUALTIES",
+            value="All crew members made it out alive",
             inline=False
         )
+    
+    outcome_embed.add_field(
+        name="━━━━━━━━━━━━━━━━━━━━━━",
+        value="",
+        inline=False
+    )
     
     # Update survivors
     if survivors:
         survivor_text = ""
         for member in survivors:
             characters[member['character_id']] = member
-            survivor_text += f"{member['name']} (Kills: {member.get('kills', 0)})\n"
+            survivor_text += f"{member['name']} - Bodies: {member.get('kills', 0)}\n"
         
         outcome_embed.add_field(
             name=f"SURVIVORS ({len(survivors)} members)",
@@ -596,6 +658,8 @@ async def crew_battle(ctx):
         )
         
         save_characters(characters)
+    
+    outcome_embed.set_footer(text="The streets remember everything")
     
     await ctx.send(embed=outcome_embed)
 
@@ -625,7 +689,7 @@ async def slide_on_opps(ctx, character_id: str = None):
         if remaining:
             minutes = int(remaining.total_seconds() // 60)
             seconds = int(remaining.total_seconds() % 60)
-            await ctx.send(f"**{player_char['name']}** is locked up! They'll be out in **{minutes}m {seconds}s**.")
+            await ctx.send(f"{player_char['name']} is currently locked up and will be released in {minutes}m {seconds}s")
             return
     
     # Generate rival
@@ -645,23 +709,77 @@ async def slide_on_opps(ctx, character_id: str = None):
     # Battle intro embed
     intro_embed = discord.Embed(
         title="SLIDING ON OPPS",
-        description=f"**{player_char['name']}** spots **{rival_name}** in enemy territory",
+        description=f"Your member has spotted an enemy in rival territory",
         color=discord.Color.orange()
     )
     
     intro_embed.add_field(
-        name=f"{player_char['name']} (YOU)",
-        value=f"Kills: {player_char.get('kills', 0)}\nGang: {player_char.get('gang_affiliation', 'Unknown')}\nSet: {player_char.get('set_name', 'Unknown')}",
+        name=f"━━ YOUR MEMBER",
+        value="",
+        inline=False
+    )
+    
+    intro_embed.add_field(
+        name="Name",
+        value=player_char['name'],
         inline=True
     )
     
     intro_embed.add_field(
-        name=f"{rival_name} (OPP)",
-        value=f"Gang: {rival_gang}\nSet: {rival_set}",
+        name="Bodies",
+        value=player_char.get('kills', 0),
         inline=True
     )
     
-    intro_embed.set_footer(text="The confrontation begins...")
+    intro_embed.add_field(
+        name="━━━━━━━━━━━━━━━━━━━━━━",
+        value="",
+        inline=False
+    )
+    
+    intro_embed.add_field(
+        name="Gang",
+        value=player_char.get('gang_affiliation', 'Unknown'),
+        inline=True
+    )
+    
+    intro_embed.add_field(
+        name="Set",
+        value=player_char.get('set_name', 'Unknown'),
+        inline=True
+    )
+    
+    intro_embed.add_field(
+        name=f"━━ ENEMY SPOTTED",
+        value="",
+        inline=False
+    )
+    
+    intro_embed.add_field(
+        name="Target",
+        value=rival_name,
+        inline=True
+    )
+    
+    intro_embed.add_field(
+        name="Gang",
+        value=rival_gang,
+        inline=True
+    )
+    
+    intro_embed.add_field(
+        name="━━━━━━━━━━━━━━━━━━━━━━",
+        value="",
+        inline=False
+    )
+    
+    intro_embed.add_field(
+        name="Set",
+        value=rival_set,
+        inline=False
+    )
+    
+    intro_embed.set_footer(text="The confrontation is about to go down...")
     
     await ctx.send(embed=intro_embed)
     await asyncio.sleep(3)
@@ -710,15 +828,39 @@ async def slide_on_opps(ctx, character_id: str = None):
     if player_won:
         if member_dies:
             outcome_embed = discord.Embed(
-                title="CAUGHT A BODY BUT PAID THE PRICE",
-                description=f"**{player_char['name']}** eliminated **{rival_name}**, but was fatally wounded",
+                title="PYRRHIC VICTORY",
+                description=f"{player_char['name']} successfully eliminated {rival_name} but sustained fatal injuries in the process",
                 color=discord.Color.dark_red()
             )
             
             outcome_embed.add_field(
-                name="Final Moments",
-                value=f"Despite the victory, {player_char['name']} didn't make it",
+                name="━━━━━━━━━━━━━━━━━━━━━━",
+                value="",
                 inline=False
+            )
+            
+            outcome_embed.add_field(
+                name="Final Outcome",
+                value=f"Despite winning the confrontation, {player_char['name']} succumbed to their wounds",
+                inline=False
+            )
+            
+            outcome_embed.add_field(
+                name="━━━━━━━━━━━━━━━━━━━━━━",
+                value="",
+                inline=False
+            )
+            
+            outcome_embed.add_field(
+                name="Final Body Count",
+                value=player_char.get('kills', 0),
+                inline=True
+            )
+            
+            outcome_embed.add_field(
+                name="Status",
+                value="DECEASED",
+                inline=True
             )
             
             dead_member = player_char.copy()
@@ -733,20 +875,32 @@ async def slide_on_opps(ctx, character_id: str = None):
         else:
             if goes_to_jail:
                 outcome_embed = discord.Embed(
-                    title="BODY CAUGHT - BUT LOCKED UP",
-                    description=f"**{player_char['name']}** eliminated **{rival_name}** from {rival_set} but got arrested!",
+                    title="BODY CAUGHT - ARRESTED",
+                    description=f"{player_char['name']} eliminated {rival_name} from the {rival_set} but was caught by law enforcement",
                     color=discord.Color.orange()
                 )
             else:
                 outcome_embed = discord.Embed(
                     title="BODY CAUGHT",
-                    description=f"**{player_char['name']}** has eliminated **{rival_name}** from {rival_set}",
+                    description=f"{player_char['name']} successfully eliminated {rival_name} from the {rival_set}",
                     color=discord.Color.green()
                 )
             
             outcome_embed.add_field(
-                name="Kill Count",
-                value=f"Total Kills: **{player_char['kills']}**",
+                name="━━━━━━━━━━━━━━━━━━━━━━",
+                value="",
+                inline=False
+            )
+            
+            outcome_embed.add_field(
+                name="Updated Body Count",
+                value=f"{player_char['kills']} total bodies",
+                inline=False
+            )
+            
+            outcome_embed.add_field(
+                name="━━━━━━━━━━━━━━━━━━━━━━",
+                value="",
                 inline=False
             )
             
@@ -756,14 +910,20 @@ async def slide_on_opps(ctx, character_id: str = None):
                 player_char['jail_until'] = jail_until.strftime('%Y-%m-%d %H:%M:%S')
                 
                 outcome_embed.add_field(
-                    name="ARRESTED",
-                    value=f"Locked up for **{jail_minutes} minutes**",
+                    name="ARREST STATUS",
+                    value=f"Sentenced to {jail_minutes} minutes in county jail",
+                    inline=False
+                )
+                
+                outcome_embed.add_field(
+                    name="Release Time",
+                    value=f"Will be released in {jail_minutes} minutes",
                     inline=False
                 )
             else:
                 outcome_embed.add_field(
-                    name="EVADED POLICE",
-                    value=f"Got away clean!",
+                    name="POLICE STATUS",
+                    value="Successfully evaded law enforcement and made it back safely",
                     inline=False
                 )
             
@@ -774,14 +934,38 @@ async def slide_on_opps(ctx, character_id: str = None):
         if member_dies:
             outcome_embed = discord.Embed(
                 title="CAUGHT SLIPPING",
-                description=f"**{player_char['name']}** was eliminated by **{rival_name}** from {rival_set}",
+                description=f"{player_char['name']} was eliminated by {rival_name} from the {rival_set}",
                 color=discord.Color.dark_red()
             )
             
             outcome_embed.add_field(
-                name="RIP",
-                value=f"{player_char['name']} was caught lacking in enemy territory\nFinal Kill Count: {player_char.get('kills', 0)}",
+                name="━━━━━━━━━━━━━━━━━━━━━━",
+                value="",
                 inline=False
+            )
+            
+            outcome_embed.add_field(
+                name="Final Words",
+                value=f"{player_char['name']} was caught lacking deep in enemy territory and paid the ultimate price",
+                inline=False
+            )
+            
+            outcome_embed.add_field(
+                name="━━━━━━━━━━━━━━━━━━━━━━",
+                value="",
+                inline=False
+            )
+            
+            outcome_embed.add_field(
+                name="Final Body Count",
+                value=player_char.get('kills', 0),
+                inline=True
+            )
+            
+            outcome_embed.add_field(
+                name="Status",
+                value="DECEASED",
+                inline=True
             )
             
             dead_member = player_char.copy()
@@ -795,13 +979,45 @@ async def slide_on_opps(ctx, character_id: str = None):
             
         else:
             outcome_embed = discord.Embed(
-                title="TOOK AN L BUT SURVIVED",
-                description=f"**{player_char['name']}** was defeated by **{rival_name}** but managed to escape",
+                title="TOOK AN L - SURVIVED",
+                description=f"{player_char['name']} was defeated by {rival_name} but managed to escape alive",
                 color=discord.Color.orange()
+            )
+            
+            outcome_embed.add_field(
+                name="━━━━━━━━━━━━━━━━━━━━━━",
+                value="",
+                inline=False
+            )
+            
+            outcome_embed.add_field(
+                name="Outcome",
+                value="Lost the confrontation but survived to fight another day",
+                inline=False
+            )
+            
+            outcome_embed.add_field(
+                name="━━━━━━━━━━━━━━━━━━━━━━",
+                value="",
+                inline=False
+            )
+            
+            outcome_embed.add_field(
+                name="Current Body Count",
+                value=player_char.get('kills', 0),
+                inline=True
+            )
+            
+            outcome_embed.add_field(
+                name="Status",
+                value="ALIVE",
+                inline=True
             )
             
             characters[character_id] = player_char
             save_characters(characters)
+    
+    outcome_embed.set_footer(text="The streets never forget")
     
     await ctx.send(embed=outcome_embed)
 
@@ -833,7 +1049,7 @@ async def revenge_battle(ctx, dead_character_id: str = None, avenger_character_i
         if remaining:
             minutes = int(remaining.total_seconds() // 60)
             seconds = int(remaining.total_seconds() % 60)
-            await ctx.send(f"**{avenger_char['name']}** is locked up! They'll be out in **{minutes}m {seconds}s**.")
+            await ctx.send(f"{avenger_char['name']} is currently locked up and will be released in {minutes}m {seconds}s")
             return
     
     # Find the dead member in graveyard
@@ -857,7 +1073,7 @@ async def revenge_battle(ctx, dead_character_id: str = None, avenger_character_i
     killer_name = dead_member.get('killed_by', 'Unknown')
     
     if "Crew War" in killer_name:
-        await ctx.send(f"**{dead_member['name']}** was killed in a crew war, not by a specific rival. Revenge is not available for crew war deaths.")
+        await ctx.send(f"{dead_member['name']} was killed in a crew war, not by a specific rival. Revenge is not available for crew war deaths.")
         return
     
     if "(Fatal Wounds)" in killer_name or "- Fatal Wounds" in killer_name:
@@ -885,29 +1101,107 @@ async def revenge_battle(ctx, dead_character_id: str = None, avenger_character_i
     # Revenge intro embed
     intro_embed = discord.Embed(
         title="REVENGE MISSION",
-        description=f"**{avenger_char['name']}** seeks vengeance for **{dead_member['name']}**\n\nThe killer, **{killer_name}**, has been located...",
+        description=f"Your member is on a mission to avenge a fallen homie",
         color=discord.Color.dark_red()
     )
     
     intro_embed.add_field(
-        name=f"{avenger_char['name']} (AVENGER)",
-        value=f"Kills: {avenger_char.get('kills', 0)}\nGang: {avenger_char.get('gang_affiliation', 'Unknown')}",
-        inline=True
-    )
-    
-    intro_embed.add_field(
-        name=f"{killer_name} (KILLER)",
-        value=f"Gang: {rival_gang}\nSet: {rival_set}",
-        inline=True
-    )
-    
-    intro_embed.add_field(
-        name="Fallen Homie",
-        value=f"{dead_member['name']} (Kills: {dead_member.get('kills', 0)})\nKilled on: {dead_member.get('death_date', 'Unknown')}",
+        name=f"━━ YOUR AVENGER",
+        value="",
         inline=False
     )
     
-    intro_embed.set_footer(text="The revenge mission begins...")
+    intro_embed.add_field(
+        name="Name",
+        value=avenger_char['name'],
+        inline=True
+    )
+    
+    intro_embed.add_field(
+        name="Bodies",
+        value=avenger_char.get('kills', 0),
+        inline=True
+    )
+    
+    intro_embed.add_field(
+        name="━━━━━━━━━━━━━━━━━━━━━━",
+        value="",
+        inline=False
+    )
+    
+    intro_embed.add_field(
+        name="Gang",
+        value=avenger_char.get('gang_affiliation', 'Unknown'),
+        inline=True
+    )
+    
+    intro_embed.add_field(
+        name="Set",
+        value=avenger_char.get('set_name', 'Unknown'),
+        inline=True
+    )
+    
+    intro_embed.add_field(
+        name=f"━━ TARGET LOCATED",
+        value="",
+        inline=False
+    )
+    
+    intro_embed.add_field(
+        name="Killer",
+        value=killer_name,
+        inline=True
+    )
+    
+    intro_embed.add_field(
+        name="Gang",
+        value=rival_gang,
+        inline=True
+    )
+    
+    intro_embed.add_field(
+        name="━━━━━━━━━━━━━━━━━━━━━━",
+        value="",
+        inline=False
+    )
+    
+    intro_embed.add_field(
+        name="Set",
+        value=rival_set,
+        inline=True
+    )
+    
+    intro_embed.add_field(
+        name=f"━━ FALLEN HOMIE",
+        value="",
+        inline=False
+    )
+    
+    intro_embed.add_field(
+        name="Name",
+        value=dead_member['name'],
+        inline=True
+    )
+    
+    intro_embed.add_field(
+        name="Bodies",
+        value=dead_member.get('kills', 0),
+        inline=True
+    )
+    
+    intro_embed.add_field(
+        name="━━━━━━━━━━━━━━━━━━━━━━",
+        value="",
+        inline=False
+    )
+    
+    intro_embed.add_field(
+        name="Death Date",
+        value=dead_member.get('death_date', 'Unknown'),
+        inline=False
+    )
+    
+    intro_embed.set_footer(text="Blood calls for blood...")
     
     await ctx.send(embed=intro_embed)
     await asyncio.sleep(3)
@@ -956,15 +1250,39 @@ async def revenge_battle(ctx, dead_character_id: str = None, avenger_character_i
     if player_won:
         if member_dies:
             outcome_embed = discord.Embed(
-                title="REVENGE COMPLETE - BUT AT A COST",
-                description=f"**{avenger_char['name']}** eliminated **{killer_name}**, avenging **{dead_member['name']}**, but was fatally wounded",
+                title="REVENGE COMPLETE - ULTIMATE SACRIFICE",
+                description=f"{avenger_char['name']} successfully eliminated {killer_name}, avenging {dead_member['name']}, but was fatally wounded in the process",
                 color=discord.Color.dark_red()
             )
             
             outcome_embed.add_field(
-                name="Final Moments",
-                value=f"{avenger_char['name']} avenged their fallen homie but paid the ultimate price",
+                name="━━━━━━━━━━━━━━━━━━━━━━",
+                value="",
                 inline=False
+            )
+            
+            outcome_embed.add_field(
+                name="Final Moments",
+                value=f"{avenger_char['name']} avenged their fallen homie but paid the ultimate price for vengeance",
+                inline=False
+            )
+            
+            outcome_embed.add_field(
+                name="━━━━━━━━━━━━━━━━━━━━━━",
+                value="",
+                inline=False
+            )
+            
+            outcome_embed.add_field(
+                name="Final Body Count",
+                value=avenger_char.get('kills', 0),
+                inline=True
+            )
+            
+            outcome_embed.add_field(
+                name="Status",
+                value="DECEASED",
+                inline=True
             )
             
             dead_avenger = avenger_char.copy()
@@ -979,26 +1297,44 @@ async def revenge_battle(ctx, dead_character_id: str = None, avenger_character_i
         else:
             if goes_to_jail:
                 outcome_embed = discord.Embed(
-                    title="REVENGE COMPLETE - BUT LOCKED UP",
-                    description=f"**{avenger_char['name']}** eliminated **{killer_name}**, avenging **{dead_member['name']}**, but got arrested!",
+                    title="REVENGE COMPLETE - ARRESTED",
+                    description=f"{avenger_char['name']} successfully eliminated {killer_name}, avenging {dead_member['name']}, but was caught by law enforcement",
                     color=discord.Color.orange()
                 )
             else:
                 outcome_embed = discord.Embed(
                     title="REVENGE COMPLETE",
-                    description=f"**{avenger_char['name']}** has eliminated **{killer_name}**, avenging **{dead_member['name']}**!",
+                    description=f"{avenger_char['name']} successfully eliminated {killer_name}, avenging {dead_member['name']}",
                     color=discord.Color.green()
                 )
             
             outcome_embed.add_field(
-                name="Vengeance",
-                value=f"{dead_member['name']} has been avenged! {killer_name} is dead!",
+                name="━━━━━━━━━━━━━━━━━━━━━━",
+                value="",
                 inline=False
             )
             
             outcome_embed.add_field(
-                name="Kill Count",
-                value=f"Total Kills: **{avenger_char['kills']}**",
+                name="Vengeance Delivered",
+                value=f"{dead_member['name']} has been avenged - {killer_name} is no longer a threat",
+                inline=False
+            )
+            
+            outcome_embed.add_field(
+                name="━━━━━━━━━━━━━━━━━━━━━━",
+                value="",
+                inline=False
+            )
+            
+            outcome_embed.add_field(
+                name="Updated Body Count",
+                value=f"{avenger_char['kills']} total bodies",
+                inline=False
+            )
+            
+            outcome_embed.add_field(
+                name="━━━━━━━━━━━━━━━━━━━━━━",
+                value="",
                 inline=False
             )
             
@@ -1007,14 +1343,20 @@ async def revenge_battle(ctx, dead_character_id: str = None, avenger_character_i
                 avenger_char['jail_until'] = jail_until.strftime('%Y-%m-%d %H:%M:%S')
                 
                 outcome_embed.add_field(
-                    name="ARRESTED",
-                    value=f"Locked up for **{jail_minutes} minute(s)**",
+                    name="ARREST STATUS",
+                    value=f"Sentenced to {jail_minutes} minutes in county jail",
+                    inline=False
+                )
+                
+                outcome_embed.add_field(
+                    name="Release Time",
+                    value=f"Will be released in {jail_minutes} minutes",
                     inline=False
                 )
             else:
                 outcome_embed.add_field(
-                    name="EVADED POLICE",
-                    value=f"Got away clean!",
+                    name="POLICE STATUS",
+                    value="Successfully evaded law enforcement after the revenge hit",
                     inline=False
                 )
             
@@ -1025,14 +1367,50 @@ async def revenge_battle(ctx, dead_character_id: str = None, avenger_character_i
         if member_dies:
             outcome_embed = discord.Embed(
                 title="REVENGE FAILED - ELIMINATED",
-                description=f"**{avenger_char['name']}** was eliminated by **{killer_name}**\n\n{dead_member['name']} remains unavenged...",
+                description=f"{avenger_char['name']} was eliminated by {killer_name} during the revenge attempt",
                 color=discord.Color.dark_red()
             )
             
             outcome_embed.add_field(
-                name="RIP",
-                value=f"{avenger_char['name']} fell to the same killer that got {dead_member['name']}",
+                name="━━━━━━━━━━━━━━━━━━━━━━",
+                value="",
                 inline=False
+            )
+            
+            outcome_embed.add_field(
+                name="Failed Mission",
+                value=f"{avenger_char['name']} fell to the same killer who took {dead_member['name']}",
+                inline=False
+            )
+            
+            outcome_embed.add_field(
+                name="━━━━━━━━━━━━━━━━━━━━━━",
+                value="",
+                inline=False
+            )
+            
+            outcome_embed.add_field(
+                name="Unavenged",
+                value=f"{dead_member['name']} remains unavenged",
+                inline=False
+            )
+            
+            outcome_embed.add_field(
+                name="━━━━━━━━━━━━━━━━━━━━━━",
+                value="",
+                inline=False
+            )
+            
+            outcome_embed.add_field(
+                name="Final Body Count",
+                value=avenger_char.get('kills', 0),
+                inline=True
+            )
+            
+            outcome_embed.add_field(
+                name="Status",
+                value="DECEASED",
+                inline=True
             )
             
             dead_avenger = avenger_char.copy()
@@ -1047,12 +1425,56 @@ async def revenge_battle(ctx, dead_character_id: str = None, avenger_character_i
         else:
             outcome_embed = discord.Embed(
                 title="REVENGE FAILED - RETREAT",
-                description=f"**{avenger_char['name']}** was defeated by **{killer_name}** but managed to escape\n\n{dead_member['name']} remains unavenged...",
+                description=f"{avenger_char['name']} was defeated by {killer_name} but managed to escape alive",
                 color=discord.Color.orange()
+            )
+            
+            outcome_embed.add_field(
+                name="━━━━━━━━━━━━━━━━━━━━━━",
+                value="",
+                inline=False
+            )
+            
+            outcome_embed.add_field(
+                name="Failed Attempt",
+                value=f"The revenge mission was unsuccessful but {avenger_char['name']} survived to try again another day",
+                inline=False
+            )
+            
+            outcome_embed.add_field(
+                name="━━━━━━━━━━━━━━━━━━━━━━",
+                value="",
+                inline=False
+            )
+            
+            outcome_embed.add_field(
+                name="Unavenged",
+                value=f"{dead_member['name']} remains unavenged",
+                inline=False
+            )
+            
+            outcome_embed.add_field(
+                name="━━━━━━━━━━━━━━━━━━━━━━",
+                value="",
+                inline=False
+            )
+            
+            outcome_embed.add_field(
+                name="Current Body Count",
+                value=avenger_char.get('kills', 0),
+                inline=True
+            )
+            
+            outcome_embed.add_field(
+                name="Status",
+                value="ALIVE",
+                inline=True
             )
             
             characters[avenger_character_id] = avenger_char
             save_characters(characters)
+    
+    outcome_embed.set_footer(text="The cycle of violence continues")
     
     await ctx.send(embed=outcome_embed)
 
