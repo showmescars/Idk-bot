@@ -1120,48 +1120,6 @@ async def fight_character(ctx, character_id: str = None):
         ai_name, ai_power_level, ai_skills
     )
     
-    # Group battle log by round to avoid duplication
-    current_round = None
-    round_actions = []
-    
-    for log_entry in battle_result['battle_log']:
-        if log_entry['round'] != current_round:
-            # Send previous round if exists
-            if round_actions:
-                round_text = ""
-                for action in round_actions:
-                    round_text += f"**{action['attacker']}** {action['action']}!\nDamage: {action['damage']} HP | {action['target']} HP: {action['target_hp']}\n\n"
-                
-                round_embed = discord.Embed(
-                    title=f"Round {current_round}",
-                    description=round_text,
-                    color=discord.Color.orange()
-                )
-                
-                await ctx.send(embed=round_embed)
-                await asyncio.sleep(2)
-            
-            # Start new round
-            current_round = log_entry['round']
-            round_actions = []
-        
-        round_actions.append(log_entry)
-    
-    # Send last round
-    if round_actions:
-        round_text = ""
-        for action in round_actions:
-            round_text += f"**{action['attacker']}** {action['action']}!\nDamage: {action['damage']} HP | {action['target']} HP: {action['target_hp']}\n\n"
-        
-        round_embed = discord.Embed(
-            title=f"Round {current_round}",
-            description=round_text,
-            color=discord.Color.orange()
-        )
-        
-        await ctx.send(embed=round_embed)
-        await asyncio.sleep(2)
-    
     # Determine if player won
     player_wins = battle_result['winner'] == player_char['name']
     
