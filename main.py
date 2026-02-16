@@ -150,6 +150,17 @@ def calculate_death_chance(player_power, enemy_power, player_won):
     
     return int(death_chance)
 
+# Calculate gang death chance (lower than solo)
+def calculate_gang_death_chance(player_won):
+    """Calculate death chance for gang battles - lower risk due to group support"""
+    
+    if player_won:
+        # Winners have very low death chance
+        return random.randint(2, 8)
+    else:
+        # Losers still have decent survival chance due to gang escape
+        return random.randint(15, 35)
+
 # Simulate instant battle
 def simulate_battle(player_name, player_power, enemy_name, enemy_power):
     """Simulate an instant vampire battle"""
@@ -173,6 +184,26 @@ def simulate_battle(player_name, player_power, enemy_name, enemy_power):
         "win_probability": int(win_probability),
         "roll": roll
     }
+
+# Generate AI gang
+def generate_ai_gang():
+    """Generate a random AI vampire gang (2-5 vampires)"""
+    
+    gang_size = random.randint(2, 5)
+    ai_gang = []
+    
+    for _ in range(gang_size):
+        ai_first_name = random.choice(FIRST_NAMES)
+        ai_last_name = random.choice(LAST_NAMES)
+        ai_name = f"{ai_first_name} {ai_last_name}"
+        ai_power = generate_ai_power()
+        
+        ai_gang.append({
+            "name": ai_name,
+            "power": ai_power
+        })
+    
+    return ai_gang
 
 characters = load_characters()
 graveyard = load_graveyard()
@@ -323,9 +354,210 @@ async def show_vampires(ctx):
             inline=True
         )
     
-    embed.set_footer(text="Use ?fight <id> to battle | Use ?transfer <id1> <id2> to fuse vampires")
+    embed.set_footer(text="Use ?gang to battle as a group | Use ?fight <id> for solo battles")
     
     await ctx.send(embed=embed)
+
+# Gang command - Group battle with all user's vampires
+@bot.command(name='gang')
+async def gang_battle(ctx):
+    """Battle as a gang with ALL your vampires against an AI gang"""
+    
+    user_id = str(ctx.author.id)
+    
+    # Find all vampires owned by user
+    user_vampires = [char for char in characters.values() if char.get('user_id') == user_id]
+    
+    if not user_vampires:
+        await ctx.send("You don't have any vampires! Use `?make` to create one.")
+        return
+    
+    if len(user_vampires) < 2:
+        await ctx.send("You need at least 2 vampires to form a gang! Use `?make` to create more vampires.")
+        return
+    
+    # Calculate total gang power
+    player_gang_power = sum(vamp['power_level'] for vamp in user_vampires)
+    
+    # Generate AI gang
+    ai_gang = generate_ai_gang()
+    ai_gang_power = sum(ai['power'] for ai in ai_gang)
+    
+    # Gang intro embed
+    intro_embed = discord.Embed(
+        title="GANG WAR",
+        description=f"**{ctx.author.name}'s Gang** encounters a rival vampire gang in the shadows!",
+        color=discord.Color.dark_purple()
+    )
+    
+    # Player gang info
+    player_gang_text = ""
+    for vamp in user_vampires:
+        player_gang_text += f"**{vamp['name']}** - Power: {vamp['power_level']}\n"
+    
+    intro_embed.add_field(
+        name=f"YOUR GANG ({len(user_vampires)} vampires)",
+        value=f"{player_gang_text}\n**Total Power: {player_gang_power}**",
+        inline=False
+    )
+    
+    # AI gang info
+    ai_gang_text = ""
+    for ai_vamp in ai_gang:
+        ai_gang_text += f"**{ai_vamp['name']}** - Power: {ai_vamp['power']}\n"
+    
+    intro_embed.add_field(
+        name=f"ENEMY GANG ({len(ai_gang)} vampires)",
+        value=f"{ai_gang_text}\n**Total Power: {ai_gang_power}**",
+        inline=False
+    )
+    
+    # Power difference
+    power_diff = player_gang_power - ai_gang_power
+    
+    if power_diff > 500:
+        threat_level = "EASY TARGET"
+        threat_color = discord.Color.dark_green()
+    elif power_diff > 100:
+        threat_level = "FAVORABLE MATCHUP"
+        threat_color = discord.Color.green()
+    elif power_diff > -100:
+        threat_level = "EVEN MATCH"
+        threat_color = discord.Color.gold()
+    elif power_diff > -500:
+        threat_level = "DANGEROUS GANG"
+        threat_color = discord.Color.orange()
+    else:
+        threat_level = "EXTREMELY DANGEROUS GANG"
+        threat_color = discord.Color.dark_red()
+    
+    intro_embed.add_field(
+        name="Threat Level",
+        value=threat_level,
+        inline=False
+    )
+    
+    intro_embed.set_footer(text="The gang war begins...")
+    
+    await ctx.send(embed=intro_embed)
+    await asyncio.sleep(4)
+    
+    # Simulate the gang battle
+    battle_result = simulate_battle(
+        f"{ctx.author.name}'s Gang",
+        player_gang_power,
+        "Enemy Gang",
+        ai_gang_power
+    )
+    
+    player_won = battle_result['player_won']
+    
+    # Calculate death chance (lower for gang battles)
+    death_chance = calculate_gang_death_chance(player_won)
+    
+    # Determine casualties
+    casualties = []
+    survivors = []
+    
+    for vamp in user_vampires:
+        death_roll = random.randint(1, 100)
+        vampire_dies = death_roll <= death_chance
+        
+        if vampire_dies:
+            casualties.append(vamp)
+        else:
+            survivors.append(vamp)
+    
+    # Outcome embed
+    if player_won:
+        outcome_embed = discord.Embed(
+            title="GANG WAR VICTORY",
+            description=f"**{ctx.author.name}'s Gang** has defeated the enemy gang!",
+            color=discord.Color.green()
+        )
+        
+        outcome_embed.add_field(
+            name="Battle Odds",
+            value=f"Win Probability: {battle_result['win_probability']}%\nRolled: {battle_result['roll']}",
+            inline=False
+        )
+        
+    else:
+        outcome_embed = discord.Embed(
+            title="GANG WAR DEFEAT",
+            description=f"**{ctx.author.name}'s Gang** was defeated by the enemy gang!",
+            color=discord.Color.red()
+        )
+        
+        outcome_embed.add_field(
+            name="Battle Odds",
+            value=f"Win Probability: {battle_result['win_probability']}%\nRolled: {battle_result['roll']}",
+            inline=False
+        )
+    
+    # Show casualties
+    if casualties:
+        casualty_text = ""
+        for vamp in casualties:
+            casualty_text += f"{vamp['name']} (Power: {vamp['power_level']})\n"
+            
+            # Add to graveyard
+            dead_vampire = vamp.copy()
+            dead_vampire['death_date'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+            dead_vampire['killed_by'] = "Gang War"
+            graveyard.append(dead_vampire)
+            
+            # Delete vampire
+            del characters[vamp['character_id']]
+        
+        outcome_embed.add_field(
+            name=f"CASUALTIES ({len(casualties)} vampires)",
+            value=casualty_text,
+            inline=False
+        )
+        
+        save_graveyard(graveyard)
+        save_characters(characters)
+    else:
+        outcome_embed.add_field(
+            name="CASUALTIES",
+            value="All gang members survived!",
+            inline=False
+        )
+    
+    # Update survivors
+    if survivors:
+        survivor_text = ""
+        for vamp in survivors:
+            if player_won:
+                vamp['wins'] = vamp.get('wins', 0) + 1
+            else:
+                vamp['losses'] = vamp.get('losses', 0) + 1
+            
+            characters[vamp['character_id']] = vamp
+            survivor_text += f"{vamp['name']} (Power: {vamp['power_level']}) - Record: {vamp['wins']}-{vamp['losses']}\n"
+        
+        outcome_embed.add_field(
+            name=f"SURVIVORS ({len(survivors)} vampires)",
+            value=survivor_text,
+            inline=False
+        )
+        
+        save_characters(characters)
+    
+    # Show rebirth info if applicable
+    rebirth_ids = []
+    for vamp in casualties:
+        if not vamp.get('has_been_reborn', False):
+            rebirth_ids.append(vamp['character_id'])
+    
+    if rebirth_ids:
+        rebirth_text = "Fallen gang members can be reborn:\n"
+        for char_id in rebirth_ids:
+            rebirth_text += f"`?rebirth {char_id}`\n"
+        outcome_embed.set_footer(text=rebirth_text)
+    
+    await ctx.send(embed=outcome_embed)
 
 # Transfer command - Sacrifice two vampires to create a hybrid
 @bot.command(name='transfer')
