@@ -76,32 +76,53 @@ def generate_unique_id():
         if new_id not in existing_ids:
             return new_id
 
-# Dynamic AI power calculation based on player power
-def generate_ai_power(player_power):
-    """Generate dynamic AI power that creates interesting fights"""
+# Generate completely random AI power (10-1000, super unpredictable)
+def generate_ai_power():
+    """Generate completely random AI power from 10 to 1000"""
     
-    # 40% chance: Slightly weaker opponent (60-90% of player power)
-    # 30% chance: Equal match (90-110% of player power)
-    # 20% chance: Stronger opponent (110-140% of player power)
-    # 10% chance: Very strong opponent (140-180% of player power)
+    # 60% chance: Low to mid tier (10-400)
+    # 25% chance: High tier (401-700)
+    # 10% chance: Very high tier (701-900)
+    # 5% chance: God tier (901-1000)
     
     roll = random.randint(1, 100)
     
-    if roll <= 40:
-        multiplier = random.uniform(0.6, 0.9)
-    elif roll <= 70:
-        multiplier = random.uniform(0.9, 1.1)
-    elif roll <= 90:
-        multiplier = random.uniform(1.1, 1.4)
+    if roll <= 60:
+        # Low to mid tier
+        return random.randint(10, 400)
+    elif roll <= 85:
+        # High tier
+        return random.randint(401, 700)
+    elif roll <= 95:
+        # Very high tier
+        return random.randint(701, 900)
     else:
-        multiplier = random.uniform(1.4, 1.8)
+        # God tier
+        return random.randint(901, 1000)
+
+# Generate completely random vampire power for new vampires (10-1000)
+def generate_random_vampire_power():
+    """Generate completely random power for new vampires"""
     
-    ai_power = int(player_power * multiplier)
+    # 50% chance: Fledgling (10-200)
+    # 30% chance: Experienced (201-500)
+    # 15% chance: Ancient (501-800)
+    # 5% chance: Primordial (801-1000)
     
-    # Keep within bounds 10-100
-    ai_power = max(10, min(100, ai_power))
+    roll = random.randint(1, 100)
     
-    return ai_power
+    if roll <= 50:
+        # Fledgling
+        return random.randint(10, 200)
+    elif roll <= 80:
+        # Experienced
+        return random.randint(201, 500)
+    elif roll <= 95:
+        # Ancient
+        return random.randint(501, 800)
+    else:
+        # Primordial
+        return random.randint(801, 1000)
 
 # Calculate death chance based on power difference and outcome
 def calculate_death_chance(player_power, enemy_power, player_won):
@@ -111,17 +132,21 @@ def calculate_death_chance(player_power, enemy_power, player_won):
         # Winners have lower death chance
         base_chance = 5
         power_diff = player_power - enemy_power
-        if power_diff < 5:
+        
+        # Even when winning, very close fights are dangerous
+        if power_diff < 50:
             base_chance = 15
     else:
         # Losers face real danger
         base_chance = 35
         power_diff = enemy_power - player_power
-        power_multiplier = power_diff / 10
+        
+        # The stronger the opponent, the more likely you die
+        power_multiplier = power_diff / 100
         base_chance += power_multiplier
     
-    # Cap between 5% and 75%
-    death_chance = max(5, min(75, base_chance))
+    # Cap between 5% and 80%
+    death_chance = max(5, min(80, base_chance))
     
     return int(death_chance)
 
@@ -133,11 +158,11 @@ def simulate_battle(player_name, player_power, enemy_name, enemy_power):
     power_diff = player_power - enemy_power
     
     # Base 50% chance, adjusted by power difference
-    # Each point of power difference = 2% change in odds
-    win_probability = 50 + (power_diff * 2)
+    # Each 10 points of power difference = 1% change in odds
+    win_probability = 50 + (power_diff / 10)
     
-    # Cap between 10% and 90%
-    win_probability = max(10, min(90, win_probability))
+    # Cap between 5% and 95%
+    win_probability = max(5, min(95, win_probability))
     
     # Roll for winner
     roll = random.randint(1, 100)
@@ -145,7 +170,7 @@ def simulate_battle(player_name, player_power, enemy_name, enemy_power):
     
     return {
         "player_won": player_won,
-        "win_probability": win_probability,
+        "win_probability": int(win_probability),
         "roll": roll
     }
 
@@ -165,7 +190,7 @@ async def globally_block_dms(ctx):
         return False
     return True
 
-# Make command - Creates a vampire
+# Make command - Creates a vampire with RANDOM power (10-1000)
 @bot.command(name='make')
 async def make_character(ctx):
     """Generate a vampire with a random name and power level"""
@@ -180,8 +205,8 @@ async def make_character(ctx):
     # Generate unique character ID
     character_id = generate_unique_id()
     
-    # Generate random power level (10 to 100)
-    power_level = random.randint(10, 100)
+    # Generate COMPLETELY RANDOM power level (10 to 1000)
+    power_level = generate_random_vampire_power()
     
     # Create vampire data
     character_data = {
@@ -200,17 +225,32 @@ async def make_character(ctx):
     characters[character_id] = character_data
     save_characters(characters)
     
+    # Determine power tier for description
+    if power_level <= 200:
+        tier = "Fledgling"
+        tier_color = discord.Color.dark_grey()
+    elif power_level <= 500:
+        tier = "Experienced"
+        tier_color = discord.Color.blue()
+    elif power_level <= 800:
+        tier = "Ancient"
+        tier_color = discord.Color.purple()
+    else:
+        tier = "Primordial"
+        tier_color = discord.Color.gold()
+    
     # Display new vampire
     embed = discord.Embed(
         title="Vampire Created",
         description=f"**{character_name}**",
-        color=discord.Color.dark_red()
+        color=tier_color
     )
     
     embed.add_field(name="Owner", value=ctx.author.name, inline=True)
     embed.add_field(name="ID", value=f"`{character_id}`", inline=True)
     embed.add_field(name="Power Level", value=f"{power_level}", inline=False)
-    embed.add_field(name="Record", value="0-0", inline=False)
+    embed.add_field(name="Tier", value=tier, inline=True)
+    embed.add_field(name="Record", value="0-0", inline=True)
     
     embed.set_footer(text="A new vampire has risen from the darkness")
     
@@ -247,6 +287,17 @@ async def show_vampires(ctx):
         has_been_reborn = vamp.get('has_been_reborn', False)
         is_hybrid = vamp.get('is_hybrid', False)
         
+        # Determine tier
+        power = vamp['power_level']
+        if power <= 200:
+            tier = "Fledgling"
+        elif power <= 500:
+            tier = "Experienced"
+        elif power <= 800:
+            tier = "Ancient"
+        else:
+            tier = "Primordial"
+        
         # Status indicators
         if is_hybrid:
             status = "HYBRID"
@@ -260,6 +311,7 @@ async def show_vampires(ctx):
         value_text = (
             f"**ID:** `{vamp['character_id']}`\n"
             f"**Power:** {vamp['power_level']}\n"
+            f"**Tier:** {tier}\n"
             f"**Record:** {wins}-{losses}\n"
             f"**Status:** {status}\n"
             f"**Rebirth Eligible:** {rebirth_eligible}"
@@ -346,15 +398,15 @@ async def transfer_vampires(ctx, vampire1_id: str = None, vampire2_id: str = Non
     hybrid_id = generate_unique_id()
     
     # Calculate hybrid power
-    # Combine both powers + bonus (30-60)
+    # Combine both powers + massive bonus (100-300)
     combined_power = vampire1['power_level'] + vampire2['power_level']
-    ritual_bonus = random.randint(30, 60)
+    ritual_bonus = random.randint(100, 300)
     hybrid_power = combined_power + ritual_bonus
     
-    # Cap at 100
-    if hybrid_power > 100:
-        hybrid_power = 100
-        actual_bonus = 100 - combined_power
+    # Cap at 1000
+    if hybrid_power > 1000:
+        hybrid_power = 1000
+        actual_bonus = 1000 - combined_power
     else:
         actual_bonus = ritual_bonus
     
@@ -407,11 +459,25 @@ async def transfer_vampires(ctx, vampire1_id: str = None, vampire2_id: str = Non
     characters[hybrid_id] = hybrid_data
     save_characters(characters)
     
+    # Determine hybrid tier
+    if hybrid_power <= 200:
+        tier = "Fledgling"
+        tier_color = discord.Color.dark_grey()
+    elif hybrid_power <= 500:
+        tier = "Experienced"
+        tier_color = discord.Color.blue()
+    elif hybrid_power <= 800:
+        tier = "Ancient"
+        tier_color = discord.Color.purple()
+    else:
+        tier = "Primordial"
+        tier_color = discord.Color.gold()
+    
     # Success embed
     success_embed = discord.Embed(
         title="HYBRID VAMPIRE BORN",
         description=f"The ritual is complete! **{hybrid_name}** emerges from the crimson flames!",
-        color=discord.Color.gold()
+        color=tier_color
     )
     
     success_embed.add_field(
@@ -433,14 +499,14 @@ async def transfer_vampires(ctx, vampire1_id: str = None, vampire2_id: str = Non
     )
     
     success_embed.add_field(
-        name="Combined Victories",
-        value=f"Total Wins: {total_wins}",
+        name="Tier",
+        value=tier,
         inline=True
     )
     
     success_embed.add_field(
-        name="Fresh Start",
-        value=f"Losses: {total_losses}",
+        name="Combined Victories",
+        value=f"Total Wins: {total_wins}",
         inline=True
     )
     
@@ -467,7 +533,7 @@ async def transfer_vampires(ctx, vampire1_id: str = None, vampire2_id: str = Non
     
     await ctx.send(embed=success_embed)
 
-# Fight command - Battle against AI vampires
+# Fight command - Battle against AI vampires with COMPLETELY RANDOM power
 @bot.command(name='fight')
 async def fight_character(ctx, character_id: str = None):
     """Fight an AI vampire opponent. Usage: ?fight <character_id>"""
@@ -490,8 +556,8 @@ async def fight_character(ctx, character_id: str = None):
         await ctx.send("You don't own this vampire!")
         return
     
-    # Generate dynamic AI opponent
-    ai_power = generate_ai_power(player_char['power_level'])
+    # Generate COMPLETELY RANDOM AI opponent (10-1000)
+    ai_power = generate_ai_power()
     
     ai_first_name = random.choice(FIRST_NAMES)
     ai_last_name = random.choice(LAST_NAMES)
@@ -500,18 +566,34 @@ async def fight_character(ctx, character_id: str = None):
     # Determine power difference for threat level
     power_diff = ai_power - player_char['power_level']
     
-    if power_diff > 20:
-        threat_level = "DANGEROUS OPPONENT"
+    if power_diff > 300:
+        threat_level = "EXTREMELY DANGEROUS OPPONENT"
         threat_color = discord.Color.dark_red()
-    elif power_diff > 5:
+    elif power_diff > 150:
+        threat_level = "DANGEROUS OPPONENT"
+        threat_color = discord.Color.red()
+    elif power_diff > 50:
         threat_level = "TOUGH CHALLENGER"
         threat_color = discord.Color.orange()
-    elif power_diff > -5:
+    elif power_diff > -50:
         threat_level = "EVEN MATCH"
         threat_color = discord.Color.gold()
-    else:
+    elif power_diff > -150:
         threat_level = "FAVORABLE MATCHUP"
         threat_color = discord.Color.green()
+    else:
+        threat_level = "EASY TARGET"
+        threat_color = discord.Color.dark_green()
+    
+    # Determine AI tier
+    if ai_power <= 200:
+        ai_tier = "Fledgling"
+    elif ai_power <= 500:
+        ai_tier = "Experienced"
+    elif ai_power <= 800:
+        ai_tier = "Ancient"
+    else:
+        ai_tier = "Primordial"
     
     # Battle intro embed
     intro_embed = discord.Embed(
@@ -528,7 +610,7 @@ async def fight_character(ctx, character_id: str = None):
     
     intro_embed.add_field(
         name=f"{ai_name} (ENEMY)",
-        value=f"Power: **{ai_power}**\nStatus: Wild Vampire",
+        value=f"Power: **{ai_power}**\nTier: {ai_tier}",
         inline=True
     )
     
@@ -785,18 +867,18 @@ async def rebirth_vampire(ctx, character_id: str = None):
     await asyncio.sleep(3)
     
     # Calculate power boost
-    # Base boost: 20-40 power
-    # Additional 10% of original power
-    base_boost = random.randint(20, 40)
-    percentage_boost = int(dead_vampire['power_level'] * 0.1)
+    # Base boost: 100-250 power
+    # Additional 15% of original power
+    base_boost = random.randint(100, 250)
+    percentage_boost = int(dead_vampire['power_level'] * 0.15)
     total_boost = base_boost + percentage_boost
     
     new_power = dead_vampire['power_level'] + total_boost
     
-    # Cap at 100
-    if new_power > 100:
-        new_power = 100
-        total_boost = 100 - dead_vampire['power_level']
+    # Cap at 1000
+    if new_power > 1000:
+        new_power = 1000
+        total_boost = 1000 - dead_vampire['power_level']
     
     # Create reborn vampire with new ID
     new_character_id = generate_unique_id()
@@ -831,11 +913,25 @@ async def rebirth_vampire(ctx, character_id: str = None):
     current_graveyard.pop(graveyard_index)
     save_graveyard(current_graveyard)
     
+    # Determine new tier
+    if new_power <= 200:
+        tier = "Fledgling"
+        tier_color = discord.Color.dark_grey()
+    elif new_power <= 500:
+        tier = "Experienced"
+        tier_color = discord.Color.blue()
+    elif new_power <= 800:
+        tier = "Ancient"
+        tier_color = discord.Color.purple()
+    else:
+        tier = "Primordial"
+        tier_color = discord.Color.gold()
+    
     # Success embed
     success_embed = discord.Embed(
         title="RESURRECTION COMPLETE",
         description=f"**{dead_vampire['name']}** rises from the ashes, reborn with ancient power!",
-        color=discord.Color.gold()
+        color=tier_color
     )
     
     success_embed.add_field(
@@ -851,14 +947,14 @@ async def rebirth_vampire(ctx, character_id: str = None):
     )
     
     success_embed.add_field(
-        name="Retained Record",
-        value=f"{dead_vampire.get('wins', 0)}-{dead_vampire.get('losses', 0)}",
+        name="New Tier",
+        value=tier,
         inline=True
     )
     
     success_embed.add_field(
-        name="Status",
-        value="REBORN",
+        name="Retained Record",
+        value=f"{dead_vampire.get('wins', 0)}-{dead_vampire.get('losses', 0)}",
         inline=True
     )
     
