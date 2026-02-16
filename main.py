@@ -814,6 +814,281 @@ async def rob_store(ctx, character_id: str = None):
     
     await ctx.send(embed=outcome_embed)
 
+# Block command - Throw a block party with chance of rival shootup
+@bot.command(name='block')
+@commands.cooldown(1, 10, commands.BucketType.user)
+async def block_party(ctx, character_id: str = None):
+    """Throw a block party in the hood. Usage: ?block <character_id>"""
+    
+    # Reset cooldown for admins
+    if is_admin(ctx):
+        ctx.command.reset_cooldown(ctx)
+    
+    if character_id is None:
+        await ctx.send("Usage: `?block <character_id>`\nExample: `?block 123456`")
+        return
+    
+    if character_id not in characters:
+        await ctx.send(f"Gang member ID `{character_id}` not found!")
+        return
+    
+    player_char = characters[character_id]
+    user_id = str(ctx.author.id)
+    
+    if player_char.get('user_id') != user_id:
+        await ctx.send("You don't own this gang member!")
+        return
+    
+    # Check if member is in jail
+    if is_in_jail(player_char):
+        remaining = get_jail_time_remaining(player_char)
+        if remaining:
+            minutes = int(remaining.total_seconds() // 60)
+            seconds = int(remaining.total_seconds() % 60)
+            await ctx.send(f"{player_char['name']} is currently locked up and will be released in {minutes}m {seconds}s")
+            return
+    
+    # Get character's gang info
+    char_gang = player_char.get('gang_affiliation', 'Unknown')
+    char_set = player_char.get('set_name', 'Unknown')
+    gang_color = LA_GANGS.get(char_gang, {}).get('color', discord.Color.purple())
+    
+    # Intro embed
+    intro_embed = discord.Embed(
+        title="BLOCK PARTY STARTING",
+        description=f"{player_char['name']} is throwing a block party in {char_set} territory",
+        color=gang_color
+    )
+    
+    intro_embed.add_field(
+        name="Host",
+        value=f"{player_char['name']}",
+        inline=True
+    )
+    
+    intro_embed.add_field(
+        name="Location",
+        value=f"{char_set} turf",
+        inline=True
+    )
+    
+    intro_embed.add_field(
+        name="\u200b",
+        value="\u200b",
+        inline=False
+    )
+    
+    intro_embed.add_field(
+        name="The Scene",
+        value="Music bumping, homies gathered, BBQ going, everyone having a good time in the hood",
+        inline=False
+    )
+    
+    intro_embed.set_footer(text="The party is live...")
+    
+    await ctx.send(embed=intro_embed)
+    await asyncio.sleep(3)
+    
+    # 35% chance of rival gang showing up
+    rival_roll = random.randint(1, 100)
+    rival_shows_up = rival_roll <= 35
+    
+    if not rival_shows_up:
+        # Peaceful party
+        outcome_embed = discord.Embed(
+            title="BLOCK PARTY SUCCESS",
+            description=f"The block party was a success! Everyone had a good time and no drama went down",
+            color=discord.Color.green()
+        )
+        
+        outcome_embed.add_field(
+            name="Party Status",
+            value="Everything stayed peaceful in the hood tonight",
+            inline=False
+        )
+        
+        outcome_embed.add_field(
+            name=f"{player_char['name']}",
+            value="Threw a legendary block party that the hood will remember",
+            inline=False
+        )
+        
+        outcome_embed.set_footer(text="Good vibes only")
+        
+        await ctx.send(embed=outcome_embed)
+    else:
+        # Rival gang drives by
+        # Generate rival gang (different from player's gang)
+        available_gangs = [g for g in LA_GANGS.keys() if g != char_gang]
+        if not available_gangs:
+            available_gangs = list(LA_GANGS.keys())
+        
+        rival_gang = random.choice(available_gangs)
+        rival_sets = LA_GANGS[rival_gang]['sets']
+        rival_set = random.choice(rival_sets)
+        
+        # Generate 2-4 rival shooters
+        num_shooters = random.randint(2, 4)
+        rival_names = []
+        for _ in range(num_shooters):
+            rival_first = random.choice(FIRST_NAMES)
+            rival_last = random.choice(LAST_NAMES)
+            rival_names.append(f"{rival_first} {rival_last}")
+        
+        # Drive by alert
+        driveby_embed = discord.Embed(
+            title="RIVAL GANG ALERT",
+            description=f"A car full of {rival_set} members just rolled up on the block party!",
+            color=discord.Color.red()
+        )
+        
+        driveby_embed.add_field(
+            name="Rival Gang",
+            value=f"{rival_gang}",
+            inline=True
+        )
+        
+        driveby_embed.add_field(
+            name="Set",
+            value=f"{rival_set}",
+            inline=True
+        )
+        
+        driveby_embed.add_field(
+            name="\u200b",
+            value="\u200b",
+            inline=False
+        )
+        
+        driveby_embed.add_field(
+            name="SHOOTERS SPOTTED",
+            value="\n".join(rival_names),
+            inline=False
+        )
+        
+        driveby_embed.set_footer(text="Shots about to be fired...")
+        
+        await ctx.send(embed=driveby_embed)
+        await asyncio.sleep(3)
+        
+        # SHOOTING STARTS
+        shooting_embed = discord.Embed(
+            title="SHOTS FIRED!",
+            description=f"The {rival_set} members opened fire on the block party!",
+            color=discord.Color.dark_red()
+        )
+        
+        shooting_embed.add_field(
+            name="Drive-By Shooting",
+            value="Bullets flying everywhere, people running for cover, chaos in the streets",
+            inline=False
+        )
+        
+        await ctx.send(embed=shooting_embed)
+        await asyncio.sleep(3)
+        
+        # 40% chance player gets hit by a bullet
+        bullet_roll = random.randint(1, 100)
+        player_hit = bullet_roll <= 40
+        
+        if player_hit:
+            # Player caught a bullet and dies
+            death_embed = discord.Embed(
+                title="CAUGHT BY A BULLET",
+                description=f"{player_char['name']} was hit during the drive-by shooting",
+                color=discord.Color.dark_red()
+            )
+            
+            death_embed.add_field(
+                name="Fatal Outcome",
+                value=f"{player_char['name']} caught a stray bullet during the shootout and didn't make it",
+                inline=False
+            )
+            
+            death_embed.add_field(
+                name="Final Stats",
+                value=f"Body Count: {player_char.get('kills', 0)}\nMoney: ${player_char.get('money', 0):,}\nStatus: DECEASED",
+                inline=False
+            )
+            
+            # Add to graveyard
+            dead_member = player_char.copy()
+            dead_member['death_date'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+            dead_member['killed_by'] = f"{rival_set} Drive-By Shooting (Block Party)"
+            graveyard.append(dead_member)
+            save_graveyard(graveyard)
+            
+            # Remove from characters
+            del characters[character_id]
+            save_characters(characters)
+            
+            death_embed.set_footer(text="Wrong place, wrong time")
+            
+            await ctx.send(embed=death_embed)
+        else:
+            # Player survives but police show up
+            survive_embed = discord.Embed(
+                title="SURVIVED THE SHOOTING",
+                description=f"{player_char['name']} managed to avoid the bullets and survive the drive-by",
+                color=discord.Color.orange()
+            )
+            
+            survive_embed.add_field(
+                name="Close Call",
+                value=f"{player_char['name']} hit the ground and avoided getting hit",
+                inline=False
+            )
+            
+            await ctx.send(embed=survive_embed)
+            await asyncio.sleep(2)
+            
+            # Police response (60% chance)
+            police_roll = random.randint(1, 100)
+            police_show = police_roll <= 60
+            
+            if police_show:
+                police_embed = discord.Embed(
+                    title="POLICE ARRIVAL",
+                    description="LAPD rolled up on the scene after the shooting",
+                    color=discord.Color.blue()
+                )
+                
+                police_embed.add_field(
+                    name="Police Response",
+                    value="Multiple units arrived on scene, investigating the shooting",
+                    inline=False
+                )
+                
+                police_embed.add_field(
+                    name=f"{player_char['name']} Status",
+                    value="Questioned by police but not arrested - no jail time for being a victim",
+                    inline=False
+                )
+                
+                police_embed.set_footer(text="Survived to see another day")
+                
+                await ctx.send(embed=police_embed)
+            else:
+                final_embed = discord.Embed(
+                    title="ESCAPED CLEAN",
+                    description=f"{player_char['name']} survived the shooting and got away before police arrived",
+                    color=discord.Color.green()
+                )
+                
+                final_embed.add_field(
+                    name="Status",
+                    value="Made it out alive, no police involvement",
+                    inline=False
+                )
+                
+                final_embed.set_footer(text="Lucky to be alive")
+                
+                await ctx.send(embed=final_embed)
+            
+            # Save character (no changes needed, just survived)
+            characters[character_id] = player_char
+            save_characters(characters)
+
 # Slide command - Battle against rival gang members with JAIL SYSTEM based on kills
 @bot.command(name='slide')
 @commands.cooldown(1, 10, commands.BucketType.user)
