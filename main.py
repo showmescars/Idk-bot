@@ -358,7 +358,7 @@ async def show_members(ctx):
             inline=True
         )
     
-    embed.set_footer(text="Commands: ?crew | ?slide <id> | ?list <id>")
+    embed.set_footer(text="Commands: ?crew | ?slide <id> [id2] [id3]... | ?list <id>")
     
     await ctx.send(embed=embed)
 
@@ -622,235 +622,270 @@ async def crew_battle(ctx):
 
 # Slide command - Battle against rival gang members with JAIL SYSTEM based on kills
 @bot.command(name='slide')
-async def slide_on_opps(ctx, character_id: str = None):
-    """Slide on rival gang members. Usage: ?slide <character_id>"""
+async def slide_on_opps(ctx, *character_ids):
+    """Slide on rival gang members. Usage: ?slide <character_id> [character_id2] [character_id3]..."""
     
-    if character_id is None:
-        await ctx.send("Usage: `?slide <character_id>`\nExample: `?slide 123456`")
+    if not character_ids:
+        await ctx.send("Usage: `?slide <character_id> [character_id2] [character_id3]...`\nExample: `?slide 123456` or `?slide 123456 789012 345678`")
         return
     
-    if character_id not in characters:
-        await ctx.send(f"Gang member ID `{character_id}` not found!")
-        return
-    
-    player_char = characters[character_id]
     user_id = str(ctx.author.id)
     
-    if player_char.get('user_id') != user_id:
-        await ctx.send("You don't own this gang member!")
+    # Validate all character IDs
+    valid_members = []
+    invalid_ids = []
+    not_owned = []
+    in_jail_members = []
+    
+    for character_id in character_ids:
+        if character_id not in characters:
+            invalid_ids.append(character_id)
+            continue
+        
+        player_char = characters[character_id]
+        
+        if player_char.get('user_id') != user_id:
+            not_owned.append(character_id)
+            continue
+        
+        # Check if member is in jail
+        if is_in_jail(player_char):
+            remaining = get_jail_time_remaining(player_char)
+            if remaining:
+                minutes = int(remaining.total_seconds() // 60)
+                seconds = int(remaining.total_seconds() % 60)
+                in_jail_members.append(f"{player_char['name']} ({minutes}m {seconds}s)")
+            continue
+        
+        valid_members.append(player_char)
+    
+    # Show errors if any
+    if invalid_ids:
+        await ctx.send(f"Invalid member IDs: {', '.join(invalid_ids)}")
         return
     
-    # Check if member is in jail
-    if is_in_jail(player_char):
-        remaining = get_jail_time_remaining(player_char)
-        if remaining:
-            minutes = int(remaining.total_seconds() // 60)
-            seconds = int(remaining.total_seconds() % 60)
-            await ctx.send(f"{player_char['name']} is currently locked up and will be released in {minutes}m {seconds}s")
-            return
+    if not_owned:
+        await ctx.send(f"You don't own these members: {', '.join(not_owned)}")
+        return
     
-    # Generate rival
-    rival_first_name = random.choice(FIRST_NAMES)
-    rival_last_name = random.choice(LAST_NAMES)
-    rival_name = f"{rival_first_name} {rival_last_name}"
+    if in_jail_members:
+        await ctx.send(f"The following members are locked up:\n" + "\n".join(in_jail_members))
+        return
     
-    # Generate rival gang affiliation (different from player if possible)
-    available_gangs = [g for g in LA_GANGS.keys() if g != player_char.get('gang_affiliation')]
-    if not available_gangs:
-        available_gangs = list(LA_GANGS.keys())
+    if not valid_members:
+        await ctx.send("No valid members available to slide!")
+        return
     
-    rival_gang = random.choice(available_gangs)
-    rival_sets = LA_GANGS[rival_gang]['sets']
-    rival_set = random.choice(rival_sets)
-    
-    # Battle intro embed
-    intro_embed = discord.Embed(
-        title="SLIDING ON OPPS",
-        description=f"Your member has spotted an enemy in rival territory",
-        color=discord.Color.orange()
-    )
-    
-    intro_embed.add_field(
-        name="YOUR MEMBER",
-        value=f"{player_char['name']}\nBodies: {player_char.get('kills', 0)}\nGang: {player_char.get('gang_affiliation', 'Unknown')}\nSet: {player_char.get('set_name', 'Unknown')}",
-        inline=True
-    )
-    
-    intro_embed.add_field(
-        name="ENEMY SPOTTED",
-        value=f"{rival_name}\nGang: {rival_gang}\nSet: {rival_set}",
-        inline=True
-    )
-    
-    intro_embed.set_footer(text="The confrontation is about to go down...")
-    
-    await ctx.send(embed=intro_embed)
-    await asyncio.sleep(3)
-    
-    # Simulate the battle
-    battle_result = simulate_battle()
-    player_won = battle_result['player_won']
-    
-    # Calculate death chance
-    death_chance = calculate_death_chance(player_won)
-    
-    # Roll for death
-    death_roll = random.randint(1, 100)
-    member_dies = death_roll <= death_chance
-    
-    # JAIL SYSTEM - Roll for jail if member survives and wins
-    jail_roll = random.randint(1, 100)
-    goes_to_jail = False
-    jail_minutes = 0
-    
-    if not member_dies and player_won:
-        # Increment kill count
-        player_char['kills'] = player_char.get('kills', 0) + 1
+    # Now process each member's slide
+    for idx, player_char in enumerate(valid_members):
+        character_id = player_char['character_id']
         
-        # Add to kill list
-        if 'kill_list' not in player_char:
-            player_char['kill_list'] = []
+        # Generate rival
+        rival_first_name = random.choice(FIRST_NAMES)
+        rival_last_name = random.choice(LAST_NAMES)
+        rival_name = f"{rival_first_name} {rival_last_name}"
         
-        player_char['kill_list'].append({
-            'victim_name': rival_name,
-            'victim_gang': rival_gang,
-            'victim_set': rival_set,
-            'date': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
-            'type': 'slide'
-        })
+        # Generate rival gang affiliation (different from player if possible)
+        available_gangs = [g for g in LA_GANGS.keys() if g != player_char.get('gang_affiliation')]
+        if not available_gangs:
+            available_gangs = list(LA_GANGS.keys())
         
-        # 30% chance of getting caught after killing someone
-        jail_chance = 30
-        goes_to_jail = jail_roll <= jail_chance
+        rival_gang = random.choice(available_gangs)
+        rival_sets = LA_GANGS[rival_gang]['sets']
+        rival_set = random.choice(rival_sets)
         
-        if goes_to_jail:
-            # Jail time = number of kills in minutes
-            jail_minutes = player_char['kills']
-    
-    # Outcome embed
-    if player_won:
-        if member_dies:
-            outcome_embed = discord.Embed(
-                title="PYRRHIC VICTORY",
-                description=f"{player_char['name']} successfully eliminated {rival_name} but sustained fatal injuries in the process",
-                color=discord.Color.dark_red()
-            )
+        # Battle intro embed
+        intro_embed = discord.Embed(
+            title=f"SLIDING ON OPPS ({idx + 1}/{len(valid_members)})",
+            description=f"Your member has spotted an enemy in rival territory",
+            color=discord.Color.orange()
+        )
+        
+        intro_embed.add_field(
+            name="YOUR MEMBER",
+            value=f"{player_char['name']}\nBodies: {player_char.get('kills', 0)}\nGang: {player_char.get('gang_affiliation', 'Unknown')}\nSet: {player_char.get('set_name', 'Unknown')}",
+            inline=True
+        )
+        
+        intro_embed.add_field(
+            name="ENEMY SPOTTED",
+            value=f"{rival_name}\nGang: {rival_gang}\nSet: {rival_set}",
+            inline=True
+        )
+        
+        intro_embed.set_footer(text="The confrontation is about to go down...")
+        
+        await ctx.send(embed=intro_embed)
+        await asyncio.sleep(2)
+        
+        # Simulate the battle
+        battle_result = simulate_battle()
+        player_won = battle_result['player_won']
+        
+        # Calculate death chance
+        death_chance = calculate_death_chance(player_won)
+        
+        # Roll for death
+        death_roll = random.randint(1, 100)
+        member_dies = death_roll <= death_chance
+        
+        # JAIL SYSTEM - Roll for jail if member survives and wins
+        jail_roll = random.randint(1, 100)
+        goes_to_jail = False
+        jail_minutes = 0
+        
+        if not member_dies and player_won:
+            # Increment kill count
+            player_char['kills'] = player_char.get('kills', 0) + 1
             
-            outcome_embed.add_field(
-                name="Final Outcome",
-                value=f"Despite winning the confrontation, {player_char['name']} succumbed to their wounds",
-                inline=False
-            )
+            # Add to kill list
+            if 'kill_list' not in player_char:
+                player_char['kill_list'] = []
             
-            outcome_embed.add_field(
-                name="Final Stats",
-                value=f"Body Count: {player_char.get('kills', 0)}\nStatus: DECEASED",
-                inline=False
-            )
+            player_char['kill_list'].append({
+                'victim_name': rival_name,
+                'victim_gang': rival_gang,
+                'victim_set': rival_set,
+                'date': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+                'type': 'slide'
+            })
             
-            dead_member = player_char.copy()
-            dead_member['death_date'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-            dead_member['killed_by'] = f"{rival_name} ({rival_set}) - Fatal Wounds"
-            graveyard.append(dead_member)
-            save_graveyard(graveyard)
-            
-            del characters[character_id]
-            save_characters(characters)
-            
-        else:
-            if goes_to_jail:
-                outcome_embed = discord.Embed(
-                    title="BODY CAUGHT - ARRESTED",
-                    description=f"{player_char['name']} eliminated {rival_name} from the {rival_set} but was caught by law enforcement",
-                    color=discord.Color.orange()
-                )
-            else:
-                outcome_embed = discord.Embed(
-                    title="BODY CAUGHT",
-                    description=f"{player_char['name']} successfully eliminated {rival_name} from the {rival_set}",
-                    color=discord.Color.green()
-                )
-            
-            outcome_embed.add_field(
-                name="Updated Stats",
-                value=f"Total Bodies: {player_char['kills']}",
-                inline=False
-            )
+            # 30% chance of getting caught after killing someone
+            jail_chance = 30
+            goes_to_jail = jail_roll <= jail_chance
             
             if goes_to_jail:
-                # Set jail time
-                jail_until = datetime.now() + timedelta(minutes=jail_minutes)
-                player_char['jail_until'] = jail_until.strftime('%Y-%m-%d %H:%M:%S')
+                # Jail time = number of kills in minutes
+                jail_minutes = player_char['kills']
+        
+        # Outcome embed
+        if player_won:
+            if member_dies:
+                outcome_embed = discord.Embed(
+                    title="PYRRHIC VICTORY",
+                    description=f"{player_char['name']} successfully eliminated {rival_name} but sustained fatal injuries in the process",
+                    color=discord.Color.dark_red()
+                )
                 
                 outcome_embed.add_field(
-                    name="ARREST STATUS",
-                    value=f"Sentenced to {jail_minutes} minutes in county jail\nWill be released in {jail_minutes} minutes",
+                    name="Final Outcome",
+                    value=f"Despite winning the confrontation, {player_char['name']} succumbed to their wounds",
                     inline=False
                 )
-            else:
+                
                 outcome_embed.add_field(
-                    name="POLICE STATUS",
-                    value="Successfully evaded law enforcement and made it back safely",
+                    name="Final Stats",
+                    value=f"Body Count: {player_char.get('kills', 0)}\nStatus: DECEASED",
                     inline=False
                 )
-            
-            characters[character_id] = player_char
-            save_characters(characters)
-            
-    else:
-        if member_dies:
-            outcome_embed = discord.Embed(
-                title="CAUGHT SLIPPING",
-                description=f"{player_char['name']} was eliminated by {rival_name} from the {rival_set}",
-                color=discord.Color.dark_red()
-            )
-            
-            outcome_embed.add_field(
-                name="Final Words",
-                value=f"{player_char['name']} was caught lacking deep in enemy territory and paid the ultimate price",
-                inline=False
-            )
-            
-            outcome_embed.add_field(
-                name="Final Stats",
-                value=f"Body Count: {player_char.get('kills', 0)}\nStatus: DECEASED",
-                inline=False
-            )
-            
-            dead_member = player_char.copy()
-            dead_member['death_date'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-            dead_member['killed_by'] = f"{rival_name} ({rival_set})"
-            graveyard.append(dead_member)
-            save_graveyard(graveyard)
-            
-            del characters[character_id]
-            save_characters(characters)
-            
+                
+                dead_member = player_char.copy()
+                dead_member['death_date'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+                dead_member['killed_by'] = f"{rival_name} ({rival_set}) - Fatal Wounds"
+                graveyard.append(dead_member)
+                save_graveyard(graveyard)
+                
+                del characters[character_id]
+                save_characters(characters)
+                
+            else:
+                if goes_to_jail:
+                    outcome_embed = discord.Embed(
+                        title="BODY CAUGHT - ARRESTED",
+                        description=f"{player_char['name']} eliminated {rival_name} from the {rival_set} but was caught by law enforcement",
+                        color=discord.Color.orange()
+                    )
+                else:
+                    outcome_embed = discord.Embed(
+                        title="BODY CAUGHT",
+                        description=f"{player_char['name']} successfully eliminated {rival_name} from the {rival_set}",
+                        color=discord.Color.green()
+                    )
+                
+                outcome_embed.add_field(
+                    name="Updated Stats",
+                    value=f"Total Bodies: {player_char['kills']}",
+                    inline=False
+                )
+                
+                if goes_to_jail:
+                    # Set jail time
+                    jail_until = datetime.now() + timedelta(minutes=jail_minutes)
+                    player_char['jail_until'] = jail_until.strftime('%Y-%m-%d %H:%M:%S')
+                    
+                    outcome_embed.add_field(
+                        name="ARREST STATUS",
+                        value=f"Sentenced to {jail_minutes} minutes in county jail\nWill be released in {jail_minutes} minutes",
+                        inline=False
+                    )
+                else:
+                    outcome_embed.add_field(
+                        name="POLICE STATUS",
+                        value="Successfully evaded law enforcement and made it back safely",
+                        inline=False
+                    )
+                
+                characters[character_id] = player_char
+                save_characters(characters)
+                
         else:
-            outcome_embed = discord.Embed(
-                title="TOOK AN L - SURVIVED",
-                description=f"{player_char['name']} was defeated by {rival_name} but managed to escape alive",
-                color=discord.Color.orange()
-            )
-            
-            outcome_embed.add_field(
-                name="Outcome",
-                value="Lost the confrontation but survived to fight another day",
-                inline=False
-            )
-            
-            outcome_embed.add_field(
-                name="Current Stats",
-                value=f"Body Count: {player_char.get('kills', 0)}\nStatus: ALIVE",
-                inline=False
-            )
-            
-            characters[character_id] = player_char
-            save_characters(characters)
-    
-    outcome_embed.set_footer(text="The streets never forget")
-    
-    await ctx.send(embed=outcome_embed)
+            if member_dies:
+                outcome_embed = discord.Embed(
+                    title="CAUGHT SLIPPING",
+                    description=f"{player_char['name']} was eliminated by {rival_name} from the {rival_set}",
+                    color=discord.Color.dark_red()
+                )
+                
+                outcome_embed.add_field(
+                    name="Final Words",
+                    value=f"{player_char['name']} was caught lacking deep in enemy territory and paid the ultimate price",
+                    inline=False
+                )
+                
+                outcome_embed.add_field(
+                    name="Final Stats",
+                    value=f"Body Count: {player_char.get('kills', 0)}\nStatus: DECEASED",
+                    inline=False
+                )
+                
+                dead_member = player_char.copy()
+                dead_member['death_date'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+                dead_member['killed_by'] = f"{rival_name} ({rival_set})"
+                graveyard.append(dead_member)
+                save_graveyard(graveyard)
+                
+                del characters[character_id]
+                save_characters(characters)
+                
+            else:
+                outcome_embed = discord.Embed(
+                    title="TOOK AN L - SURVIVED",
+                    description=f"{player_char['name']} was defeated by {rival_name} but managed to escape alive",
+                    color=discord.Color.orange()
+                )
+                
+                outcome_embed.add_field(
+                    name="Outcome",
+                    value="Lost the confrontation but survived to fight another day",
+                    inline=False
+                )
+                
+                outcome_embed.add_field(
+                    name="Current Stats",
+                    value=f"Body Count: {player_char.get('kills', 0)}\nStatus: ALIVE",
+                    inline=False
+                )
+                
+                characters[character_id] = player_char
+                save_characters(characters)
+        
+        outcome_embed.set_footer(text="The streets never forget")
+        
+        await ctx.send(embed=outcome_embed)
+        
+        # Add delay between slides if there are multiple members
+        if idx < len(valid_members) - 1:
+            await asyncio.sleep(3)
 
 # Revenge command - Battle the rival that killed your gang member
 @bot.command(name='revenge')
