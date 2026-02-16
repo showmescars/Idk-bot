@@ -192,6 +192,7 @@ async def make_character(ctx):
         "power_level": power_level,
         "wins": 0,
         "losses": 0,
+        "rebirths": 0,
         "created_at": datetime.now().strftime('%Y-%m-%d %H:%M:%S')
     }
     
@@ -334,6 +335,8 @@ async def fight_character(ctx, character_id: str = None):
                 inline=False
             )
             
+            outcome_embed.set_footer(text=f"Use ?rebirth {character_id} to bring them back")
+            
             # Add to graveyard
             dead_vampire = player_char.copy()
             dead_vampire['death_date'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
@@ -410,7 +413,7 @@ async def fight_character(ctx, character_id: str = None):
                 inline=False
             )
             
-            outcome_embed.set_footer(text="Your vampire is gone forever. Use ?make to create a new one")
+            outcome_embed.set_footer(text=f"Use ?rebirth {character_id} to bring them back")
             
             # Add to graveyard
             dead_vampire = player_char.copy()
@@ -457,6 +460,161 @@ async def fight_character(ctx, character_id: str = None):
             outcome_embed.set_footer(text="Your vampire fled into the shadows, wounded but alive")
     
     await ctx.send(embed=outcome_embed)
+
+# Rebirth command - Bring a dead vampire back to life with more power
+@bot.command(name='rebirth')
+async def rebirth_vampire(ctx, character_id: str = None):
+    """Resurrect a fallen vampire with increased power. Usage: ?rebirth <character_id>"""
+    
+    # Check if character ID was provided
+    if character_id is None:
+        await ctx.send("Usage: `?rebirth <character_id>`\nExample: `?rebirth 123456`")
+        return
+    
+    user_id = str(ctx.author.id)
+    
+    # Load current graveyard
+    current_graveyard = load_graveyard()
+    
+    # Find the dead vampire
+    dead_vampire = None
+    graveyard_index = None
+    
+    for idx, vamp in enumerate(current_graveyard):
+        if vamp.get('character_id') == character_id:
+            dead_vampire = vamp
+            graveyard_index = idx
+            break
+    
+    # Check if vampire was found in graveyard
+    if dead_vampire is None:
+        await ctx.send(f"No dead vampire with ID `{character_id}` found in the graveyard!")
+        return
+    
+    # Verify ownership
+    if dead_vampire.get('user_id') != user_id:
+        await ctx.send("You don't own this vampire!")
+        return
+    
+    # Rebirth ritual embed
+    ritual_embed = discord.Embed(
+        title="REBIRTH RITUAL",
+        description=f"Ancient blood magic awakens **{dead_vampire['name']}** from eternal slumber...",
+        color=discord.Color.dark_purple()
+    )
+    
+    ritual_embed.add_field(
+        name="Former Power",
+        value=f"{dead_vampire['power_level']}",
+        inline=True
+    )
+    
+    ritual_embed.add_field(
+        name="Previous Record",
+        value=f"{dead_vampire.get('wins', 0)}-{dead_vampire.get('losses', 0)}",
+        inline=True
+    )
+    
+    ritual_embed.set_footer(text="The ritual begins...")
+    
+    await ctx.send(embed=ritual_embed)
+    await asyncio.sleep(3)
+    
+    # Calculate power boost
+    # Base boost: 20-40 power
+    # Additional 10% of original power
+    base_boost = random.randint(20, 40)
+    percentage_boost = int(dead_vampire['power_level'] * 0.1)
+    total_boost = base_boost + percentage_boost
+    
+    new_power = dead_vampire['power_level'] + total_boost
+    
+    # Cap at 100
+    if new_power > 100:
+        new_power = 100
+        total_boost = 100 - dead_vampire['power_level']
+    
+    # Track rebirths
+    rebirths = dead_vampire.get('rebirths', 0) + 1
+    
+    # Create reborn vampire with new ID
+    new_character_id = generate_unique_id()
+    
+    reborn_data = {
+        "character_id": new_character_id,
+        "name": dead_vampire['name'],
+        "username": dead_vampire.get('username'),
+        "user_id": user_id,
+        "power_level": new_power,
+        "wins": dead_vampire.get('wins', 0),
+        "losses": dead_vampire.get('losses', 0),
+        "rebirths": rebirths,
+        "original_id": dead_vampire.get('original_id', character_id),
+        "created_at": datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+        "reborn_at": datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    }
+    
+    # Save reborn vampire
+    characters[new_character_id] = reborn_data
+    save_characters(characters)
+    
+    # Remove from graveyard
+    current_graveyard.pop(graveyard_index)
+    save_graveyard(current_graveyard)
+    
+    # Success embed
+    success_embed = discord.Embed(
+        title="RESURRECTION COMPLETE",
+        description=f"**{dead_vampire['name']}** rises from the ashes, reborn with ancient power!",
+        color=discord.Color.gold()
+    )
+    
+    success_embed.add_field(
+        name="New ID",
+        value=f"`{new_character_id}`",
+        inline=False
+    )
+    
+    success_embed.add_field(
+        name="Power Increase",
+        value=f"{dead_vampire['power_level']} → **{new_power}** (+{total_boost})",
+        inline=False
+    )
+    
+    success_embed.add_field(
+        name="Retained Record",
+        value=f"{dead_vampire.get('wins', 0)}-{dead_vampire.get('losses', 0)}",
+        inline=True
+    )
+    
+    success_embed.add_field(
+        name="Rebirths",
+        value=f"{rebirths}",
+        inline=True
+    )
+    
+    if rebirths == 1:
+        success_embed.add_field(
+            name="Status",
+            value="First Resurrection - The vampire's power grows from the experience of death",
+            inline=False
+        )
+    elif rebirths == 2:
+        success_embed.add_field(
+            name="Status",
+            value="Second Resurrection - Ancient blood stirs within",
+            inline=False
+        )
+    else:
+        success_embed.add_field(
+            name="Status",
+            value=f"Resurrection #{rebirths} - This vampire has conquered death itself",
+            inline=False
+        )
+    
+    success_embed.set_footer(text="Your vampire has returned stronger than ever")
+    
+    await ctx.send(embed=success_embed)
 
 # Run the bot
 if __name__ == "__main__":
