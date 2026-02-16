@@ -84,6 +84,22 @@ LAST_NAMES = [
     "Nightfall", "Darkholm"
 ]
 
+# Human first names for blood transfer victims
+HUMAN_FIRST_NAMES = [
+    "James", "John", "Robert", "Michael", "William", "David", "Richard", "Joseph",
+    "Thomas", "Charles", "Christopher", "Daniel", "Matthew", "Anthony", "Mark", "Donald",
+    "Mary", "Patricia", "Jennifer", "Linda", "Elizabeth", "Barbara", "Susan", "Jessica",
+    "Sarah", "Karen", "Nancy", "Lisa", "Betty", "Margaret", "Sandra", "Ashley",
+    "Emily", "Emma", "Olivia", "Sophia", "Isabella", "Mia", "Charlotte", "Amelia"
+]
+
+HUMAN_LAST_NAMES = [
+    "Smith", "Johnson", "Williams", "Brown", "Jones", "Garcia", "Miller", "Davis",
+    "Rodriguez", "Martinez", "Hernandez", "Lopez", "Gonzalez", "Wilson", "Anderson", "Thomas",
+    "Taylor", "Moore", "Jackson", "Martin", "Lee", "Thompson", "White", "Harris",
+    "Clark", "Lewis", "Robinson", "Walker", "Young", "Allen", "King", "Wright"
+]
+
 # Transfer requests storage (temporary, in-memory)
 transfer_requests = {}
 
@@ -343,7 +359,7 @@ async def make_character(ctx):
     # Show initial record
     embed.add_field(name="Battle Record", value="0-0", inline=False)
     
-    embed.set_footer(text="Use this ID for commands: ?show, ?train, ?fight, ?hunt")
+    embed.set_footer(text="Use this ID for commands: ?show, ?train, ?fight, ?hunt, ?blood")
     
     await ctx.send(embed=embed)
 
@@ -840,9 +856,197 @@ async def hunt_vampire(ctx, character_id: str = None):
         
         await ctx.send(embed=result_embed)
 
+# Blood command - Transfer vampire essence into a human host body
+@bot.command(name='blood')
+async def blood_transfer(ctx, character_id: str = None):
+    """Your vampire finds a human and transfers their blood essence into the host body, gaining power! Usage: ?blood <character_id>"""
+    
+    if character_id is None:
+        await ctx.send("Usage: `?blood <character_id>`\nExample: `?blood 123456`\n\nYour vampire will find a random human and attempt to transfer their essence into the host body!")
+        return
+    
+    # Check if vampire exists
+    if character_id not in characters:
+        await ctx.send(f"Vampire ID `{character_id}` not found!")
+        return
+    
+    attacker_char = characters[character_id]
+    user_id = str(ctx.author.id)
+    
+    # Verify ownership
+    if attacker_char.get('user_id') != user_id and attacker_char.get('shared_user_id') != user_id:
+        await ctx.send("You don't own this vampire!")
+        return
+    
+    # Generate random human victim
+    human_first = random.choice(HUMAN_FIRST_NAMES)
+    human_last = random.choice(HUMAN_LAST_NAMES)
+    human_name = f"{human_first} {human_last}"
+    
+    # Blood transfer ritual embed
+    ritual_embed = discord.Embed(
+        title="BLOOD TRANSFER RITUAL",
+        description=f"{attacker_char['name']} stalks through the night and finds {human_name}...\n\nThe essence transfer begins!",
+        color=discord.Color.dark_red()
+    )
+    
+    ritual_embed.add_field(
+        name=f"Vampire: {attacker_char['name']}",
+        value=f"Power: {attacker_char['power_level']} | Abilities: {len(attacker_char['skills'])}",
+        inline=True
+    )
+    
+    ritual_embed.add_field(
+        name=f"Human Victim: {human_name}",
+        value=f"An unsuspecting mortal...",
+        inline=True
+    )
+    
+    await ctx.send(embed=ritual_embed)
+    
+    # 4 second ritual delay
+    await asyncio.sleep(4)
+    
+    # Calculate success chance based on vampire power
+    # Higher power = higher success rate
+    base_chance = 60
+    
+    # Adjust based on power level (every 100 power adds 5%)
+    adjustment = (attacker_char['power_level'] / 100) * 5
+    
+    success_chance = base_chance + adjustment
+    
+    # Cap between 60% and 95%
+    success_chance = max(60, min(95, success_chance))
+    
+    # Roll for success
+    roll = random.randint(1, 100)
+    ritual_success = roll <= success_chance
+    
+    if ritual_success:
+        # SUCCESS - Transfer essence into human body
+        
+        # Power boost from successful transfer
+        power_bonus = random.randint(20, 60)
+        new_power = min(attacker_char['power_level'] + power_bonus, 1000)
+        
+        # Keep vampire's old name (essence remains the same)
+        new_name = attacker_char['name']
+        
+        # Keep all existing skills
+        all_skills = attacker_char['skills'].copy()
+        
+        # Small chance to gain 1 new skill from the transfer (25% chance)
+        if random.randint(1, 100) <= 25 and len(all_skills) < 15:
+            available_skills = [skill for skill in SKILLS.keys() if skill not in all_skills]
+            if available_skills:
+                new_skill = random.choice(available_skills)
+                all_skills.append(new_skill)
+        
+        # Keep wins
+        total_wins = attacker_char.get('wins', 0)
+        
+        # Update vampire with new power
+        characters[character_id] = {
+            "character_id": attacker_char['character_id'],
+            "name": new_name,
+            "username": str(ctx.author),
+            "user_id": user_id,
+            "power_level": new_power,
+            "skills": all_skills,
+            "wins": total_wins,
+            "losses": attacker_char.get('losses', 0),
+            "created_at": attacker_char.get('created_at', datetime.now().strftime('%Y-%m-%d %H:%M:%S')),
+            "blood_transfer_count": attacker_char.get('blood_transfer_count', 0) + 1
+        }
+        
+        # Save changes
+        save_characters(characters)
+        
+        # Get new rank
+        new_rank = get_vampire_rank(new_power)
+        old_rank = get_vampire_rank(attacker_char['power_level'])
+        ranked_up = old_rank != new_rank
+        
+        # Success embed
+        success_embed = discord.Embed(
+            title="BLOOD TRANSFER SUCCESSFUL",
+            description=f"The ritual is complete! {attacker_char['name']}'s essence has taken over {human_name}'s body!",
+            color=discord.Color.gold()
+        )
+        
+        success_embed.add_field(
+            name="Success Roll",
+            value=f"Rolled {roll} (Success at ≤{int(success_chance)})",
+            inline=False
+        )
+        
+        success_embed.add_field(
+            name="New Host Body",
+            value=f"{human_name} has been transformed into the vessel for {new_name}'s essence!",
+            inline=False
+        )
+        
+        success_embed.add_field(
+            name="Blood Power",
+            value=f"{attacker_char['power_level']} → {new_power} (+{power_bonus})",
+            inline=False
+        )
+        
+        if ranked_up:
+            success_embed.add_field(
+                name="RANK UP!",
+                value=f"{old_rank} → **{new_rank}**",
+                inline=False
+            )
+        
+        success_embed.add_field(
+            name="Total Abilities",
+            value=f"{len(all_skills)} abilities",
+            inline=False
+        )
+        
+        success_embed.add_field(
+            name="Battle Record",
+            value=f"{total_wins}-{attacker_char.get('losses', 0)}",
+            inline=False
+        )
+        
+        await ctx.send(embed=success_embed)
+        
+    else:
+        # FAILURE - Vampire loses power from failed ritual
+        
+        power_loss = random.randint(10, 30)
+        new_power = max(attacker_char['power_level'] - power_loss, 10)
+        
+        attacker_char['power_level'] = new_power
+        characters[character_id] = attacker_char
+        save_characters(characters)
+        
+        failure_embed = discord.Embed(
+            title="BLOOD TRANSFER FAILED",
+            description=f"The ritual backfired! {human_name} resisted the transfer!",
+            color=discord.Color.dark_red()
+        )
+        
+        failure_embed.add_field(
+            name="Failure Roll",
+            value=f"Rolled {roll} (Success at ≤{int(success_chance)})",
+            inline=False
+        )
+        
+        failure_embed.add_field(
+            name="Result",
+            value=f"{attacker_char['name']} has been weakened by the failed ritual...\n\nPower: {attacker_char['power_level'] + power_loss} → {new_power} (-{power_loss})",
+            inline=False
+        )
+        
+        await ctx.send(embed=failure_embed)
+
 # Transfer command - Blood transfer ritual between two vampires
 @bot.command(name='transfer')
-async def blood_transfer(ctx, character_id_1: str = None, character_id_2: str = None):
+async def blood_transfer_hybrid(ctx, character_id_1: str = None, character_id_2: str = None):
     """Initiate a blood transfer ritual between two vampires. Usage: ?transfer <your_vampire_id> <target_vampire_id>"""
     
     if character_id_1 is None or character_id_2 is None:
