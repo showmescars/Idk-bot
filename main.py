@@ -85,194 +85,6 @@ LA_GANGS = {
     }
 }
 
-# Street Backgrounds/Origins
-ORIGINS = [
-    "grew up in the projects and joined the gang at 13",
-    "lost family to gang violence and sought revenge through the streets",
-    "was jumped into the set after proving themselves in a beatdown",
-    "inherited the gang life from their OG father",
-    "started tagging walls and earned respect through graffiti wars",
-    "protected their block from rival gangs since childhood",
-    "served time in county jail and came out with more connections",
-    "moved from another city and had to earn their stripes",
-    "was born into the gang life, third generation banger",
-    "started selling on the corner and worked their way up",
-    "got jumped in after their brother was killed by rivals",
-    "earned respect by handling business no one else would",
-    "came up robbing rival gang members in enemy territory",
-    "was recruited after showing loyalty during a raid",
-    "survived a drive-by and became a street legend",
-    "built their reputation moving weight for the OGs",
-    "earned their spot after doing dirt for the homies",
-    "started banging after their hood got disrespected",
-    "proved themselves in a shootout with rival gangs",
-    "was born and raised in the heart of the hood"
-]
-
-# Gang Member Personalities
-PERSONALITIES = [
-    "ruthless and cold-blooded, shows no mercy to opps",
-    "loyal to the set, would die for their homies",
-    "hot-headed and unpredictable, quick to blast",
-    "calculated and strategic, thinks before moving",
-    "paranoid from years on the streets, trusts no one",
-    "savage and fearless, first one to slide on enemies",
-    "respected OG who commands authority",
-    "young and reckless, trying to prove themselves",
-    "quiet but deadly, lets their actions speak",
-    "manipulative and cunning, plays chess not checkers",
-    "protective of their hood and family",
-    "ambitious and power-hungry, wants to run the set",
-    "isolated and solo, doesn't roll with the crew much",
-    "charismatic and influential, natural born leader",
-    "war-ready soldier, always strapped and prepared",
-    "mysterious and low-key, keeps things tight",
-    "rebellious and defiant, doesn't follow orders well",
-    "seasoned veteran who's seen it all",
-    "troubled and conflicted about the gang life",
-    "stone-cold killer with bodies on their name"
-]
-
-# Street Skills/Reputation
-SKILLS_LORE = [
-    "mastered the art of moving weight without getting caught",
-    "earned a reputation for accuracy in drive-bys",
-    "learned to evade police through years on the run",
-    "gained respect through hand-to-hand combat skills",
-    "developed a network of connections across the city",
-    "became known for strategic planning of gang operations",
-    "built an untouchable reputation through violence",
-    "learned the streets from the best OGs in the game",
-    "survived multiple attempts on their life",
-    "gained influence through fear and intimidation",
-    "mastered the code of the streets and gang politics",
-    "developed street smarts through years of hustling",
-    "earned stripes through loyalty during investigations",
-    "became known for their ability to get money",
-    "built respect through years of putting in work",
-    "gained a reputation for keeping it real with the homies",
-    "learned to navigate gang wars and truces",
-    "became a go-to person for handling problems",
-    "developed survival instincts from constant danger",
-    "earned their name through countless street battles"
-]
-
-# Gang Member Goals/Motivations
-GOALS = [
-    "trying to make it out the hood and go legit",
-    "seeking revenge for fallen homies",
-    "trying to become an OG and lead the set",
-    "protecting younger family members from the streets",
-    "building a drug empire in their territory",
-    "eliminating rival gang members from their hood",
-    "avenging the death of their brother or sister",
-    "trying to maintain control of their block",
-    "seeking to expand their gang's territory",
-    "looking for a way out but too deep in the game",
-    "trying to end their life in the streets",
-    "seeking to become the most feared in the city",
-    "protecting their family's legacy in the gang",
-    "hunting down snitches and informants",
-    "searching for the person who killed their homie",
-    "trying to unite rival sets for peace",
-    "seeking redemption for past sins",
-    "building respect through any means necessary",
-    "trying to create generational wealth from the streets",
-    "seeking to survive another day in the concrete jungle"
-]
-
-# Weaknesses/Vulnerabilities
-WEAKNESSES = [
-    "has an outstanding warrant and avoids police",
-    "is being watched by gang task force detectives",
-    "has family members being threatened by rivals",
-    "is addicted to the lifestyle and can't leave",
-    "owes money to dangerous people",
-    "is on parole and one mistake means life",
-    "has PTSD from years of violence",
-    "is weakened by old gunshot wounds",
-    "is being hunted by multiple rival gangs",
-    "is under federal investigation",
-    "has lost trust in some of their own homies",
-    "is targeted due to their high-profile reputation",
-    "can't enter certain areas without getting killed",
-    "is vulnerable due to predictable routines",
-    "is compromised by personal relationships",
-    "is weakened by substance abuse",
-    "is haunted by the people they've killed",
-    "is vulnerable during visits to incarcerated homies",
-    "is at risk due to social media exposure",
-    "is weakened by loyalty to unreliable allies"
-]
-
-# Generate detailed gang member backstory
-def generate_gang_lore(member_name, power_level, gang_affiliation, set_name):
-    """Generate detailed backstory for a gang member"""
-    
-    origin = random.choice(ORIGINS)
-    personality = random.choice(PERSONALITIES)
-    skill_source = random.choice(SKILLS_LORE)
-    goal = random.choice(GOALS)
-    weakness = random.choice(WEAKNESSES)
-    
-    # Generate random age
-    age = random.randint(16, 65)
-    
-    # Random experience level
-    experience_levels = [
-        "young hustler trying to earn stripes",
-        "seasoned banger with respect on the streets",
-        "OG with years of experience",
-        "legendary shot-caller"
-    ]
-    experience = random.choice(experience_levels)
-    
-    # Generate body count
-    bodies = random.randint(0, 15)
-    
-    # Generate territory control
-    gang_info = LA_GANGS.get(gang_affiliation, {})
-    territories = gang_info.get('territory', ["Unknown Territory"])
-    territory = random.choice(territories)
-    
-    # Generate street reputation trait
-    traits = [
-        "known for never backing down from a fight",
-        "has a sixth sense for detecting undercover cops",
-        "can navigate the entire city blindfolded",
-        "never leaves witnesses behind",
-        "has informants in rival gangs",
-        "is untouchable due to political connections",
-        "can disappear without a trace when needed",
-        "has a reputation that precedes them everywhere",
-        "can read people's intentions instantly",
-        "never gets caught lacking or slipping",
-        "controls drug distribution in their area",
-        "has bodies buried that no one knows about",
-        "can manipulate gang politics masterfully",
-        "survived multiple hits from professional killers",
-        "is respected even by rival gang members"
-    ]
-    special_trait = random.choice(traits)
-    
-    lore_data = {
-        "origin": origin,
-        "age": age,
-        "experience": experience,
-        "personality": personality,
-        "skill_source": skill_source,
-        "goal": goal,
-        "weakness": weakness,
-        "bodies": bodies,
-        "territory": territory,
-        "special_trait": special_trait,
-        "gang_affiliation": gang_affiliation,
-        "set_name": set_name,
-        "lore_revealed": False
-    }
-    
-    return lore_data
-
 # Load characters
 def load_characters():
     if os.path.exists(CHARACTERS_FILE):
@@ -309,41 +121,6 @@ def generate_unique_id():
         if new_id not in existing_ids:
             return new_id
 
-# Generate completely random street power (10-2000)
-def generate_random_power():
-    """Generate completely random power from 10 to 2000"""
-    return random.randint(10, 2000)
-
-# Calculate death chance based on power difference and outcome
-def calculate_death_chance(player_power, enemy_power, player_won):
-    """Calculate death chance - higher when losing to stronger opponents"""
-    
-    if player_won:
-        base_chance = 5
-        power_diff = player_power - enemy_power
-        
-        if power_diff < 100:
-            base_chance = 15
-    else:
-        base_chance = 35
-        power_diff = enemy_power - player_power
-        
-        power_multiplier = power_diff / 200
-        base_chance += power_multiplier
-    
-    death_chance = max(5, min(80, base_chance))
-    
-    return int(death_chance)
-
-# Calculate crew death chance (lower than solo)
-def calculate_crew_death_chance(player_won):
-    """Calculate death chance for crew battles - lower risk due to backup"""
-    
-    if player_won:
-        return random.randint(2, 8)
-    else:
-        return random.randint(15, 35)
-
 # Check if member is in jail
 def is_in_jail(member):
     """Check if a gang member is currently in jail"""
@@ -370,37 +147,32 @@ def get_jail_time_remaining(member):
     remaining = jail_until - now
     return remaining
 
-# Simulate instant street battle with lore bonus
-def simulate_battle(player_name, player_power, enemy_name, enemy_power, lore_revealed=False):
-    """Simulate an instant street battle"""
-    
-    # Apply lore bonus if revealed
-    effective_player_power = player_power
-    if lore_revealed:
-        # Street knowledge gives tactical advantage
-        lore_bonus_multiplier = random.uniform(1.05, 1.15)
-        effective_player_power = int(player_power * lore_bonus_multiplier)
-    
-    # Calculate win probability based on power
-    power_diff = effective_player_power - enemy_power
-    
-    # Base 50% chance, adjusted by power difference
-    win_probability = 50 + (power_diff / 20)
-    
-    # Cap between 5% and 95%
-    win_probability = max(5, min(95, win_probability))
-    
-    # Roll for winner
+# Simulate instant street battle
+def simulate_battle():
+    """Simulate an instant street battle - completely random 50/50"""
     roll = random.randint(1, 100)
-    player_won = roll <= win_probability
+    player_won = roll <= 50
     
     return {
         "player_won": player_won,
-        "win_probability": int(win_probability),
-        "roll": roll,
-        "lore_bonus_applied": lore_revealed,
-        "effective_power": effective_player_power if lore_revealed else player_power
+        "roll": roll
     }
+
+# Calculate death chance
+def calculate_death_chance(player_won):
+    """Calculate death chance"""
+    if player_won:
+        return 15
+    else:
+        return 40
+
+# Calculate crew death chance (lower than solo)
+def calculate_crew_death_chance(player_won):
+    """Calculate death chance for crew battles - lower risk due to backup"""
+    if player_won:
+        return random.randint(5, 10)
+    else:
+        return random.randint(20, 35)
 
 # Generate rival gang crew with SUPER RANDOM size
 def generate_rival_crew():
@@ -430,11 +202,9 @@ def generate_rival_crew():
         first_name = random.choice(FIRST_NAMES)
         last_name = random.choice(LAST_NAMES)
         member_name = f"{first_name} '{last_name[:3].upper()}' {last_name}"
-        member_power = generate_random_power()
         
         rival_crew.append({
             "name": member_name,
-            "power": member_power,
             "gang": rival_gang,
             "set": rival_set
         })
@@ -457,10 +227,10 @@ async def globally_block_dms(ctx):
         return False
     return True
 
-# Make command - Creates a gang member with RANDOM power (10-2000)
+# Make command - Creates a gang member
 @bot.command(name='make')
 async def make_character(ctx):
-    """Generate a gang member with a random name and street power"""
+    """Generate a gang member with a random name"""
     
     user_id = str(ctx.author.id)
     
@@ -473,16 +243,10 @@ async def make_character(ctx):
     # Generate unique character ID
     character_id = generate_unique_id()
     
-    # Generate COMPLETELY RANDOM power level (10 to 2000)
-    power_level = generate_random_power()
-    
     # Randomly assign gang affiliation
     gang_affiliation = random.choice(list(LA_GANGS.keys()))
     gang_sets = LA_GANGS[gang_affiliation]['sets']
     set_name = random.choice(gang_sets)
-    
-    # Generate gang member lore
-    lore_data = generate_gang_lore(character_name, power_level, gang_affiliation, set_name)
     
     # Create gang member data
     character_data = {
@@ -490,10 +254,9 @@ async def make_character(ctx):
         "name": character_name,
         "username": str(ctx.author),
         "user_id": user_id,
-        "power_level": power_level,
         "gang_affiliation": gang_affiliation,
         "set_name": set_name,
-        "lore": lore_data,
+        "kills": 0,
         "created_at": datetime.now().strftime('%Y-%m-%d %H:%M:%S')
     }
     
@@ -513,152 +276,12 @@ async def make_character(ctx):
     
     embed.add_field(name="Owner", value=ctx.author.name, inline=True)
     embed.add_field(name="ID", value=f"`{character_id}`", inline=True)
-    embed.add_field(name="Street Power", value=f"{power_level}", inline=False)
     embed.add_field(name="Gang Affiliation", value=f"{gang_affiliation}", inline=True)
     embed.add_field(name="Set", value=f"{set_name}", inline=True)
-    
-    embed.add_field(
-        name="Hidden Background",
-        value=f"Use `?lore {character_id}` to reveal their street history and unlock combat bonuses",
-        inline=False
-    )
     
     embed.set_footer(text="A new soldier hit the streets")
     
     await ctx.send(embed=embed)
-
-# Lore command - Reveal detailed gang member backstory
-@bot.command(name='lore')
-async def reveal_lore(ctx, character_id: str = None):
-    """Reveal the detailed lore of your gang member. Usage: ?lore <character_id>"""
-    
-    if character_id is None:
-        await ctx.send("Usage: `?lore <character_id>`\nExample: `?lore 123456`")
-        return
-    
-    # Check if gang member exists
-    if character_id not in characters:
-        await ctx.send(f"Gang member ID `{character_id}` not found!")
-        return
-    
-    member = characters[character_id]
-    user_id = str(ctx.author.id)
-    
-    # Verify ownership
-    if member.get('user_id') != user_id:
-        await ctx.send("You don't own this gang member!")
-        return
-    
-    # Check if member has lore
-    if 'lore' not in member:
-        # Generate lore for old members
-        lore_data = generate_gang_lore(
-            member['name'], 
-            member['power_level'],
-            member.get('gang_affiliation', 'Crips'),
-            member.get('set_name', 'Unknown Set')
-        )
-        member['lore'] = lore_data
-        characters[character_id] = member
-        save_characters(characters)
-    
-    lore = member['lore']
-    
-    # Lore reveal animation
-    reveal_embed = discord.Embed(
-        title="DIGGING UP THE HISTORY",
-        description=f"Uncovering the street story of **{member['name']}**...\n\nThe streets remember everything...",
-        color=discord.Color.dark_purple()
-    )
-    
-    await ctx.send(embed=reveal_embed)
-    await asyncio.sleep(3)
-    
-    # Mark lore as revealed (grants combat bonus)
-    if not lore.get('lore_revealed', False):
-        lore['lore_revealed'] = True
-        member['lore'] = lore
-        characters[character_id] = member
-        save_characters(characters)
-        
-        newly_revealed = True
-    else:
-        newly_revealed = False
-    
-    # Get gang color
-    gang_color = LA_GANGS.get(member.get('gang_affiliation', 'Crips'), {}).get('color', discord.Color.red())
-    
-    # Main lore embed
-    lore_embed = discord.Embed(
-        title=f"THE STORY OF {member['name'].upper()}",
-        description=f"**{lore['experience'].title()}** | Age: {lore['age']} years old",
-        color=gang_color
-    )
-    
-    lore_embed.add_field(
-        name="ORIGIN",
-        value=f"{member['name']} {lore['origin']}. Through years in the streets, they became {lore['personality']}.",
-        inline=False
-    )
-    
-    lore_embed.add_field(
-        name="GANG AFFILIATION",
-        value=f"**{member.get('gang_affiliation', 'Unknown')}** - {member.get('set_name', 'Unknown Set')}",
-        inline=False
-    )
-    
-    lore_embed.add_field(
-        name="STREET REPUTATION",
-        value=f"They {lore['skill_source']}, earning respect and fear throughout the city.",
-        inline=False
-    )
-    
-    lore_embed.add_field(
-        name="MOTIVATION",
-        value=f"Currently, {member['name']} is {lore['goal']}.",
-        inline=False
-    )
-    
-    lore_embed.add_field(
-        name="TERRITORY",
-        value=f"They control operations in {lore['territory']}, where their word is law.",
-        inline=False
-    )
-    
-    lore_embed.add_field(
-        name="SPECIAL TRAIT",
-        value=f"{member['name']} {lore['special_trait']}.",
-        inline=False
-    )
-    
-    lore_embed.add_field(
-        name="BODY COUNT",
-        value=f"Alleged bodies: **{lore['bodies']}** (never convicted)",
-        inline=True
-    )
-    
-    lore_embed.add_field(
-        name="WEAKNESS",
-        value=f"Despite their power, they {lore['weakness']}.",
-        inline=False
-    )
-    
-    if newly_revealed:
-        lore_embed.add_field(
-            name="STREET KNOWLEDGE UNLOCKED",
-            value=f"Knowledge of {member['name']}'s history grants **5-15% power boost** in battles!\nEffective in both solo fights and crew wars.",
-            inline=False
-        )
-    else:
-        lore_embed.add_field(
-            name="STREET KNOWLEDGE ACTIVE",
-            value=f"Combat bonus already unlocked: **5-15% power boost** in battles",
-            inline=False
-        )
-    
-    lore_embed.set_footer(text=f"Current Street Power: {member['power_level']}")
-    
-    await ctx.send(embed=lore_embed)
 
 # Show command - Display user's gang members
 @bot.command(name='show')
@@ -674,8 +297,8 @@ async def show_members(ctx):
         await ctx.send("You don't have any gang members! Use `?make` to create one.")
         return
     
-    # Sort by power level (highest first)
-    user_members.sort(key=lambda x: x['power_level'], reverse=True)
+    # Sort by kills (highest first)
+    user_members.sort(key=lambda x: x.get('kills', 0), reverse=True)
     
     # Main embed
     embed = discord.Embed(
@@ -685,32 +308,26 @@ async def show_members(ctx):
     )
     
     for member in user_members:
-        # Check lore status
-        lore_revealed = False
-        if 'lore' in member:
-            lore_revealed = member['lore'].get('lore_revealed', False)
-        
         # Check jail status
         in_jail = is_in_jail(member)
         jail_status = "LOCKED UP" if in_jail else "FREE"
         
-        lore_status = "Known" if lore_revealed else "Unknown"
+        kills = member.get('kills', 0)
         
         value_text = (
             f"**ID:** `{member['character_id']}`\n"
-            f"**Power:** {member['power_level']}\n"
+            f"**Kills:** {kills}\n"
             f"**Gang:** {member.get('gang_affiliation', 'Unknown')}\n"
             f"**Set:** {member.get('set_name', 'Unknown')}\n"
-            f"**History:** {lore_status}\n"
             f"**Status:** {jail_status}"
         )
         
         if in_jail:
             remaining = get_jail_time_remaining(member)
             if remaining:
-                hours = int(remaining.total_seconds() // 3600)
-                minutes = int((remaining.total_seconds() % 3600) // 60)
-                value_text += f"\n**Time Left:** {hours}h {minutes}m"
+                minutes = int(remaining.total_seconds() // 60)
+                seconds = int(remaining.total_seconds() % 60)
+                value_text += f"\n**Time Left:** {minutes}m {seconds}s"
         
         embed.add_field(
             name=f"{member['name']}",
@@ -718,11 +335,11 @@ async def show_members(ctx):
             inline=True
         )
     
-    embed.set_footer(text="Use ?lore <id> to reveal history | ?crew for crew battles | ?slide <id> for solo")
+    embed.set_footer(text="Use ?crew for crew battles | ?slide <id> for solo")
     
     await ctx.send(embed=embed)
 
-# Crew command - Group battle with lore bonuses
+# Crew command - Group battle
 @bot.command(name='crew')
 async def crew_battle(ctx):
     """Battle as a crew with ALL your gang members against a RANDOM sized rival crew (1-20 members)"""
@@ -747,24 +364,8 @@ async def crew_battle(ctx):
         await ctx.send("You need at least 2 free gang members to form a crew! Use `?make` to recruit more or wait for members to get out of jail.")
         return
     
-    # Calculate total crew power with lore bonuses
-    player_crew_power = 0
-    lore_bonus_count = 0
-    
-    for member in available_members:
-        base_power = member['power_level']
-        if 'lore' in member and member['lore'].get('lore_revealed', False):
-            # Apply lore bonus
-            lore_bonus_multiplier = random.uniform(1.05, 1.15)
-            effective_power = int(base_power * lore_bonus_multiplier)
-            player_crew_power += effective_power
-            lore_bonus_count += 1
-        else:
-            player_crew_power += base_power
-    
     # Generate SUPER RANDOM rival crew (1-20 members)
     rival_crew, rival_gang, rival_set = generate_rival_crew()
-    rival_crew_power = sum(rival['power'] for rival in rival_crew)
     
     # Get rival gang color
     rival_gang_color = LA_GANGS.get(rival_gang, {}).get('color', discord.Color.red())
@@ -779,21 +380,13 @@ async def crew_battle(ctx):
     # Player crew info
     player_crew_text = ""
     for member in available_members:
-        lore_indicator = " [STREET KNOWLEDGE]" if 'lore' in member and member['lore'].get('lore_revealed', False) else ""
-        player_crew_text += f"**{member['name']}**{lore_indicator} - Power: {member['power_level']}\n"
+        player_crew_text += f"**{member['name']}** - Kills: {member.get('kills', 0)}\n"
     
     intro_embed.add_field(
         name=f"YOUR CREW ({len(available_members)} members)",
-        value=f"{player_crew_text}\n**Total Power: {player_crew_power}**",
+        value=player_crew_text,
         inline=False
     )
-    
-    if lore_bonus_count > 0:
-        intro_embed.add_field(
-            name="Street Knowledge Advantage",
-            value=f"{lore_bonus_count} member(s) with revealed history gain combat bonuses!",
-            inline=False
-        )
     
     # Rival crew info - truncate if too large
     rival_crew_text = ""
@@ -801,7 +394,7 @@ async def crew_battle(ctx):
     
     for idx, rival_member in enumerate(rival_crew):
         if idx < display_limit:
-            rival_crew_text += f"**{rival_member['name']}** - Power: {rival_member['power']}\n"
+            rival_crew_text += f"**{rival_member['name']}**\n"
         elif idx == display_limit:
             remaining = len(rival_crew) - display_limit
             rival_crew_text += f"... and {remaining} more members\n"
@@ -809,32 +402,7 @@ async def crew_battle(ctx):
     
     intro_embed.add_field(
         name=f"RIVAL CREW - {rival_set} ({len(rival_crew)} members)",
-        value=f"{rival_crew_text}\n**Total Power: {rival_crew_power}**",
-        inline=False
-    )
-    
-    # Power difference
-    power_diff = player_crew_power - rival_crew_power
-    
-    if power_diff > 2000:
-        threat_level = "EASY TARGET"
-        threat_color = discord.Color.dark_green()
-    elif power_diff > 1000:
-        threat_level = "FAVORABLE ODDS"
-        threat_color = discord.Color.green()
-    elif power_diff > -1000:
-        threat_level = "EVEN MATCH"
-        threat_color = discord.Color.gold()
-    elif power_diff > -2000:
-        threat_level = "DANGEROUS SITUATION"
-        threat_color = discord.Color.orange()
-    else:
-        threat_level = "EXTREMELY DANGEROUS"
-        threat_color = discord.Color.dark_red()
-    
-    intro_embed.add_field(
-        name="Threat Assessment",
-        value=threat_level,
+        value=rival_crew_text,
         inline=False
     )
     
@@ -859,14 +427,7 @@ async def crew_battle(ctx):
     await asyncio.sleep(4)
     
     # Simulate the crew battle
-    battle_result = simulate_battle(
-        f"{ctx.author.name}'s Crew",
-        player_crew_power,
-        f"{rival_set}",
-        rival_crew_power,
-        lore_revealed=True
-    )
-    
+    battle_result = simulate_battle()
     player_won = battle_result['player_won']
     
     # Calculate death chance (lower for crew battles)
@@ -894,17 +455,10 @@ async def crew_battle(ctx):
         )
         
         outcome_embed.add_field(
-            name="Battle Odds",
-            value=f"Win Probability: {battle_result['win_probability']}%\nRolled: {battle_result['roll']}",
+            name="Battle Result",
+            value=f"Rolled: {battle_result['roll']} (50 or less to win)",
             inline=False
         )
-        
-        if battle_result.get('lore_bonus_applied'):
-            outcome_embed.add_field(
-                name="Street Knowledge Applied",
-                value=f"Revealed history provided tactical advantage in battle!",
-                inline=False
-            )
         
     else:
         outcome_embed = discord.Embed(
@@ -914,8 +468,8 @@ async def crew_battle(ctx):
         )
         
         outcome_embed.add_field(
-            name="Battle Odds",
-            value=f"Win Probability: {battle_result['win_probability']}%\nRolled: {battle_result['roll']}",
+            name="Battle Result",
+            value=f"Rolled: {battle_result['roll']} (50 or less to win)",
             inline=False
         )
     
@@ -923,7 +477,7 @@ async def crew_battle(ctx):
     if casualties:
         casualty_text = ""
         for member in casualties:
-            casualty_text += f"{member['name']} (Power: {member['power_level']})\n"
+            casualty_text += f"{member['name']} (Kills: {member.get('kills', 0)})\n"
             
             # Add to graveyard
             dead_member = member.copy()
@@ -954,7 +508,7 @@ async def crew_battle(ctx):
         survivor_text = ""
         for member in survivors:
             characters[member['character_id']] = member
-            survivor_text += f"{member['name']} (Power: {member['power_level']})\n"
+            survivor_text += f"{member['name']} (Kills: {member.get('kills', 0)})\n"
         
         outcome_embed.add_field(
             name=f"SURVIVORS ({len(survivors)} members)",
@@ -966,7 +520,7 @@ async def crew_battle(ctx):
     
     await ctx.send(embed=outcome_embed)
 
-# Slide command - Battle against rival gang members with lore bonus AND JAIL SYSTEM
+# Slide command - Battle against rival gang members with JAIL SYSTEM based on kills
 @bot.command(name='slide')
 async def slide_on_opps(ctx, character_id: str = None):
     """Slide on rival gang members. Usage: ?slide <character_id>"""
@@ -990,19 +544,12 @@ async def slide_on_opps(ctx, character_id: str = None):
     if is_in_jail(player_char):
         remaining = get_jail_time_remaining(player_char)
         if remaining:
-            hours = int(remaining.total_seconds() // 3600)
-            minutes = int((remaining.total_seconds() % 3600) // 60)
-            await ctx.send(f"**{player_char['name']}** is locked up! They'll be out in **{hours}h {minutes}m**.")
+            minutes = int(remaining.total_seconds() // 60)
+            seconds = int(remaining.total_seconds() % 60)
+            await ctx.send(f"**{player_char['name']}** is locked up! They'll be out in **{minutes}m {seconds}s**.")
             return
     
-    # Check lore status
-    lore_revealed = False
-    if 'lore' in player_char:
-        lore_revealed = player_char['lore'].get('lore_revealed', False)
-    
-    # Generate COMPLETELY RANDOM rival (10-2000)
-    rival_power = generate_random_power()
-    
+    # Generate rival
     rival_first_name = random.choice(FIRST_NAMES)
     rival_last_name = random.choice(LAST_NAMES)
     rival_nickname = rival_last_name[:3].upper()
@@ -1017,107 +564,57 @@ async def slide_on_opps(ctx, character_id: str = None):
     rival_sets = LA_GANGS[rival_gang]['sets']
     rival_set = random.choice(rival_sets)
     
-    # Determine power difference for threat level
-    effective_power = player_char['power_level']
-    if lore_revealed:
-        effective_power = int(player_char['power_level'] * random.uniform(1.05, 1.15))
-    
-    power_diff = rival_power - effective_power
-    
-    if power_diff > 600:
-        threat_level = "EXTREMELY DANGEROUS OPP"
-        threat_color = discord.Color.dark_red()
-    elif power_diff > 300:
-        threat_level = "DANGEROUS OPP"
-        threat_color = discord.Color.red()
-    elif power_diff > 100:
-        threat_level = "TOUGH OPPOSITION"
-        threat_color = discord.Color.orange()
-    elif power_diff > -100:
-        threat_level = "EVEN MATCH"
-        threat_color = discord.Color.gold()
-    elif power_diff > -300:
-        threat_level = "FAVORABLE ODDS"
-        threat_color = discord.Color.green()
-    else:
-        threat_level = "EASY TARGET"
-        threat_color = discord.Color.dark_green()
-    
-    # Get gang colors
-    player_gang_color = LA_GANGS.get(player_char.get('gang_affiliation', 'Crips'), {}).get('color', discord.Color.blue())
-    rival_gang_color = LA_GANGS.get(rival_gang, {}).get('color', discord.Color.red())
-    
     # Battle intro embed
     intro_embed = discord.Embed(
         title="SLIDING ON OPPS",
-        description=f"**{player_char['name']}** spots **{rival_name}** in enemy territory\n\n{threat_level}",
-        color=threat_color
+        description=f"**{player_char['name']}** spots **{rival_name}** in enemy territory",
+        color=discord.Color.orange()
     )
-    
-    lore_indicator = " [STREET KNOWLEDGE]" if lore_revealed else ""
     
     intro_embed.add_field(
         name=f"{player_char['name']} (YOU)",
-        value=f"Power: **{player_char['power_level']}**{lore_indicator}\nGang: {player_char.get('gang_affiliation', 'Unknown')}\nSet: {player_char.get('set_name', 'Unknown')}",
+        value=f"Kills: {player_char.get('kills', 0)}\nGang: {player_char.get('gang_affiliation', 'Unknown')}\nSet: {player_char.get('set_name', 'Unknown')}",
         inline=True
     )
     
     intro_embed.add_field(
         name=f"{rival_name} (OPP)",
-        value=f"Power: **{rival_power}**\nGang: {rival_gang}\nSet: {rival_set}",
+        value=f"Gang: {rival_gang}\nSet: {rival_set}",
         inline=True
     )
-    
-    if lore_revealed:
-        intro_embed.add_field(
-            name="Tactical Advantage",
-            value="Street knowledge grants combat bonus!",
-            inline=False
-        )
     
     intro_embed.set_footer(text="The confrontation begins...")
     
     await ctx.send(embed=intro_embed)
     await asyncio.sleep(3)
     
-    # Simulate the battle with lore bonus
-    battle_result = simulate_battle(
-        player_char['name'], 
-        player_char['power_level'],
-        rival_name,
-        rival_power,
-        lore_revealed=lore_revealed
-    )
-    
+    # Simulate the battle
+    battle_result = simulate_battle()
     player_won = battle_result['player_won']
     
     # Calculate death chance
-    death_chance = calculate_death_chance(
-        player_char['power_level'],
-        rival_power,
-        player_won
-    )
+    death_chance = calculate_death_chance(player_won)
     
     # Roll for death
     death_roll = random.randint(1, 100)
     member_dies = death_roll <= death_chance
     
-    # JAIL SYSTEM - Roll for jail if member survives
+    # JAIL SYSTEM - Roll for jail if member survives and wins
     jail_roll = random.randint(1, 100)
     goes_to_jail = False
-    jail_hours = 0
+    jail_minutes = 0
     
-    if not member_dies:
-        # Jail chance based on battle outcome
-        if player_won:
-            jail_chance = 20
-        else:
-            jail_chance = 40
+    if not member_dies and player_won:
+        # Increment kill count
+        player_char['kills'] = player_char.get('kills', 0) + 1
         
+        # 30% chance of getting caught after killing someone
+        jail_chance = 30
         goes_to_jail = jail_roll <= jail_chance
         
         if goes_to_jail:
-            jail_hours = random.randint(1, 12)
+            # Jail time = number of kills in minutes
+            jail_minutes = player_char['kills']
     
     # Outcome embed
     if player_won:
@@ -1126,6 +623,12 @@ async def slide_on_opps(ctx, character_id: str = None):
                 title="CAUGHT A BODY BUT PAID THE PRICE",
                 description=f"**{player_char['name']}** eliminated **{rival_name}**, but was fatally wounded",
                 color=discord.Color.dark_red()
+            )
+            
+            outcome_embed.add_field(
+                name="Battle Result",
+                value=f"Rolled: {battle_result['roll']} (50 or less to win)",
+                inline=False
             )
             
             outcome_embed.add_field(
@@ -1164,17 +667,10 @@ async def slide_on_opps(ctx, character_id: str = None):
                 )
             
             outcome_embed.add_field(
-                name="Battle Odds",
-                value=f"Win Probability: {battle_result['win_probability']}%\nRolled: {battle_result['roll']}",
+                name="Battle Result",
+                value=f"Rolled: {battle_result['roll']} (50 or less to win)",
                 inline=False
             )
-            
-            if battle_result.get('lore_bonus_applied'):
-                outcome_embed.add_field(
-                    name="Street Knowledge Applied",
-                    value=f"Effective Power: {battle_result['effective_power']} (boosted from {player_char['power_level']})",
-                    inline=False
-                )
             
             outcome_embed.add_field(
                 name="Survival Roll",
@@ -1182,13 +678,20 @@ async def slide_on_opps(ctx, character_id: str = None):
                 inline=False
             )
             
+            outcome_embed.add_field(
+                name="Kill Count",
+                value=f"Total Kills: **{player_char['kills']}**",
+                inline=False
+            )
+            
             if goes_to_jail:
-                jail_until = datetime.now() + timedelta(hours=jail_hours)
+                # Set jail time
+                jail_until = datetime.now() + timedelta(minutes=jail_minutes)
                 player_char['jail_until'] = jail_until.strftime('%Y-%m-%d %H:%M:%S')
                 
                 outcome_embed.add_field(
                     name="ARRESTED",
-                    value=f"Rolled **{jail_roll}** (Jail at {jail_chance}% or less)\n**Locked up for {jail_hours} hours!**",
+                    value=f"Rolled **{jail_roll}** (Jail at {jail_chance}% or less)\n**Locked up for {jail_minutes} minute(s)!** (1 minute per kill)",
                     inline=False
                 )
             else:
@@ -1210,8 +713,8 @@ async def slide_on_opps(ctx, character_id: str = None):
             )
             
             outcome_embed.add_field(
-                name="Battle Odds",
-                value=f"Win Probability: {battle_result['win_probability']}%\nRolled: {battle_result['roll']}",
+                name="Battle Result",
+                value=f"Rolled: {battle_result['roll']} (50 or less to win)",
                 inline=False
             )
             
@@ -1223,7 +726,7 @@ async def slide_on_opps(ctx, character_id: str = None):
             
             outcome_embed.add_field(
                 name="RIP",
-                value=f"{player_char['name']} was caught lacking in enemy territory",
+                value=f"{player_char['name']} was caught lacking in enemy territory\nFinal Kill Count: {player_char.get('kills', 0)}",
                 inline=False
             )
             
@@ -1237,22 +740,15 @@ async def slide_on_opps(ctx, character_id: str = None):
             save_characters(characters)
             
         else:
-            if goes_to_jail:
-                outcome_embed = discord.Embed(
-                    title="TOOK AN L AND GOT LOCKED UP",
-                    description=f"**{player_char['name']}** was defeated by **{rival_name}** and arrested!",
-                    color=discord.Color.dark_red()
-                )
-            else:
-                outcome_embed = discord.Embed(
-                    title="TOOK AN L BUT SURVIVED",
-                    description=f"**{player_char['name']}** was defeated by **{rival_name}** but managed to escape",
-                    color=discord.Color.orange()
-                )
+            outcome_embed = discord.Embed(
+                title="TOOK AN L BUT SURVIVED",
+                description=f"**{player_char['name']}** was defeated by **{rival_name}** but managed to escape",
+                color=discord.Color.orange()
+            )
             
             outcome_embed.add_field(
-                name="Battle Odds",
-                value=f"Win Probability: {battle_result['win_probability']}%\nRolled: {battle_result['roll']}",
+                name="Battle Result",
+                value=f"Rolled: {battle_result['roll']} (50 or less to win)",
                 inline=False
             )
             
@@ -1261,22 +757,6 @@ async def slide_on_opps(ctx, character_id: str = None):
                 value=f"Rolled **{death_roll}** (Death at {death_chance}% or less) - SURVIVED",
                 inline=False
             )
-            
-            if goes_to_jail:
-                jail_until = datetime.now() + timedelta(hours=jail_hours)
-                player_char['jail_until'] = jail_until.strftime('%Y-%m-%d %H:%M:%S')
-                
-                outcome_embed.add_field(
-                    name="ARRESTED",
-                    value=f"Rolled **{jail_roll}** (Jail at {jail_chance}% or less)\n**Locked up for {jail_hours} hours!**",
-                    inline=False
-                )
-            else:
-                outcome_embed.add_field(
-                    name="EVADED POLICE",
-                    value=f"Rolled **{jail_roll}** (Jail at {jail_chance}% or less) - Got away!",
-                    inline=False
-                )
             
             characters[character_id] = player_char
             save_characters(characters)
@@ -1309,9 +789,9 @@ async def revenge_battle(ctx, dead_character_id: str = None, avenger_character_i
     if is_in_jail(avenger_char):
         remaining = get_jail_time_remaining(avenger_char)
         if remaining:
-            hours = int(remaining.total_seconds() // 3600)
-            minutes = int((remaining.total_seconds() % 3600) // 60)
-            await ctx.send(f"**{avenger_char['name']}** is locked up! They'll be out in **{hours}h {minutes}m**.")
+            minutes = int(remaining.total_seconds() // 60)
+            seconds = int(remaining.total_seconds() % 60)
+            await ctx.send(f"**{avenger_char['name']}** is locked up! They'll be out in **{minutes}m {seconds}s**.")
             return
     
     # Find the dead member in graveyard
@@ -1345,9 +825,6 @@ async def revenge_battle(ctx, dead_character_id: str = None, avenger_character_i
         if "(" in killer_name and ")" in killer_name:
             killer_name = killer_name.split("(")[0].strip()
     
-    # Recreate the rival with the same name but new random power
-    rival_power = generate_random_power()
-    
     # Try to extract rival gang/set from killer name
     rival_gang = "Unknown Gang"
     rival_set = "Unknown Set"
@@ -1363,113 +840,63 @@ async def revenge_battle(ctx, dead_character_id: str = None, avenger_character_i
         except:
             pass
     
-    # Check lore status of avenger
-    lore_revealed = False
-    if 'lore' in avenger_char:
-        lore_revealed = avenger_char['lore'].get('lore_revealed', False)
-    
-    # Determine power difference for threat level
-    effective_power = avenger_char['power_level']
-    if lore_revealed:
-        effective_power = int(avenger_char['power_level'] * random.uniform(1.05, 1.15))
-    
-    power_diff = rival_power - effective_power
-    
-    if power_diff > 600:
-        threat_level = "EXTREMELY DANGEROUS OPP"
-        threat_color = discord.Color.dark_red()
-    elif power_diff > 300:
-        threat_level = "DANGEROUS OPP"
-        threat_color = discord.Color.red()
-    elif power_diff > 100:
-        threat_level = "TOUGH OPPOSITION"
-        threat_color = discord.Color.orange()
-    elif power_diff > -100:
-        threat_level = "EVEN MATCH"
-        threat_color = discord.Color.gold()
-    elif power_diff > -300:
-        threat_level = "FAVORABLE ODDS"
-        threat_color = discord.Color.green()
-    else:
-        threat_level = "EASY TARGET"
-        threat_color = discord.Color.dark_green()
-    
     # Revenge intro embed
     intro_embed = discord.Embed(
         title="REVENGE MISSION",
-        description=f"**{avenger_char['name']}** seeks vengeance for **{dead_member['name']}**\n\nThe killer, **{killer_name}**, has been located...\n\n{threat_level}",
-        color=threat_color
+        description=f"**{avenger_char['name']}** seeks vengeance for **{dead_member['name']}**\n\nThe killer, **{killer_name}**, has been located...",
+        color=discord.Color.dark_red()
     )
-    
-    lore_indicator = " [STREET KNOWLEDGE]" if lore_revealed else ""
     
     intro_embed.add_field(
         name=f"{avenger_char['name']} (AVENGER)",
-        value=f"Power: **{avenger_char['power_level']}**{lore_indicator}\nGang: {avenger_char.get('gang_affiliation', 'Unknown')}",
+        value=f"Kills: {avenger_char.get('kills', 0)}\nGang: {avenger_char.get('gang_affiliation', 'Unknown')}",
         inline=True
     )
     
     intro_embed.add_field(
         name=f"{killer_name} (KILLER)",
-        value=f"Power: **{rival_power}**\nGang: {rival_gang}\nSet: {rival_set}",
+        value=f"Gang: {rival_gang}\nSet: {rival_set}",
         inline=True
     )
     
     intro_embed.add_field(
         name="Fallen Homie",
-        value=f"{dead_member['name']} (Power: {dead_member['power_level']})\nKilled on: {dead_member.get('death_date', 'Unknown')}",
+        value=f"{dead_member['name']} (Kills: {dead_member.get('kills', 0)})\nKilled on: {dead_member.get('death_date', 'Unknown')}",
         inline=False
     )
-    
-    if lore_revealed:
-        intro_embed.add_field(
-            name="Tactical Advantage",
-            value="Street knowledge grants combat bonus!",
-            inline=False
-        )
     
     intro_embed.set_footer(text="The revenge mission begins...")
     
     await ctx.send(embed=intro_embed)
     await asyncio.sleep(3)
     
-    # Simulate the revenge battle with lore bonus
-    battle_result = simulate_battle(
-        avenger_char['name'], 
-        avenger_char['power_level'],
-        killer_name,
-        rival_power,
-        lore_revealed=lore_revealed
-    )
-    
+    # Simulate the revenge battle
+    battle_result = simulate_battle()
     player_won = battle_result['player_won']
     
     # Calculate death chance
-    death_chance = calculate_death_chance(
-        avenger_char['power_level'],
-        rival_power,
-        player_won
-    )
+    death_chance = calculate_death_chance(player_won)
     
     # Roll for death
     death_roll = random.randint(1, 100)
     member_dies = death_roll <= death_chance
     
-    # JAIL SYSTEM - Roll for jail if member survives
+    # JAIL SYSTEM - Roll for jail if member survives and wins
     jail_roll = random.randint(1, 100)
     goes_to_jail = False
-    jail_hours = 0
+    jail_minutes = 0
     
-    if not member_dies:
-        if player_won:
-            jail_chance = 20
-        else:
-            jail_chance = 40
+    if not member_dies and player_won:
+        # Increment kill count
+        avenger_char['kills'] = avenger_char.get('kills', 0) + 1
         
+        # 30% chance of getting caught
+        jail_chance = 30
         goes_to_jail = jail_roll <= jail_chance
         
         if goes_to_jail:
-            jail_hours = random.randint(1, 12)
+            # Jail time = number of kills in minutes
+            jail_minutes = avenger_char['kills']
     
     # Outcome embed
     if player_won:
@@ -1481,17 +908,10 @@ async def revenge_battle(ctx, dead_character_id: str = None, avenger_character_i
             )
             
             outcome_embed.add_field(
-                name="Battle Odds",
-                value=f"Win Probability: {battle_result['win_probability']}%\nRolled: {battle_result['roll']}",
+                name="Battle Result",
+                value=f"Rolled: {battle_result['roll']} (50 or less to win)",
                 inline=False
             )
-            
-            if battle_result.get('lore_bonus_applied'):
-                outcome_embed.add_field(
-                    name="Street Knowledge Applied",
-                    value=f"Effective Power: {battle_result['effective_power']} (boosted from {avenger_char['power_level']})",
-                    inline=False
-                )
             
             outcome_embed.add_field(
                 name="Death Roll",
@@ -1529,17 +949,10 @@ async def revenge_battle(ctx, dead_character_id: str = None, avenger_character_i
                 )
             
             outcome_embed.add_field(
-                name="Battle Odds",
-                value=f"Win Probability: {battle_result['win_probability']}%\nRolled: {battle_result['roll']}",
+                name="Battle Result",
+                value=f"Rolled: {battle_result['roll']} (50 or less to win)",
                 inline=False
             )
-            
-            if battle_result.get('lore_bonus_applied'):
-                outcome_embed.add_field(
-                    name="Street Knowledge Applied",
-                    value=f"Effective Power: {battle_result['effective_power']} (boosted from {avenger_char['power_level']})",
-                    inline=False
-                )
             
             outcome_embed.add_field(
                 name="Survival Roll",
@@ -1553,13 +966,19 @@ async def revenge_battle(ctx, dead_character_id: str = None, avenger_character_i
                 inline=False
             )
             
+            outcome_embed.add_field(
+                name="Kill Count",
+                value=f"Total Kills: **{avenger_char['kills']}**",
+                inline=False
+            )
+            
             if goes_to_jail:
-                jail_until = datetime.now() + timedelta(hours=jail_hours)
+                jail_until = datetime.now() + timedelta(minutes=jail_minutes)
                 avenger_char['jail_until'] = jail_until.strftime('%Y-%m-%d %H:%M:%S')
                 
                 outcome_embed.add_field(
                     name="ARRESTED",
-                    value=f"Rolled **{jail_roll}** (Jail at {jail_chance}% or less)\n**Locked up for {jail_hours} hours!**",
+                    value=f"Rolled **{jail_roll}** (Jail at {jail_chance}% or less)\n**Locked up for {jail_minutes} minute(s)!** (1 minute per kill)",
                     inline=False
                 )
             else:
@@ -1581,8 +1000,8 @@ async def revenge_battle(ctx, dead_character_id: str = None, avenger_character_i
             )
             
             outcome_embed.add_field(
-                name="Battle Odds",
-                value=f"Win Probability: {battle_result['win_probability']}%\nRolled: {battle_result['roll']}",
+                name="Battle Result",
+                value=f"Rolled: {battle_result['roll']} (50 or less to win)",
                 inline=False
             )
             
@@ -1608,22 +1027,15 @@ async def revenge_battle(ctx, dead_character_id: str = None, avenger_character_i
             save_characters(characters)
             
         else:
-            if goes_to_jail:
-                outcome_embed = discord.Embed(
-                    title="REVENGE FAILED - LOCKED UP",
-                    description=f"**{avenger_char['name']}** was defeated by **{killer_name}** and arrested\n\n{dead_member['name']} remains unavenged...",
-                    color=discord.Color.dark_red()
-                )
-            else:
-                outcome_embed = discord.Embed(
-                    title="REVENGE FAILED - RETREAT",
-                    description=f"**{avenger_char['name']}** was defeated by **{killer_name}** but managed to escape\n\n{dead_member['name']} remains unavenged...",
-                    color=discord.Color.orange()
-                )
+            outcome_embed = discord.Embed(
+                title="REVENGE FAILED - RETREAT",
+                description=f"**{avenger_char['name']}** was defeated by **{killer_name}** but managed to escape\n\n{dead_member['name']} remains unavenged...",
+                color=discord.Color.orange()
+            )
             
             outcome_embed.add_field(
-                name="Battle Odds",
-                value=f"Win Probability: {battle_result['win_probability']}%\nRolled: {battle_result['roll']}",
+                name="Battle Result",
+                value=f"Rolled: {battle_result['roll']} (50 or less to win)",
                 inline=False
             )
             
@@ -1632,22 +1044,6 @@ async def revenge_battle(ctx, dead_character_id: str = None, avenger_character_i
                 value=f"Rolled **{death_roll}** (Death at {death_chance}% or less) - SURVIVED",
                 inline=False
             )
-            
-            if goes_to_jail:
-                jail_until = datetime.now() + timedelta(hours=jail_hours)
-                avenger_char['jail_until'] = jail_until.strftime('%Y-%m-%d %H:%M:%S')
-                
-                outcome_embed.add_field(
-                    name="ARRESTED",
-                    value=f"Rolled **{jail_roll}** (Jail at {jail_chance}% or less)\n**Locked up for {jail_hours} hours!**",
-                    inline=False
-                )
-            else:
-                outcome_embed.add_field(
-                    name="EVADED POLICE",
-                    value=f"Rolled **{jail_roll}** (Jail at {jail_chance}% or less) - Got away!",
-                    inline=False
-                )
             
             characters[avenger_character_id] = avenger_char
             save_characters(characters)
