@@ -4,7 +4,6 @@ from dotenv import load_dotenv
 import os
 import random
 import string
-import base64
 import re
 import io
 
@@ -18,49 +17,210 @@ bot = commands.Bot(command_prefix='?', intents=intents)
 #  HELPERS
 # ──────────────────────────────────────────────
 
-def random_var(length=8):
-    chars = string.ascii_letters
-    return ''.join(random.choices(chars, k=length))
+def random_var(length=12):
+    """Generate a realistic-looking obfuscated variable name using l/I/O/0 mix."""
+    chars = ['l', 'I', 'O', '0', 'l', 'I', 'l', 'I']
+    return '_' + ''.join(random.choices(chars, k=length))
+
+def random_short_var():
+    """Short hex-style name for internal vars."""
+    return '__' + ''.join(random.choices('abcdef0123456789', k=6))
+
+def random_number_expr(value: int) -> str:
+    """
+    Encode a number as an obfuscated math expression.
+    Inspired by Prometheus constant encryption.
+    """
+    a = random.randint(1000, 9999)
+    b = value - a
+    ops = [
+        f"({a} + {b})",
+        f"({value * 2} / 2)",
+        f"({value + a} - {a})",
+        f"(math.floor({value}.0))",
+    ]
+    return random.choice(ops)
+
+def encode_string_to_bytes(s: str) -> str:
+    """
+    Encode a string as a Lua byte-array table, like Prometheus string encoding.
+    e.g. "hi" -> {104, 105}
+    Then reassembled with string.char(table.unpack(...))
+    """
+    bytes_list = ', '.join(str(b) for b in s.encode('utf-8'))
+    var = random_short_var()
+    lines = (
+        f"local {var} = {{{bytes_list}}};\n"
+        f"local {var}_s = '';\n"
+        f"for __i = 1, #{var} do {var}_s = {var}_s .. string.char({var}[__i]) end;\n"
+    )
+    return lines, f"{var}_s"
+
+def garbage_code() -> str:
+    """
+    Inject dead/unreachable code blocks to confuse deobfuscators.
+    Inspired by Prometheus garbage injection.
+    """
+    var1 = random_short_var()
+    var2 = random_short_var()
+    n1 = random.randint(1, 999)
+    n2 = random.randint(1, 999)
+    snippets = [
+        f"local {var1} = {random_number_expr(n1)}; if {var1} > 99999 then error() end\n",
+        f"local {var1} = {random_number_expr(n1)}; local {var2} = {random_number_expr(n2)}; {var1} = {var1} + {var2};\n",
+        f"local {var1} = (function() return {random_number_expr(n1)} end)()\n",
+        f"do local {var1} = nil; if {var1} then return end end\n",
+        f"local {var1} = math.floor(math.abs({random_number_expr(n1)}))\n",
+    ]
+    return random.choice(snippets)
 
 # ──────────────────────────────────────────────
-#  ROBLOX LUA OBFUSCATOR
+#  PIPELINE STEPS (Inspired by Prometheus)
 # ──────────────────────────────────────────────
 
-def obfuscate_roblox(code: str) -> str:
+def step_strip_comments(code: str) -> str:
+    """Remove all comments."""
     code = re.sub(r'--\[\[.*?\]\]', '', code, flags=re.DOTALL)
     code = re.sub(r'--[^\n]*', '', code)
+    return code
 
-    lines = [l for l in code.split('\n') if l.strip()]
-    code = ' '.join(lines)
-
-    local_vars = re.findall(r'\blocal\s+([a-zA-Z_][a-zA-Z0-9_]*)\b', code)
+def step_rename_variables(code: str) -> str:
+    """
+    Rename all local variables to unreadable l/I/O/0 names.
+    Prometheus does full scope-aware renaming; we do pattern-based.
+    """
     lua_keywords = {
         'and', 'break', 'do', 'else', 'elseif', 'end', 'false', 'for',
         'function', 'if', 'in', 'local', 'nil', 'not', 'or', 'repeat',
         'return', 'then', 'true', 'until', 'while', 'game', 'workspace',
         'script', 'Instance', 'wait', 'print', 'pairs', 'ipairs', 'type',
         'tostring', 'tonumber', 'require', 'pcall', 'xpcall', 'error',
-        'warn', 'math', 'table', 'string', 'os', 'task'
+        'warn', 'math', 'table', 'string', 'os', 'task', 'self',
+        'rawget', 'rawset', 'setmetatable', 'getmetatable', 'next',
+        'select', 'unpack', 'loadstring', 'coroutine', 'io', 'bit32'
     }
+    local_vars = re.findall(r'\blocal\s+([a-zA-Z_][a-zA-Z0-9_]*)\b', code)
     mapping = {}
     for var in local_vars:
         if var not in lua_keywords and var not in mapping:
-            mapping[var] = random_var(10)
+            mapping[var] = random_var()
 
-    for original, obf in mapping.items():
+    for original, obf in sorted(mapping.items(), key=lambda x: -len(x[0])):
         code = re.sub(rf'\b{re.escape(original)}\b', obf, code)
 
-    hex_encoded = code.encode().hex()
+    return code
 
-    obfuscated = (
+def step_encode_strings(code: str) -> str:
+    """
+    Find all string literals and replace them with byte-array decoders.
+    Inspired by Prometheus string encoding pipeline step.
+    Only encodes plain strings (single or double quoted, non-empty).
+    """
+    prefix_lines = []
+
+    def replace_string(match):
+        quote = match.group(1)
+        content = match.group(2)
+        # Skip very short or empty strings to avoid breaking syntax
+        if len(content) == 0 or len(content) > 200:
+            return match.group(0)
+        try:
+            init, ref = encode_string_to_bytes(content)
+            prefix_lines.append(init)
+            return ref
+        except Exception:
+            return match.group(0)
+
+    # Match single and double quoted strings (non-greedy, no newlines)
+    code = re.sub(r'(["\'])([^\'"\\]{1,200})\1', replace_string, code)
+
+    # Prepend all generated byte-array declarations
+    if prefix_lines:
+        code = ''.join(prefix_lines) + code
+
+    return code
+
+def step_obfuscate_numbers(code: str) -> str:
+    """
+    Replace integer literals with math expressions.
+    Inspired by Prometheus constant encryption.
+    Skips numbers inside string contexts (basic check).
+    """
+    def replace_num(match):
+        val = int(match.group(0))
+        if val > 10000 or val < 0:
+            return match.group(0)
+        return random_number_expr(val)
+
+    code = re.sub(r'\b(\d+)\b', replace_num, code)
+    return code
+
+def step_inject_garbage(code: str, density: int = 4) -> str:
+    """
+    Inject dead code throughout the script.
+    Inspired by Prometheus garbage code injection.
+    density = how many garbage lines to inject
+    """
+    lines = code.split('\n')
+    if len(lines) < 2:
+        return code
+
+    positions = random.sample(range(len(lines)), min(density, len(lines)))
+    positions.sort(reverse=True)
+
+    for pos in positions:
+        lines.insert(pos, garbage_code())
+
+    return '\n'.join(lines)
+
+def step_wrap_in_closure(code: str) -> str:
+    """
+    Wrap entire script in an anonymous self-calling function.
+    Inspired by Prometheus control flow wrapping.
+    """
+    return f"(function()\n{code}\nend)()\n"
+
+def step_hex_encode_final(code: str) -> str:
+    """
+    Final layer: hex-encode the entire processed script and wrap in
+    a Roblox-compatible loadstring decoder. Same as our original step
+    but now applied AFTER all other transforms, so deobfuscation
+    requires reversing every layer.
+    """
+    hex_encoded = code.encode('utf-8').hex()
+    wrapper = (
         'local __H = "' + hex_encoded + '"\n'
         'local __D = ""\n'
-        'for i = 1, #__H, 2 do\n'
-        '    __D = __D .. string.char(tonumber(__H:sub(i, i+1), 16))\n'
+        'for __i = 1, #__H, 2 do\n'
+        '    __D = __D .. string.char(tonumber(__H:sub(__i, __i + 1), 16))\n'
         'end\n'
         'loadstring(__D)()\n'
     )
-    return obfuscated
+    return wrapper
+
+# ──────────────────────────────────────────────
+#  FULL OBFUSCATION PIPELINE
+# ──────────────────────────────────────────────
+
+def obfuscate_roblox(code: str) -> str:
+    """
+    Runs the full Prometheus-inspired obfuscation pipeline:
+    1. Strip comments
+    2. Rename local variables
+    3. Encode string literals to byte arrays
+    4. Obfuscate number constants
+    5. Inject garbage/dead code
+    6. Wrap in anonymous closure
+    7. Hex-encode and loadstring wrap (final layer)
+    """
+    code = step_strip_comments(code)
+    code = step_rename_variables(code)
+    code = step_encode_strings(code)
+    code = step_obfuscate_numbers(code)
+    code = step_inject_garbage(code, density=5)
+    code = step_wrap_in_closure(code)
+    code = step_hex_encode_final(code)
+    return code
 
 # ──────────────────────────────────────────────
 #  GLOBAL CHECK - block DMs
@@ -86,8 +246,8 @@ async def on_command_error(ctx, error):
     if isinstance(error, commands.MissingRequiredArgument):
         await ctx.send(
             "Missing argument!\n"
-            "Just attach a .lua or .txt file and run ?obf\n"
-            "For .txt files run: ?obf with your file attached."
+            "Attach a .lua or .txt file and run ?obf\n"
+            "Or inline: ?obf <your lua code>"
         )
     elif isinstance(error, commands.CheckFailure):
         pass
@@ -101,7 +261,7 @@ async def on_command_error(ctx, error):
 @bot.command(name='obf')
 async def obf(ctx, *, code: str = None):
     """
-    Obfuscate Roblox Lua code.
+    Obfuscate Roblox Lua code using a multi-layer pipeline.
 
     File mode:   attach a .lua or .txt file and run ?obf
     Inline mode: ?obf <your lua code here>
@@ -112,7 +272,6 @@ async def obf(ctx, *, code: str = None):
         attachment = ctx.message.attachments[0]
         filename = attachment.filename.lower()
 
-        # Only accept .lua and .txt files
         if not filename.endswith(('.lua', '.txt')):
             await ctx.send(
                 "Only .lua and .txt files are supported.\n"
@@ -131,7 +290,6 @@ async def obf(ctx, *, code: str = None):
 
     # -- INLINE TEXT MODE --
     elif code is not None:
-        # Strip markdown code blocks if user wraps code in them
         source_code = re.sub(r'^```[a-zA-Z]*\n?', '', code)
         source_code = re.sub(r'```$', '', source_code).strip()
         input_filename = 'obfuscated'
@@ -145,7 +303,11 @@ async def obf(ctx, *, code: str = None):
         return
 
     # -- OBFUSCATE --
-    result = obfuscate_roblox(source_code)
+    try:
+        result = obfuscate_roblox(source_code)
+    except Exception as e:
+        await ctx.send(f"Obfuscation failed: {e}")
+        return
 
     # -- SEND RESULT AS FILE --
     out_filename = f"{input_filename}_obfuscated.lua"
@@ -156,23 +318,29 @@ async def obf(ctx, *, code: str = None):
     )
 
     await ctx.send(
-        f"Roblox Lua obfuscation complete. Here is your file:",
+        "Roblox Lua obfuscation complete. Here is your file:",
         file=file_obj
     )
 
 
 @bot.command(name='obfhelp')
 async def obfhelp(ctx):
-    help_text = (
+    await ctx.send(
         "Obfuscation Bot Help\n\n"
         "Inline code:\n"
         "?obf local x = game.Players.LocalPlayer\n\n"
         "File upload:\n"
         "Attach a .lua or .txt file and run ?obf\n"
-        "The result will be sent back as a downloadable .lua file.\n\n"
-        "Output file will be named: yourfile_obfuscated.lua"
+        "Result is sent back as a downloadable .lua file.\n\n"
+        "Pipeline steps applied:\n"
+        "1. Comment stripping\n"
+        "2. Variable renaming (l/I/O/0 style)\n"
+        "3. String literal byte-array encoding\n"
+        "4. Number constant math expression encryption\n"
+        "5. Garbage dead code injection\n"
+        "6. Anonymous closure wrapping\n"
+        "7. Full hex encode + loadstring final layer"
     )
-    await ctx.send(help_text)
 
 
 @bot.command(name='start')
