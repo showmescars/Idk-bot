@@ -97,18 +97,6 @@ STORE_TYPES = {
     "Electronics Store": {"min": 1500, "max": 4000, "risk": "high"}
 }
 
-# Work jobs for earning money
-WORK_JOBS = [
-    {"name": "Drug Runner", "min": 100, "max": 300},
-    {"name": "Car Booster", "min": 150, "max": 400},
-    {"name": "Corner Boy", "min": 80, "max": 250},
-    {"name": "Lookout", "min": 50, "max": 150},
-    {"name": "Package Delivery", "min": 120, "max": 350},
-    {"name": "Chop Shop Worker", "min": 200, "max": 500},
-    {"name": "Fence Stolen Goods", "min": 180, "max": 450},
-    {"name": "Street Hustler", "min": 90, "max": 280},
-]
-
 # Load characters
 def load_characters():
     if os.path.exists(CHARACTERS_FILE):
@@ -149,44 +137,6 @@ def generate_unique_id():
 def is_admin(ctx):
     """Check if user has administrator permissions"""
     return ctx.author.guild_permissions.administrator
-
-# Dynamic cooldown - bypasses for admins
-def dynamic_cooldown(rate, per):
-    async def predicate(ctx):
-        # If admin, skip cooldown entirely
-        if is_admin(ctx):
-            return True
-        return True
-    
-    def decorator(func):
-        # Apply cooldown normally
-        cooldown_decorator = commands.cooldown(rate, per, commands.BucketType.user)
-        func = cooldown_decorator(func)
-        
-        # Override the cooldown check for admins
-        original_predicate = func._buckets._cooldown
-        
-        def new_cooldown(message):
-            # Check if user is admin
-            if message.author.guild_permissions.administrator:
-                # Return a bucket that never triggers cooldown
-                class NoCooldownBucket:
-                    def update_rate_limit(self, current=None):
-                        return None
-                    def reset(self):
-                        pass
-                    def get_tokens(self, current=None):
-                        return 0
-                    def get_retry_after(self, current=None):
-                        return 0
-                return NoCooldownBucket()
-            # Return normal cooldown bucket for non-admins
-            return original_predicate(message)
-        
-        func._buckets._cooldown = new_cooldown
-        return func
-    
-    return decorator
 
 # Check if member is in jail
 def is_in_jail(member):
@@ -251,7 +201,6 @@ async def globally_block_dms(ctx):
 
 # Make command - Creates a gang member
 @bot.command(name='make')
-@dynamic_cooldown(1, 10)
 async def make_character(ctx):
     """Generate a gang member with a random name"""
     
@@ -342,125 +291,8 @@ async def make_character(ctx):
     
     await ctx.send(embed=embed)
 
-# View command - Display all alive and dead characters
-@bot.command(name='view')
-@dynamic_cooldown(1, 10)
-async def view_all_characters(ctx):
-    """View all characters (alive and dead) including AI-generated rivals"""
-    
-    # Load current data
-    all_alive = load_characters()
-    all_dead = load_graveyard()
-    
-    # Create main embed
-    main_embed = discord.Embed(
-        title="LA GANG DATABASE",
-        description="Complete record of all gang members - living and deceased",
-        color=discord.Color.gold()
-    )
-    
-    # ALIVE CHARACTERS SECTION
-    if all_alive:
-        alive_list = list(all_alive.values())
-        # Sort by kills (highest first)
-        alive_list.sort(key=lambda x: x.get('kills', 0), reverse=True)
-        
-        alive_text = ""
-        for member in alive_list[:10]:  # Show top 10 alive
-            in_jail = is_in_jail(member)
-            status = "LOCKED UP" if in_jail else "FREE"
-            
-            alive_text += f"**{member['name']}**\n"
-            alive_text += f"ID: `{member['character_id']}`\n"
-            alive_text += f"Bodies: {member.get('kills', 0)} | Money: ${member.get('money', 0):,}\n"
-            alive_text += f"Gang: {member.get('gang_affiliation', 'Unknown')}\n"
-            alive_text += f"Status: {status}\n\n"
-        
-        if len(alive_list) > 10:
-            alive_text += f"*+ {len(alive_list) - 10} more members alive...*"
-        
-        main_embed.add_field(
-            name=f"ALIVE MEMBERS ({len(alive_list)})",
-            value=alive_text if alive_text else "No living members",
-            inline=False
-        )
-    else:
-        main_embed.add_field(
-            name="ALIVE MEMBERS (0)",
-            value="No living members found",
-            inline=False
-        )
-    
-    # DEAD CHARACTERS SECTION
-    if all_dead:
-        # Sort by death date (most recent first)
-        dead_list = sorted(all_dead, key=lambda x: x.get('death_date', ''), reverse=True)
-        
-        dead_text = ""
-        for member in dead_list[:10]:  # Show 10 most recent deaths
-            death_date = member.get('death_date', 'Unknown')
-            try:
-                date_obj = datetime.strptime(death_date, '%Y-%m-%d %H:%M:%S')
-                formatted_date = date_obj.strftime('%b %d, %Y')
-            except:
-                formatted_date = death_date
-            
-            killed_by = member.get('killed_by', 'Unknown')
-            
-            dead_text += f"**{member['name']}**\n"
-            dead_text += f"ID: `{member['character_id']}`\n"
-            dead_text += f"Final Bodies: {member.get('kills', 0)} | Money: ${member.get('money', 0):,}\n"
-            dead_text += f"Gang: {member.get('gang_affiliation', 'Unknown')}\n"
-            dead_text += f"Killed by: {killed_by}\n"
-            dead_text += f"Date: {formatted_date}\n\n"
-        
-        if len(dead_list) > 10:
-            dead_text += f"*+ {len(dead_list) - 10} more bodies in the graveyard...*"
-        
-        main_embed.add_field(
-            name=f"DECEASED MEMBERS ({len(dead_list)})",
-            value=dead_text if dead_text else "No deceased members",
-            inline=False
-        )
-    else:
-        main_embed.add_field(
-            name="DECEASED MEMBERS (0)",
-            value="No bodies in the graveyard yet",
-            inline=False
-        )
-    
-    # STATISTICS SECTION
-    total_alive = len(all_alive)
-    total_dead = len(all_dead)
-    total_overall = total_alive + total_dead
-    
-    # Calculate top killer (alive)
-    top_killer_alive = None
-    if all_alive:
-        alive_sorted = sorted(all_alive.values(), key=lambda x: x.get('kills', 0), reverse=True)
-        if alive_sorted and alive_sorted[0].get('kills', 0) > 0:
-            top_killer_alive = alive_sorted[0]
-    
-    stats_text = f"Total Characters: {total_overall}\n"
-    stats_text += f"Living: {total_alive}\n"
-    stats_text += f"Deceased: {total_dead}\n"
-    
-    if top_killer_alive:
-        stats_text += f"\nMost Dangerous (Alive): **{top_killer_alive['name']}** ({top_killer_alive.get('kills', 0)} bodies)"
-    
-    main_embed.add_field(
-        name="STATISTICS",
-        value=stats_text,
-        inline=False
-    )
-    
-    main_embed.set_footer(text="The streets keep records of everything")
-    
-    await ctx.send(embed=main_embed)
-
 # Show command - Display user's gang members
 @bot.command(name='show')
-@dynamic_cooldown(1, 10)
 async def show_members(ctx):
     """Display all your gang members"""
     
@@ -511,13 +343,12 @@ async def show_members(ctx):
             inline=True
         )
     
-    embed.set_footer(text="Commands: ?slide <id> | ?rob <id> | ?list <id> | ?work <id>")
+    embed.set_footer(text="Commands: ?slide <id> | ?rob <id> | ?list <id>")
     
     await ctx.send(embed=embed)
 
 # List command - Show kill list for a character
 @bot.command(name='list')
-@dynamic_cooldown(1, 10)
 async def list_kills(ctx, character_id: str = None):
     """Display the kill list for a gang member. Usage: ?list <character_id>"""
     
@@ -604,85 +435,8 @@ async def list_kills(ctx, character_id: str = None):
     
     await ctx.send(embed=embed)
 
-# Work command - Earn money through street jobs
-@bot.command(name='work')
-@dynamic_cooldown(1, 10)
-async def work(ctx, character_id: str = None):
-    """Work a street job to earn money. Usage: ?work <character_id>"""
-    
-    if character_id is None:
-        await ctx.send("Usage: `?work <character_id>`\nExample: `?work 123456`")
-        return
-    
-    if character_id not in characters:
-        await ctx.send(f"Gang member ID `{character_id}` not found!")
-        return
-    
-    player_char = characters[character_id]
-    user_id = str(ctx.author.id)
-    
-    if player_char.get('user_id') != user_id:
-        await ctx.send("You don't own this gang member!")
-        return
-    
-    # Check if member is in jail
-    if is_in_jail(player_char):
-        remaining = get_jail_time_remaining(player_char)
-        if remaining:
-            minutes = int(remaining.total_seconds() // 60)
-            seconds = int(remaining.total_seconds() % 60)
-            await ctx.send(f"{player_char['name']} is currently locked up and will be released in {minutes}m {seconds}s")
-            return
-    
-    # Pick a random job
-    job = random.choice(WORK_JOBS)
-    earnings = random.randint(job['min'], job['max'])
-    
-    # Add money to character
-    player_char['money'] = player_char.get('money', 0) + earnings
-    
-    # Save character data
-    characters[character_id] = player_char
-    save_characters(characters)
-    
-    # Create embed
-    embed = discord.Embed(
-        title="WORK COMPLETE",
-        description=f"{player_char['name']} completed a job on the streets",
-        color=discord.Color.green()
-    )
-    
-    embed.add_field(
-        name="Job",
-        value=job['name'],
-        inline=True
-    )
-    
-    embed.add_field(
-        name="Earnings",
-        value=f"${earnings:,}",
-        inline=True
-    )
-    
-    embed.add_field(
-        name="\u200b",
-        value="\u200b",
-        inline=False
-    )
-    
-    embed.add_field(
-        name="Updated Balance",
-        value=f"${player_char['money']:,}",
-        inline=False
-    )
-    
-    embed.set_footer(text="Hustle hard on these streets")
-    
-    await ctx.send(embed=embed)
-
 # Rob command - Rob local stores for money
 @bot.command(name='rob')
-@dynamic_cooldown(1, 10)
 async def rob_store(ctx, character_id: str = None):
     """Rob a local store for money. Usage: ?rob <character_id>"""
     
@@ -901,7 +655,6 @@ async def rob_store(ctx, character_id: str = None):
 
 # Slide command - Battle against rival gang members with JAIL SYSTEM based on kills
 @bot.command(name='slide')
-@dynamic_cooldown(1, 10)
 async def slide_on_opps(ctx, *character_ids):
     """Slide on rival gang members. Usage: ?slide <character_id> [character_id2] [character_id3]..."""
     
@@ -1169,7 +922,6 @@ async def slide_on_opps(ctx, *character_ids):
 
 # Revenge command - Battle the rival that killed your gang member
 @bot.command(name='revenge')
-@dynamic_cooldown(1, 10)
 async def revenge_battle(ctx, dead_character_id: str = None, avenger_character_id: str = None):
     """Take revenge on the rival that killed your gang member. Usage: ?revenge <dead_member_id> <avenger_member_id>"""
     
