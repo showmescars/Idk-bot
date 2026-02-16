@@ -183,29 +183,6 @@ def calculate_death_chance(player_won):
     else:
         return 40
 
-# Custom cooldown that bypasses for admins
-def admin_or_cooldown(rate, per, type=commands.BucketType.user):
-    async def predicate(ctx):
-        # If user is admin, bypass cooldown
-        if is_admin(ctx):
-            return True
-        
-        # Otherwise, apply cooldown
-        bucket = ctx.command._buckets.get_bucket(ctx)
-        retry_after = bucket.update_rate_limit()
-        if retry_after:
-            raise commands.CommandOnCooldown(bucket, retry_after, type)
-        return True
-    
-    def decorator(func):
-        # Add the cooldown to the command
-        func._buckets = commands.CooldownMapping.from_cooldown(rate, per, type)
-        # Add the check
-        func.add_check(predicate)
-        return func
-    
-    return decorator
-
 characters = load_characters()
 graveyard = load_graveyard()
 
@@ -230,14 +207,18 @@ async def on_command_error(ctx, error):
     elif isinstance(error, commands.CheckFailure):
         pass  # Ignore check failures (like DM blocking)
     else:
-        # Re-raise other errors
-        raise error
+        # Print error for debugging
+        print(f"Error: {error}")
 
 # Make command - Creates a gang member
 @bot.command(name='make')
-@admin_or_cooldown(1, 10)
+@commands.cooldown(1, 10, commands.BucketType.user)
 async def make_character(ctx):
     """Generate a gang member with a random name"""
+    
+    # Reset cooldown for admins
+    if is_admin(ctx):
+        ctx.command.reset_cooldown(ctx)
     
     user_id = str(ctx.author.id)
     
@@ -328,9 +309,13 @@ async def make_character(ctx):
 
 # Show command - Display user's gang members
 @bot.command(name='show')
-@admin_or_cooldown(1, 10)
+@commands.cooldown(1, 10, commands.BucketType.user)
 async def show_members(ctx):
     """Display all your gang members"""
+    
+    # Reset cooldown for admins
+    if is_admin(ctx):
+        ctx.command.reset_cooldown(ctx)
     
     user_id = str(ctx.author.id)
     
@@ -385,9 +370,13 @@ async def show_members(ctx):
 
 # List command - Show kill list for a character
 @bot.command(name='list')
-@admin_or_cooldown(1, 10)
+@commands.cooldown(1, 10, commands.BucketType.user)
 async def list_kills(ctx, character_id: str = None):
     """Display the kill list for a gang member. Usage: ?list <character_id>"""
+    
+    # Reset cooldown for admins
+    if is_admin(ctx):
+        ctx.command.reset_cooldown(ctx)
     
     if character_id is None:
         await ctx.send("Usage: `?list <character_id>`\nExample: `?list 123456`")
@@ -474,9 +463,13 @@ async def list_kills(ctx, character_id: str = None):
 
 # Rob command - Rob local stores for money
 @bot.command(name='rob')
-@admin_or_cooldown(1, 10)
+@commands.cooldown(1, 10, commands.BucketType.user)
 async def rob_store(ctx, character_id: str = None):
     """Rob a local store for money. Usage: ?rob <character_id>"""
+    
+    # Reset cooldown for admins
+    if is_admin(ctx):
+        ctx.command.reset_cooldown(ctx)
     
     if character_id is None:
         await ctx.send("Usage: `?rob <character_id>`\nExample: `?rob 123456`")
@@ -693,9 +686,13 @@ async def rob_store(ctx, character_id: str = None):
 
 # Slide command - Battle against rival gang members with JAIL SYSTEM based on kills
 @bot.command(name='slide')
-@admin_or_cooldown(1, 10)
+@commands.cooldown(1, 10, commands.BucketType.user)
 async def slide_on_opps(ctx, *character_ids):
     """Slide on rival gang members. Usage: ?slide <character_id> [character_id2] [character_id3]..."""
+    
+    # Reset cooldown for admins
+    if is_admin(ctx):
+        ctx.command.reset_cooldown(ctx)
     
     if not character_ids:
         await ctx.send("Usage: `?slide <character_id> [character_id2] [character_id3]...`\nExample: `?slide 123456` or `?slide 123456 789012 345678`")
@@ -961,9 +958,13 @@ async def slide_on_opps(ctx, *character_ids):
 
 # Revenge command - Battle the rival that killed your gang member
 @bot.command(name='revenge')
-@admin_or_cooldown(1, 10)
+@commands.cooldown(1, 10, commands.BucketType.user)
 async def revenge_battle(ctx, dead_character_id: str = None, avenger_character_id: str = None):
     """Take revenge on the rival that killed your gang member. Usage: ?revenge <dead_member_id> <avenger_member_id>"""
+    
+    # Reset cooldown for admins
+    if is_admin(ctx):
+        ctx.command.reset_cooldown(ctx)
     
     if dead_character_id is None or avenger_character_id is None:
         await ctx.send("Usage: `?revenge <dead_member_id> <avenger_member_id>`\nExample: `?revenge 123456 789012`\n\nUse the ID of your dead member and the ID of the member you want to use for revenge!")
