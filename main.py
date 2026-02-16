@@ -167,35 +167,50 @@ def simulate_battle(attacker_name, attacker_power, attacker_skills, defender_nam
 
 # Function to get vampire rank based on power level
 def get_vampire_rank(power_level):
-    if power_level <= 30:
+    if power_level <= 50:
         return "Fledgling"
-    elif power_level <= 60:
-        return "Stalker"
     elif power_level <= 100:
+        return "Stalker"
+    elif power_level <= 200:
         return "Nightlord"
-    elif power_level <= 150:
+    elif power_level <= 350:
         return "Elder"
-    else:  # 151-200
+    elif power_level <= 500:
         return "Ancient"
+    elif power_level <= 650:
+        return "Progenitor"
+    elif power_level <= 800:
+        return "Blood God"
+    else:  # 801-1000
+        return "Primordial"
 
 # Function to get opponent power range based on player rank
 def get_opponent_power_range(player_power):
     """Generate opponent power range based on player's power level"""
-    if player_power <= 30:  # Fledgling
+    if player_power <= 50:  # Fledgling
         min_power = 10
-        max_power = 40
-    elif player_power <= 60:  # Stalker
-        min_power = 30
-        max_power = 80
-    elif player_power <= 100:  # Nightlord
-        min_power = 60
-        max_power = 120
-    elif player_power <= 150:  # Elder
+        max_power = 70
+    elif player_power <= 100:  # Stalker
+        min_power = 50
+        max_power = 130
+    elif player_power <= 200:  # Nightlord
         min_power = 100
-        max_power = 170
-    else:  # Ancient (151-200)
-        min_power = 130
-        max_power = 200
+        max_power = 250
+    elif player_power <= 350:  # Elder
+        min_power = 200
+        max_power = 400
+    elif player_power <= 500:  # Ancient
+        min_power = 350
+        max_power = 550
+    elif player_power <= 650:  # Progenitor
+        min_power = 500
+        max_power = 700
+    elif player_power <= 800:  # Blood God
+        min_power = 650
+        max_power = 850
+    else:  # Primordial (801-1000)
+        min_power = 750
+        max_power = 1000
     
     return min_power, max_power
 
@@ -389,31 +404,49 @@ async def vampire_ranks(ctx):
     
     rank_embed.add_field(
         name="Fledgling",
-        value="Power: 0-30\nNewly turned vampires, still learning their abilities",
+        value="Power: 0-50\nNewly turned vampires, still learning their abilities",
         inline=False
     )
     
     rank_embed.add_field(
         name="Stalker",
-        value="Power: 31-60\nExperienced hunters of the night",
+        value="Power: 51-100\nExperienced hunters of the night",
         inline=False
     )
     
     rank_embed.add_field(
         name="Nightlord",
-        value="Power: 61-100\nMasters of darkness and blood",
+        value="Power: 101-200\nMasters of darkness and blood",
         inline=False
     )
     
     rank_embed.add_field(
         name="Elder",
-        value="Power: 101-150\nCenturies-old vampires of immense power",
+        value="Power: 201-350\nCenturies-old vampires of immense power",
         inline=False
     )
     
     rank_embed.add_field(
         name="Ancient",
-        value="Power: 151-200\nLegendary vampires of unfathomable strength",
+        value="Power: 351-500\nMillennia-old beings of legendary strength",
+        inline=False
+    )
+    
+    rank_embed.add_field(
+        name="Progenitor",
+        value="Power: 501-650\nThe first of their bloodline, wielding primeval might",
+        inline=False
+    )
+    
+    rank_embed.add_field(
+        name="Blood God",
+        value="Power: 651-800\nDeified vampires worshipped across realms",
+        inline=False
+    )
+    
+    rank_embed.add_field(
+        name="Primordial",
+        value="Power: 801-1000\nThe original vampires, older than recorded history",
         inline=False
     )
     
@@ -466,15 +499,15 @@ async def train_vampire(ctx, character_id: str = None):
     # 3 second delay for training
     await asyncio.sleep(3)
     
-    # Random power increase (1 to 10)
-    power_gain = random.randint(1, 10)
+    # Random power increase (5 to 25) - increased for higher max
+    power_gain = random.randint(5, 25)
     old_power = player_char['power_level']
     new_power = old_power + power_gain
     
-    # Cap at 200
-    if new_power > 200:
-        new_power = 200
-        power_gain = 200 - old_power
+    # Cap at 1000
+    if new_power > 1000:
+        new_power = 1000
+        power_gain = 1000 - old_power
     
     old_rank = get_vampire_rank(old_power)
     new_rank = get_vampire_rank(new_power)
@@ -486,7 +519,7 @@ async def train_vampire(ctx, character_id: str = None):
     learned_new_skill = False
     new_skill = None
     
-    if random.randint(1, 100) <= 20 and len(player_char['skills']) < 10:
+    if random.randint(1, 100) <= 20 and len(player_char['skills']) < 15:  # Increased max skills to 15
         # Get skills the vampire doesn't have yet
         available_skills = [skill for skill in SKILLS.keys() if skill not in player_char['skills']]
         if available_skills:
@@ -614,12 +647,12 @@ async def blood_transfer(ctx, member: discord.Member = None):
         
         # Combine powers (average + bonus)
         combined_power = initiator_char['power_level'] + target_char['power_level']
-        bonus = random.randint(10, 30)
+        bonus = random.randint(50, 150)  # Increased bonus for higher power levels
         hybrid_power = combined_power + bonus
         
-        # Cap at 200
-        if hybrid_power > 200:
-            hybrid_power = 200
+        # Cap at 1000
+        if hybrid_power > 1000:
+            hybrid_power = 1000
         
         # Combine skills (all unique skills from both)
         all_skills = list(set(initiator_char['skills'] + target_char['skills']))
@@ -774,18 +807,24 @@ async def fight_character(ctx, character_id: str = None):
     ai_power_level = random.randint(min_power, max_power)
     
     # Higher rank opponents get more skills
-    if ai_power_level <= 30:
+    if ai_power_level <= 50:
         ai_num_skills = random.randint(3, 5)
-    elif ai_power_level <= 60:
-        ai_num_skills = random.randint(4, 6)
     elif ai_power_level <= 100:
+        ai_num_skills = random.randint(4, 6)
+    elif ai_power_level <= 200:
         ai_num_skills = random.randint(5, 7)
-    elif ai_power_level <= 150:
+    elif ai_power_level <= 350:
         ai_num_skills = random.randint(6, 8)
-    else:  # 151-200
+    elif ai_power_level <= 500:
         ai_num_skills = random.randint(7, 10)
+    elif ai_power_level <= 650:
+        ai_num_skills = random.randint(8, 12)
+    elif ai_power_level <= 800:
+        ai_num_skills = random.randint(10, 14)
+    else:  # 801-1000
+        ai_num_skills = random.randint(12, 15)
     
-    ai_skills = random.sample(list(SKILLS.keys()), ai_num_skills)
+    ai_skills = random.sample(list(SKILLS.keys()), min(ai_num_skills, len(SKILLS)))
     
     # Battle intro embed
     battle_embed = discord.Embed(
