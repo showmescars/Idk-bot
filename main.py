@@ -201,7 +201,7 @@ def generate_rival_crew():
     for _ in range(crew_size):
         first_name = random.choice(FIRST_NAMES)
         last_name = random.choice(LAST_NAMES)
-        member_name = f"{first_name} '{last_name[:3].upper()}' {last_name}"
+        member_name = f"{first_name} {last_name}"  # CHANGED: Removed nickname
         
         rival_crew.append({
             "name": member_name,
@@ -237,8 +237,7 @@ async def make_character(ctx):
     # Generate random gang member name
     first_name = random.choice(FIRST_NAMES)
     last_name = random.choice(LAST_NAMES)
-    nickname = last_name[:3].upper()
-    character_name = f"{first_name} '{nickname}' {last_name}"
+    character_name = f"{first_name} {last_name}"  # CHANGED: Removed nickname
     
     # Generate unique character ID
     character_id = generate_unique_id()
@@ -552,8 +551,7 @@ async def slide_on_opps(ctx, character_id: str = None):
     # Generate rival
     rival_first_name = random.choice(FIRST_NAMES)
     rival_last_name = random.choice(LAST_NAMES)
-    rival_nickname = rival_last_name[:3].upper()
-    rival_name = f"{rival_first_name} '{rival_nickname}' {rival_last_name}"
+    rival_name = f"{rival_first_name} {rival_last_name}"  # CHANGED: Removed nickname
     
     # Generate rival gang affiliation (different from player if possible)
     available_gangs = [g for g in LA_GANGS.keys() if g != player_char.get('gang_affiliation')]
