@@ -178,6 +178,27 @@ def get_vampire_rank(power_level):
     else:  # 151-200
         return "Ancient"
 
+# Function to get opponent power range based on player rank
+def get_opponent_power_range(player_power):
+    """Generate opponent power range based on player's power level"""
+    if player_power <= 30:  # Fledgling
+        min_power = 10
+        max_power = 40
+    elif player_power <= 60:  # Stalker
+        min_power = 30
+        max_power = 80
+    elif player_power <= 100:  # Nightlord
+        min_power = 60
+        max_power = 120
+    elif player_power <= 150:  # Elder
+        min_power = 100
+        max_power = 170
+    else:  # Ancient (151-200)
+        min_power = 130
+        max_power = 200
+    
+    return min_power, max_power
+
 # Load characters
 def load_characters():
     if os.path.exists(CHARACTERS_FILE):
@@ -596,6 +617,10 @@ async def blood_transfer(ctx, member: discord.Member = None):
         bonus = random.randint(10, 30)
         hybrid_power = combined_power + bonus
         
+        # Cap at 200
+        if hybrid_power > 200:
+            hybrid_power = 200
+        
         # Combine skills (all unique skills from both)
         all_skills = list(set(initiator_char['skills'] + target_char['skills']))
         
@@ -716,10 +741,10 @@ async def blood_transfer(ctx, member: discord.Member = None):
         
         await ctx.send(embed=request_embed)
 
-# Fight command - Fight random vampire opponents with detailed combat
+# Fight command - Fight rank-appropriate vampire opponents with detailed combat
 @bot.command(name='fight')
 async def fight_character(ctx, character_id: str = None):
-    """Fight a random vampire with detailed turn-based combat! Usage: ?fight <character_id>"""
+    """Fight a vampire opponent matched to your rank! Usage: ?fight <character_id>"""
     
     # Check if character ID was provided
     if character_id is None:
@@ -740,12 +765,26 @@ async def fight_character(ctx, character_id: str = None):
         await ctx.send(f"Invalid vampire ID! Your vampire ID is `{player_char['character_id']}`")
         return
     
-    # Generate random AI vampire opponent
+    # Generate rank-appropriate AI vampire opponent
+    min_power, max_power = get_opponent_power_range(player_char['power_level'])
+    
     ai_first_name = random.choice(FIRST_NAMES)
     ai_last_name = random.choice(LAST_NAMES)
     ai_name = f"{ai_first_name} {ai_last_name}"
-    ai_power_level = random.randint(10, 100)
-    ai_num_skills = random.randint(3, 5)
+    ai_power_level = random.randint(min_power, max_power)
+    
+    # Higher rank opponents get more skills
+    if ai_power_level <= 30:
+        ai_num_skills = random.randint(3, 5)
+    elif ai_power_level <= 60:
+        ai_num_skills = random.randint(4, 6)
+    elif ai_power_level <= 100:
+        ai_num_skills = random.randint(5, 7)
+    elif ai_power_level <= 150:
+        ai_num_skills = random.randint(6, 8)
+    else:  # 151-200
+        ai_num_skills = random.randint(7, 10)
+    
     ai_skills = random.sample(list(SKILLS.keys()), ai_num_skills)
     
     # Battle intro embed
