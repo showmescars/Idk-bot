@@ -192,7 +192,7 @@ async def make_character(ctx):
         "power_level": power_level,
         "wins": 0,
         "losses": 0,
-        "rebirths": 0,
+        "has_been_reborn": False,
         "created_at": datetime.now().strftime('%Y-%m-%d %H:%M:%S')
     }
     
@@ -213,6 +213,58 @@ async def make_character(ctx):
     embed.add_field(name="Record", value="0-0", inline=False)
     
     embed.set_footer(text="A new vampire has risen from the darkness")
+    
+    await ctx.send(embed=embed)
+
+# Show command - Display user's vampires
+@bot.command(name='show')
+async def show_vampires(ctx):
+    """Display all your vampires"""
+    
+    user_id = str(ctx.author.id)
+    
+    # Find all vampires owned by user
+    user_vampires = [char for char in characters.values() if char.get('user_id') == user_id]
+    
+    if not user_vampires:
+        await ctx.send("You don't have any vampires! Use `?make` to create one.")
+        return
+    
+    # Sort by power level (highest first)
+    user_vampires.sort(key=lambda x: x['power_level'], reverse=True)
+    
+    # Main embed
+    embed = discord.Embed(
+        title=f"{ctx.author.name}'s Vampires",
+        description=f"Total Vampires: {len(user_vampires)}",
+        color=discord.Color.dark_purple()
+    )
+    
+    for vamp in user_vampires:
+        # Build vampire info
+        wins = vamp.get('wins', 0)
+        losses = vamp.get('losses', 0)
+        has_been_reborn = vamp.get('has_been_reborn', False)
+        
+        # Status indicators
+        rebirth_status = "REBORN" if has_been_reborn else "Original"
+        rebirth_eligible = "No" if has_been_reborn else "Yes"
+        
+        value_text = (
+            f"**ID:** `{vamp['character_id']}`\n"
+            f"**Power:** {vamp['power_level']}\n"
+            f"**Record:** {wins}-{losses}\n"
+            f"**Status:** {rebirth_status}\n"
+            f"**Rebirth Eligible:** {rebirth_eligible}"
+        )
+        
+        embed.add_field(
+            name=f"{vamp['name']}",
+            value=value_text,
+            inline=True
+        )
+    
+    embed.set_footer(text="Use ?fight <id> to battle | Use ?rebirth <id> to resurrect fallen vampires")
     
     await ctx.send(embed=embed)
 
@@ -335,7 +387,11 @@ async def fight_character(ctx, character_id: str = None):
                 inline=False
             )
             
-            outcome_embed.set_footer(text=f"Use ?rebirth {character_id} to bring them back")
+            # Check rebirth eligibility
+            if not player_char.get('has_been_reborn', False):
+                outcome_embed.set_footer(text=f"Use ?rebirth {character_id} to bring them back")
+            else:
+                outcome_embed.set_footer(text="This vampire has already been reborn once and cannot be resurrected again")
             
             # Add to graveyard
             dead_vampire = player_char.copy()
@@ -413,7 +469,11 @@ async def fight_character(ctx, character_id: str = None):
                 inline=False
             )
             
-            outcome_embed.set_footer(text=f"Use ?rebirth {character_id} to bring them back")
+            # Check rebirth eligibility
+            if not player_char.get('has_been_reborn', False):
+                outcome_embed.set_footer(text=f"Use ?rebirth {character_id} to bring them back")
+            else:
+                outcome_embed.set_footer(text="This vampire has already been reborn once and cannot be resurrected again")
             
             # Add to graveyard
             dead_vampire = player_char.copy()
@@ -461,10 +521,10 @@ async def fight_character(ctx, character_id: str = None):
     
     await ctx.send(embed=outcome_embed)
 
-# Rebirth command - Bring a dead vampire back to life with more power
+# Rebirth command - Bring a dead vampire back to life with more power (ONE TIME ONLY)
 @bot.command(name='rebirth')
 async def rebirth_vampire(ctx, character_id: str = None):
-    """Resurrect a fallen vampire with increased power. Usage: ?rebirth <character_id>"""
+    """Resurrect a fallen vampire with increased power (ONE TIME ONLY). Usage: ?rebirth <character_id>"""
     
     # Check if character ID was provided
     if character_id is None:
@@ -494,6 +554,11 @@ async def rebirth_vampire(ctx, character_id: str = None):
     # Verify ownership
     if dead_vampire.get('user_id') != user_id:
         await ctx.send("You don't own this vampire!")
+        return
+    
+    # Check if vampire has already been reborn
+    if dead_vampire.get('has_been_reborn', False):
+        await ctx.send(f"**{dead_vampire['name']}** has already been reborn once and cannot be resurrected again!\n\nEach vampire can only be reborn ONE time. Use `?make` to create a new vampire.")
         return
     
     # Rebirth ritual embed
@@ -534,9 +599,6 @@ async def rebirth_vampire(ctx, character_id: str = None):
         new_power = 100
         total_boost = 100 - dead_vampire['power_level']
     
-    # Track rebirths
-    rebirths = dead_vampire.get('rebirths', 0) + 1
-    
     # Create reborn vampire with new ID
     new_character_id = generate_unique_id()
     
@@ -548,8 +610,8 @@ async def rebirth_vampire(ctx, character_id: str = None):
         "power_level": new_power,
         "wins": dead_vampire.get('wins', 0),
         "losses": dead_vampire.get('losses', 0),
-        "rebirths": rebirths,
-        "original_id": dead_vampire.get('original_id', character_id),
+        "has_been_reborn": True,
+        "original_id": character_id,
         "created_at": datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
         "reborn_at": datetime.now().strftime('%Y-%m-%d %H:%M:%S')
     }
@@ -588,29 +650,16 @@ async def rebirth_vampire(ctx, character_id: str = None):
     )
     
     success_embed.add_field(
-        name="Rebirths",
-        value=f"{rebirths}",
+        name="Status",
+        value="REBORN",
         inline=True
     )
     
-    if rebirths == 1:
-        success_embed.add_field(
-            name="Status",
-            value="First Resurrection - The vampire's power grows from the experience of death",
-            inline=False
-        )
-    elif rebirths == 2:
-        success_embed.add_field(
-            name="Status",
-            value="Second Resurrection - Ancient blood stirs within",
-            inline=False
-        )
-    else:
-        success_embed.add_field(
-            name="Status",
-            value=f"Resurrection #{rebirths} - This vampire has conquered death itself",
-            inline=False
-        )
+    success_embed.add_field(
+        name="WARNING",
+        value="This vampire has used their ONE rebirth. If they die again, they cannot be resurrected.",
+        inline=False
+    )
     
     success_embed.set_footer(text="Your vampire has returned stronger than ever")
     
