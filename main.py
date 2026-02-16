@@ -133,6 +133,11 @@ def generate_unique_id():
         if new_id not in existing_ids:
             return new_id
 
+# Check if user is admin
+def is_admin(ctx):
+    """Check if user has administrator permissions"""
+    return ctx.author.guild_permissions.administrator
+
 # Check if member is in jail
 def is_in_jail(member):
     """Check if a gang member is currently in jail"""
@@ -200,6 +205,16 @@ async def make_character(ctx):
     """Generate a gang member with a random name"""
     
     user_id = str(ctx.author.id)
+    
+    # Check if user is admin
+    user_is_admin = is_admin(ctx)
+    
+    # If not admin, check if they already have a living character
+    if not user_is_admin:
+        user_members = [char for char in characters.values() if char.get('user_id') == user_id]
+        if user_members:
+            await ctx.send(f"You already have a gang member alive! You can only have one character at a time.\nUse `?show` to see your current member.")
+            return
     
     # Generate random gang member name
     first_name = random.choice(FIRST_NAMES)
