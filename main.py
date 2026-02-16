@@ -343,7 +343,7 @@ async def make_character(ctx):
     # Show initial record
     embed.add_field(name="Battle Record", value="0-0", inline=False)
     
-    embed.set_footer(text="Use this ID for commands: ?show, ?train, ?fight")
+    embed.set_footer(text="Use this ID for commands: ?show, ?train, ?fight, ?hunt")
     
     await ctx.send(embed=embed)
 
@@ -686,6 +686,159 @@ async def train_vampire(ctx, character_id: str = None):
     )
     
     await ctx.send(embed=result_embed)
+
+# Hunt command - Go hunting for blood
+@bot.command(name='hunt')
+async def hunt_vampire(ctx, character_id: str = None):
+    """Go hunting for blood! Usage: ?hunt <character_id>"""
+    
+    # Check if character ID was provided
+    if character_id is None:
+        await ctx.send("Usage: `?hunt <character_id>`\nExample: `?hunt 123456`\n\nUse `?list` to see your vampire IDs.")
+        return
+    
+    # Check if vampire exists
+    if character_id not in characters:
+        await ctx.send(f"Vampire ID `{character_id}` not found!")
+        return
+    
+    player_char = characters[character_id]
+    user_id = str(ctx.author.id)
+    
+    # Verify ownership
+    if player_char.get('user_id') != user_id and player_char.get('shared_user_id') != user_id:
+        await ctx.send("You don't own this vampire!")
+        return
+    
+    # Hunting embed
+    hunting_embed = discord.Embed(
+        title="BLOOD HUNT",
+        description=f"{player_char['name']} prowls through the darkness, searching for prey...",
+        color=discord.Color.dark_red()
+    )
+    
+    await ctx.send(embed=hunting_embed)
+    
+    # 3 second delay for hunting
+    await asyncio.sleep(3)
+    
+    # Random outcomes
+    outcome_roll = random.randint(1, 100)
+    
+    old_power = player_char['power_level']
+    
+    # 60% - Successful hunt (gain power)
+    if outcome_roll <= 60:
+        power_gain = random.randint(3, 15)
+        new_power = min(old_power + power_gain, 1000)
+        player_char['power_level'] = new_power
+        
+        # 15% chance to gain a skill during successful hunt
+        learned_skill = False
+        new_skill = None
+        
+        if random.randint(1, 100) <= 15 and len(player_char['skills']) < 15:
+            available_skills = [skill for skill in SKILLS.keys() if skill not in player_char['skills']]
+            if available_skills:
+                new_skill = random.choice(available_skills)
+                player_char['skills'].append(new_skill)
+                learned_skill = True
+        
+        # If hybrid, update shared vampire
+        if player_char.get('is_hybrid', False):
+            for char_id, char in characters.items():
+                if char.get('character_id') == player_char['character_id'] and char_id != character_id:
+                    characters[char_id]['power_level'] = new_power
+                    if learned_skill:
+                        characters[char_id]['skills'] = player_char['skills']
+        
+        characters[character_id] = player_char
+        save_characters(characters)
+        
+        result_embed = discord.Embed(
+            title="SUCCESSFUL HUNT",
+            description=f"{player_char['name']} drains their victim's blood!",
+            color=discord.Color.green()
+        )
+        
+        result_embed.add_field(
+            name="Blood Consumed",
+            value=f"Power: {old_power} → {new_power} (+{power_gain})",
+            inline=False
+        )
+        
+        if learned_skill:
+            result_embed.add_field(
+                name="New Ability Learned!",
+                value=f"The hunt has awakened a new power: **{new_skill}**",
+                inline=False
+            )
+        
+        await ctx.send(embed=result_embed)
+    
+    # 25% - Normal hunt (small power gain)
+    elif outcome_roll <= 85:
+        power_gain = random.randint(1, 5)
+        new_power = min(old_power + power_gain, 1000)
+        player_char['power_level'] = new_power
+        
+        # If hybrid, update shared vampire
+        if player_char.get('is_hybrid', False):
+            for char_id, char in characters.items():
+                if char.get('character_id') == player_char['character_id'] and char_id != character_id:
+                    characters[char_id]['power_level'] = new_power
+        
+        characters[character_id] = player_char
+        save_characters(characters)
+        
+        result_embed = discord.Embed(
+            title="MODEST HUNT",
+            description=f"{player_char['name']} finds meager prey in the shadows.",
+            color=discord.Color.orange()
+        )
+        
+        result_embed.add_field(
+            name="Blood Consumed",
+            value=f"Power: {old_power} → {new_power} (+{power_gain})",
+            inline=False
+        )
+        
+        await ctx.send(embed=result_embed)
+    
+    # 15% - Injured (temporary power loss)
+    else:
+        power_loss = random.randint(5, 15)
+        new_power = max(old_power - power_loss, 10)
+        player_char['power_level'] = new_power
+        
+        # If hybrid, update shared vampire
+        if player_char.get('is_hybrid', False):
+            for char_id, char in characters.items():
+                if char.get('character_id') == player_char['character_id'] and char_id != character_id:
+                    characters[char_id]['power_level'] = new_power
+        
+        characters[character_id] = player_char
+        save_characters(characters)
+        
+        result_embed = discord.Embed(
+            title="HUNT GONE WRONG",
+            description=f"{player_char['name']} is injured by vampire hunters!",
+            color=discord.Color.red()
+        )
+        
+        result_embed.add_field(
+            name="Injured",
+            value=f"Power: {old_power} → {new_power} (-{power_loss})",
+            inline=False
+        )
+        
+        result_embed.add_field(
+            name="Status",
+            value="Your vampire has been wounded and will need time to recover.",
+            inline=False
+        )
+        
+        await ctx.send(embed=result_embed)
 
 # Transfer command - Blood transfer ritual between two vampires
 @bot.command(name='transfer')
