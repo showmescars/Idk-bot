@@ -315,7 +315,7 @@ async def make_character(ctx):
         # Show record
         wins = char.get('wins', 0)
         losses = char.get('losses', 0)
-        embed.add_field(name="Battle Record", value=f"{wins}W - {losses}L", inline=False)
+        embed.add_field(name="Battle Record", value=f"{wins}-{losses}", inline=False)
         
         await ctx.send(embed=embed)
         return
@@ -369,7 +369,7 @@ async def make_character(ctx):
     embed.add_field(name="Vampiric Abilities", value=skills_text, inline=False)
     
     # Show initial record
-    embed.add_field(name="Battle Record", value="0W - 0L", inline=False)
+    embed.add_field(name="Battle Record", value="0-0", inline=False)
     
     await ctx.send(embed=embed)
 
@@ -406,7 +406,7 @@ async def show_character(ctx):
     # Show record
     wins = char.get('wins', 0)
     losses = char.get('losses', 0)
-    embed.add_field(name="Battle Record", value=f"{wins}W - {losses}L", inline=False)
+    embed.add_field(name="Battle Record", value=f"{wins}-{losses}", inline=False)
     
     await ctx.send(embed=embed)
 
@@ -743,7 +743,7 @@ async def blood_transfer(ctx, member: discord.Member = None):
         result_embed.add_field(name="Blood Power", value=f"{hybrid_power} (+{bonus} ritual bonus)", inline=False)
         result_embed.add_field(name="Rank", value=f"{hybrid_rank}", inline=False)
         result_embed.add_field(name="Total Abilities", value=f"{len(all_skills)} abilities", inline=False)
-        result_embed.add_field(name="Battle Record", value=f"{total_wins}W - 0L", inline=False)
+        result_embed.add_field(name="Battle Record", value=f"{total_wins}-0", inline=False)
         result_embed.add_field(
             name="Shared Ownership",
             value=f"{ctx.author.name} and {member.name} both control this vampire",
@@ -959,7 +959,7 @@ async def fight_character(ctx, character_id: str = None):
         # Show updated record
         wins = player_char.get('wins', 0)
         losses = player_char.get('losses', 0)
-        result_embed.add_field(name="New Record", value=f"{wins}W - {losses}L", inline=False)
+        result_embed.add_field(name="New Record", value=f"{wins}-{losses}", inline=False)
         
         await ctx.send(embed=result_embed)
     else:
@@ -978,7 +978,7 @@ async def fight_character(ctx, character_id: str = None):
             # Show final record before deletion
             wins = player_char.get('wins', 0)
             losses = player_char.get('losses', 0)
-            result_embed.add_field(name="Final Record", value=f"{wins}W - {losses}L", inline=False)
+            result_embed.add_field(name="Final Record", value=f"{wins}-{losses}", inline=False)
             
             result_embed.add_field(
                 name="Death Roll",
@@ -1048,7 +1048,7 @@ async def fight_character(ctx, character_id: str = None):
             # Show updated record
             wins = player_char.get('wins', 0)
             losses = player_char.get('losses', 0)
-            result_embed.add_field(name="New Record", value=f"{wins}W - {losses}L", inline=False)
+            result_embed.add_field(name="New Record", value=f"{wins}-{losses}", inline=False)
             
             await ctx.send(embed=result_embed)
 
@@ -1111,7 +1111,7 @@ async def world_stats(ctx):
             losses = vamp.get('losses', 0)
             rank = get_vampire_rank(vamp['power_level'])
             hybrid_tag = " [HYBRID]" if vamp.get('is_hybrid', False) else ""
-            alive_text += f"{idx}. **{vamp['name']}{hybrid_tag}**\nID: `{vamp['character_id']}` | {rank} | Power: {vamp['power_level']} | Record: {wins}W-{losses}L\n\n"
+            alive_text += f"{idx}. **{vamp['name']}{hybrid_tag}**\nID: `{vamp['character_id']}` | {rank} | Power: {vamp['power_level']} | Record: {wins}-{losses}\n\n"
         
         combined_embed.add_field(name="\u200b", value=alive_text, inline=False)
     
@@ -1125,7 +1125,7 @@ async def world_stats(ctx):
             wins = vamp.get('wins', 0)
             losses = vamp.get('losses', 0)
             rank = get_vampire_rank(vamp['power_level'])
-            dead_text += f"**{vamp['name']}**\nID: `{vamp['character_id']}` | {rank} | Power: {vamp['power_level']} | Record: {wins}W-{losses}L\nKilled by: {vamp.get('killed_by', 'Unknown')}\n\n"
+            dead_text += f"**{vamp['name']}**\nID: `{vamp['character_id']}` | {rank} | Power: {vamp['power_level']} | Record: {wins}-{losses}\nKilled by: {vamp.get('killed_by', 'Unknown')}\n\n"
         
         combined_embed.add_field(name="\u200b", value=dead_text, inline=False)
     
