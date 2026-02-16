@@ -19,225 +19,257 @@ bot = commands.Bot(command_prefix='?', intents=intents)
 CHARACTERS_FILE = 'characters.json'
 GRAVEYARD_FILE = 'graveyard.json'
 
-# Vampire name pools
+# LA Gang Member Names (First Names)
 FIRST_NAMES = [
-    "Dracula", "Vladislav", "Carmilla", "Lestat", "Akasha", "Armand", "Blade", "Selene",
-    "Viktor", "Marcus", "Lucian", "Sonja", "Aro", "Caius", "Demetri", "Jane",
-    "Alec", "Elijah", "Klaus", "Rebekah", "Kol", "Finn", "Alaric", "Damon",
-    "Stefan", "Katherine", "Silas", "Qetsiyah", "Amara", "Niklaus", "Mikael", "Esther",
-    "Freya", "Dahlia", "Lucien", "Tristan", "Aurora", "Rayna", "Julian", "Lily",
-    "Valerie", "Nora", "Mary", "Beau", "Oscar", "Malcolm", "Sage", "Maddox",
-    "Atticus", "Greta", "Antoinette", "Cassandra", "Ezra", "Morgana", "Dorian"
+    "Tyrone", "DeAndre", "Marcus", "Jamal", "Darius", "Andre", "Carlos", "Miguel",
+    "Jose", "Luis", "Diego", "Ramon", "Francisco", "Juan", "Antonio", "Jesus",
+    "Roberto", "Fernando", "Manuel", "Cesar", "Rico", "Hector", "Pablo", "Oscar",
+    "Raymond", "Antoine", "Lamar", "Terrell", "Kevin", "Brandon", "Isaiah", "Elijah",
+    "Xavier", "Dominic", "Vincent", "Anthony", "Michael", "Christopher", "Daniel", "David",
+    "Jonathan", "Steven", "Richard", "Eric", "Angel", "Victor", "Marco", "Sergio",
+    "Eduardo", "Armando", "Raul", "Jorge", "Alejandro", "Mario", "Pedro", "Alberto"
 ]
 
+# LA Gang Surnames
 LAST_NAMES = [
-    "Tepes", "Drăculești", "Karnstein", "De Lioncourt", "Enkil", "Romanus", "Corvinus", "Nightshade",
-    "Von Doom", "Bloodworth", "Blackthorn", "Darkmore", "Volturi", "Mikaelson", "Salvatore", "Pierce",
-    "Bennett", "Forbes", "Lockwood", "Donovan", "Gilbert", "Fell", "Whitmore", "St. John",
-    "Ashford", "Bloodmoon", "Crimson", "Ravencroft", "Shadowend", "Duskbane", "Nocturne", "Grave",
-    "Morningstar", "Hellsing", "Alucard", "Belmont", "Castlevania", "Blackwood", "Von Carstein", "Draken",
-    "Mourning", "Eclipse", "Eventide", "Twilight", "Sanguine", "Hemlock", "Mortis", "Grimwood",
-    "Nightfall", "Darkholm"
+    "Williams", "Johnson", "Brown", "Jackson", "Davis", "Rodriguez", "Martinez", "Garcia",
+    "Hernandez", "Lopez", "Gonzalez", "Perez", "Sanchez", "Ramirez", "Torres", "Rivera",
+    "Flores", "Gomez", "Diaz", "Cruz", "Reyes", "Morales", "Jimenez", "Ortiz",
+    "Washington", "Thompson", "Harris", "Robinson", "Walker", "Green", "White", "Lewis",
+    "King", "Wright", "Hill", "Scott", "Adams", "Baker", "Nelson", "Mitchell",
+    "Carter", "Roberts", "Turner", "Phillips", "Campbell", "Parker", "Evans", "Edwards",
+    "Collins", "Stewart", "Morris", "Rogers", "Reed", "Cook", "Morgan", "Bell"
 ]
 
-# Lore generation components
+# Real LA Gang Affiliations
+LA_GANGS = {
+    "Crips": {
+        "sets": [
+            "Rollin 60s Crips", "Eight Tray Gangster Crips", "Grape Street Watts Crips",
+            "Hoover Criminals", "Rollin 30s Harlem Crips", "Rollin 40s Crips",
+            "Rollin 90s Crips", "Rollin 100s Crips", "Kitchen Crips", "Avalon Gangster Crips",
+            "East Coast Crips", "Raymond Avenue Crips", "Westside Crips", "Main Street Crips",
+            "PJ Watts Crips", "Fudge Town Mafia Crips", "Neighborhood Crips", "Long Beach Crips"
+        ],
+        "color": discord.Color.blue(),
+        "territory": ["South Central", "Compton", "Long Beach", "Inglewood", "Watts"]
+    },
+    "Bloods": {
+        "sets": [
+            "Bounty Hunter Bloods", "Crenshaw Mafia Gangsters", "Black P Stones",
+            "Fruit Town Pirus", "Inglewood Family Bloods", "Van Ness Gangster Brims",
+            "Centinela Park Family", "Denver Lane Bloods", "Tree Top Pirus", "Campanella Park Pirus",
+            "Athens Park Bloods", "Skyline Pirus", "Mad Swan Bloods", "9 Deuce Bishops",
+            "Hacienda Village Bloods", "Lime Hood Pirus", "Queen Street Bloods", "Harvard Park Brims"
+        ],
+        "color": discord.Color.red(),
+        "territory": ["Compton", "South LA", "Inglewood", "Pasadena", "West Athens"]
+    },
+    "Sureños": {
+        "sets": [
+            "18th Street Gang", "Mara Salvatrucha (MS-13)", "Florencia 13", "Eastside 13",
+            "38th Street Gang", "White Fence", "Varrio Nuevo Estrada", "Harpys 13",
+            "King Kobras", "Primera Flats", "Avenues", "Big Hazard", "Highland Park 13",
+            "Clanton 14", "Barrio Van Nuys", "Vineland Boys", "Langdon Street", "Diamond Street"
+        ],
+        "color": discord.Color.from_rgb(0, 128, 255),  # Blue
+        "territory": ["East LA", "South LA", "Boyle Heights", "Highland Park", "Downtown LA"]
+    },
+    "Norteños": {
+        "sets": [
+            "Varrio North Side", "Pacoima 13", "Varrio Nuevo", "Varrio Panorama",
+            "Blythe Street", "Vineland Boyz", "North Side Kings", "Barrio Mojados"
+        ],
+        "color": discord.Color.red(),
+        "territory": ["San Fernando Valley", "Pacoima", "Panorama City", "North Hollywood"]
+    }
+}
+
+# Street Backgrounds/Origins
 ORIGINS = [
-    "turned during the Black Plague in 14th century Europe",
-    "awakened in ancient Egypt as a royal blood drinker",
-    "created by a vampire council in medieval Transylvania",
-    "born from a forbidden ritual in Victorian London",
-    "transformed during the French Revolution's Reign of Terror",
-    "emerged from the shadows of feudal Japan",
-    "cursed by dark magic in the Scottish Highlands",
-    "created in the catacombs beneath Rome",
-    "turned during the American Civil War",
-    "awakened in a Mayan temple centuries ago",
-    "transformed in the Russian Empire during the Romanov dynasty",
-    "born from blood magic in ancient Babylon",
-    "turned by a vampire lord in Renaissance Italy",
-    "created during the Spanish Inquisition",
-    "awakened in the Byzantine Empire",
-    "transformed in the Australian outback by an aboriginal vampire",
-    "turned during the Viking Age in Scandinavia",
-    "created in a Chinese monastery by an ancient master",
-    "born from a blood pact in New Orleans",
-    "awakened during the Salem witch trials"
+    "grew up in the projects and joined the gang at 13",
+    "lost family to gang violence and sought revenge through the streets",
+    "was jumped into the set after proving themselves in a beatdown",
+    "inherited the gang life from their OG father",
+    "started tagging walls and earned respect through graffiti wars",
+    "protected their block from rival gangs since childhood",
+    "served time in county jail and came out with more connections",
+    "moved from another city and had to earn their stripes",
+    "was born into the gang life, third generation banger",
+    "started selling on the corner and worked their way up",
+    "got jumped in after their brother was killed by rivals",
+    "earned respect by handling business no one else would",
+    "came up robbing rival gang members in enemy territory",
+    "was recruited after showing loyalty during a raid",
+    "survived a drive-by and became a street legend",
+    "built their reputation moving weight for the OGs",
+    "earned their spot after doing dirt for the homies",
+    "started banging after their hood got disrespected",
+    "proved themselves in a shootout with rival gangs",
+    "was born and raised in the heart of the hood"
 ]
 
+# Gang Member Personalities
 PERSONALITIES = [
-    "ruthless and calculating, showing no mercy to enemies",
-    "noble and honorable, following an ancient code of conduct",
-    "chaotic and unpredictable, thriving in madness",
-    "cunning and strategic, always three steps ahead",
-    "melancholic and haunted by centuries of existence",
-    "savage and feral, barely controlling their bloodlust",
-    "elegant and refined, preferring diplomacy over violence",
-    "vengeful and obsessed with past wrongs",
-    "philosophical and contemplative about immortality",
-    "sadistic and cruel, enjoying the suffering of others",
-    "protective and loyal to those they care about",
-    "ambitious and power-hungry, seeking dominance",
-    "isolated and withdrawn, avoiding vampire society",
-    "seductive and manipulative, using charm as a weapon",
-    "warrior-like and honorable in combat",
-    "mysterious and enigmatic, keeping secrets close",
-    "rebellious and defiant against vampire hierarchy",
-    "ancient and wise, having seen empires rise and fall",
-    "tragic and romantic, mourning lost humanity",
-    "cold and emotionless, treating life as a game"
+    "ruthless and cold-blooded, shows no mercy to opps",
+    "loyal to the set, would die for their homies",
+    "hot-headed and unpredictable, quick to blast",
+    "calculated and strategic, thinks before moving",
+    "paranoid from years on the streets, trusts no one",
+    "savage and fearless, first one to slide on enemies",
+    "respected OG who commands authority",
+    "young and reckless, trying to prove themselves",
+    "quiet but deadly, lets their actions speak",
+    "manipulative and cunning, plays chess not checkers",
+    "protective of their hood and family",
+    "ambitious and power-hungry, wants to run the set",
+    "isolated and solo, doesn't roll with the crew much",
+    "charismatic and influential, natural born leader",
+    "war-ready soldier, always strapped and prepared",
+    "mysterious and low-key, keeps things tight",
+    "rebellious and defiant, doesn't follow orders well",
+    "seasoned veteran who's seen it all",
+    "troubled and conflicted about the gang life",
+    "stone-cold killer with bodies on their name"
 ]
 
-ABILITIES_LORE = [
-    "mastered blood magic through decades of practice",
-    "learned shadow manipulation from an ancient vampire",
-    "developed supernatural speed through constant hunting",
-    "gained hypnotic powers from a mystical artifact",
-    "achieved regeneration by consuming powerful blood",
-    "unlocked mind control through forbidden rituals",
-    "inherited shapeshifting from their vampire sire",
-    "acquired enhanced strength through trial by combat",
-    "learned mist form transformation in the mountains",
-    "developed venomous bite through genetic mutation",
-    "gained telepathy from drinking a witch's blood",
-    "mastered darkness manipulation in underground lairs",
-    "achieved immortality through a blood curse",
-    "learned fear inducement from a nightmare demon",
-    "developed enhanced senses through centuries of survival",
-    "gained death touch from consuming ancient vampire blood",
-    "mastered blood wings through Egyptian blood magic",
-    "unlocked corpse animation from necromantic studies",
-    "developed crimson lightning through storm rituals",
-    "achieved bloodfire mastery from volcanic sacrifice"
+# Street Skills/Reputation
+SKILLS_LORE = [
+    "mastered the art of moving weight without getting caught",
+    "earned a reputation for accuracy in drive-bys",
+    "learned to evade police through years on the run",
+    "gained respect through hand-to-hand combat skills",
+    "developed a network of connections across the city",
+    "became known for strategic planning of gang operations",
+    "built an untouchable reputation through violence",
+    "learned the streets from the best OGs in the game",
+    "survived multiple attempts on their life",
+    "gained influence through fear and intimidation",
+    "mastered the code of the streets and gang politics",
+    "developed street smarts through years of hustling",
+    "earned stripes through loyalty during investigations",
+    "became known for their ability to get money",
+    "built respect through years of putting in work",
+    "gained a reputation for keeping it real with the homies",
+    "learned to navigate gang wars and truces",
+    "became a go-to person for handling problems",
+    "developed survival instincts from constant danger",
+    "earned their name through countless street battles"
 ]
 
+# Gang Member Goals/Motivations
 GOALS = [
-    "seeking to build an empire of darkness",
-    "hunting the vampire who turned them",
-    "searching for a cure to vampirism",
-    "protecting humanity from supernatural threats",
-    "collecting ancient vampire artifacts",
-    "destroying rival vampire covens",
-    "seeking revenge for their mortal death",
-    "trying to maintain their fading humanity",
-    "building a vampire sanctuary",
-    "searching for their lost love across centuries",
-    "attempting to end their immortal existence",
-    "seeking to become the most powerful vampire",
-    "protecting their bloodline from extinction",
-    "hunting down rogue vampires",
-    "searching for the first vampire",
-    "trying to unite all vampire clans",
+    "trying to make it out the hood and go legit",
+    "seeking revenge for fallen homies",
+    "trying to become an OG and lead the set",
+    "protecting younger family members from the streets",
+    "building a drug empire in their territory",
+    "eliminating rival gang members from their hood",
+    "avenging the death of their brother or sister",
+    "trying to maintain control of their block",
+    "seeking to expand their gang's territory",
+    "looking for a way out but too deep in the game",
+    "trying to end their life in the streets",
+    "seeking to become the most feared in the city",
+    "protecting their family's legacy in the gang",
+    "hunting down snitches and informants",
+    "searching for the person who killed their homie",
+    "trying to unite rival sets for peace",
     "seeking redemption for past sins",
-    "collecting knowledge of all vampire bloodlines",
-    "attempting to create a new vampire species",
-    "searching for a way to walk in daylight"
+    "building respect through any means necessary",
+    "trying to create generational wealth from the streets",
+    "seeking to survive another day in the concrete jungle"
 ]
 
+# Weaknesses/Vulnerabilities
 WEAKNESSES = [
-    "vulnerable to silver blessed by ancient priests",
-    "weakened by running water from sacred rivers",
-    "allergic to garlic grown in consecrated ground",
-    "burned by sunlight, even reflected rays",
-    "unable to cross thresholds without invitation",
-    "repelled by religious symbols from their mortal faith",
-    "weakened during new moon phases",
-    "vulnerable to wooden stakes through the heart",
-    "loses power in the presence of pure innocence",
-    "weakened by the sound of church bells",
-    "unable to see their reflection, causing disorientation",
-    "burns when touching holy ground",
-    "weakened by the blood of their human family",
-    "vulnerable to fire from natural sources",
-    "loses strength when starved of blood",
-    "weakened by ancient vampire-killing weapons",
-    "unable to enter homes of those they've wronged",
-    "burns from holy water blessed by seven priests",
-    "weakened by wolfsbane and mountain ash",
-    "vulnerable to magic from their place of origin"
+    "has an outstanding warrant and avoids police",
+    "is being watched by gang task force detectives",
+    "has family members being threatened by rivals",
+    "is addicted to the lifestyle and can't leave",
+    "owes money to dangerous people",
+    "is on parole and one mistake means life",
+    "has PTSD from years of violence",
+    "is weakened by old gunshot wounds",
+    "is being hunted by multiple rival gangs",
+    "is under federal investigation",
+    "has lost trust in some of their own homies",
+    "is targeted due to their high-profile reputation",
+    "can't enter certain areas without getting killed",
+    "is vulnerable due to predictable routines",
+    "is compromised by personal relationships",
+    "is weakened by substance abuse",
+    "is haunted by the people they've killed",
+    "is vulnerable during visits to incarcerated homies",
+    "is at risk due to social media exposure",
+    "is weakened by loyalty to unreliable allies"
 ]
 
-# Generate detailed lore
-def generate_vampire_lore(vampire_name, power_level):
-    """Generate detailed backstory for a vampire"""
+# Generate detailed gang member backstory
+def generate_gang_lore(member_name, power_level, gang_affiliation, set_name):
+    """Generate detailed backstory for a gang member"""
     
     origin = random.choice(ORIGINS)
     personality = random.choice(PERSONALITIES)
-    ability_source = random.choice(ABILITIES_LORE)
+    skill_source = random.choice(SKILLS_LORE)
     goal = random.choice(GOALS)
     weakness = random.choice(WEAKNESSES)
     
-    # Generate age based on power
+    # Generate age and experience based on power
     if power_level <= 400:
-        age = random.randint(50, 200)
-        experience = "relatively young vampire"
+        age = random.randint(16, 22)
+        experience = "young hustler trying to earn stripes"
     elif power_level <= 1000:
-        age = random.randint(200, 500)
-        experience = "seasoned vampire"
+        age = random.randint(23, 30)
+        experience = "seasoned banger with respect on the streets"
     elif power_level <= 1600:
-        age = random.randint(500, 1000)
-        experience = "ancient vampire"
+        age = random.randint(31, 45)
+        experience = "OG with years of experience"
     else:
-        age = random.randint(1000, 3000)
-        experience = "primordial vampire"
+        age = random.randint(46, 65)
+        experience = "legendary shot-caller"
     
-    # Generate notable kills
-    kills = random.randint(10, 500)
+    # Generate body count
+    bodies = random.randint(0, 15)
     
-    # Generate territory
-    territories = [
-        "the Gothic ruins of Eastern Europe",
-        "the underground catacombs of Paris",
-        "the foggy streets of London",
-        "the ancient forests of Transylvania",
-        "the abandoned castles of Scotland",
-        "the dark alleys of New York",
-        "the bayous of Louisiana",
-        "the mountain ranges of the Carpathians",
-        "the hidden temples of Southeast Asia",
-        "the frozen wastelands of Siberia",
-        "the desert ruins of Egypt",
-        "the volcanic caves of Iceland",
-        "the rainforests of South America",
-        "the underground cities beneath Rome",
-        "the abandoned subway tunnels of Tokyo"
-    ]
+    # Generate territory control
+    gang_info = LA_GANGS.get(gang_affiliation, {})
+    territories = gang_info.get('territory', ["Unknown Territory"])
     territory = random.choice(territories)
     
-    # Generate special trait
+    # Generate street reputation trait
     traits = [
-        "can sense fear in mortals from miles away",
-        "has visions of future blood moons",
-        "can communicate with nocturnal creatures",
-        "leaves no trace of their presence",
-        "can drain blood without touching their victim",
-        "immune to most conventional vampire weaknesses",
-        "can turn invisible during moonless nights",
-        "has a hypnotic voice that compels obedience",
-        "can sense other vampires' power levels",
-        "never needs to feed more than once a month",
-        "can walk in cloudy daylight for brief periods",
-        "has memorized the names of all their victims",
-        "can manipulate dreams of sleeping humans",
-        "aged wine tastes like blood to them",
-        "can smell vampire hunters from great distances"
+        "known for never backing down from a fight",
+        "has a sixth sense for detecting undercover cops",
+        "can navigate the entire city blindfolded",
+        "never leaves witnesses behind",
+        "has informants in rival gangs",
+        "is untouchable due to political connections",
+        "can disappear without a trace when needed",
+        "has a reputation that precedes them everywhere",
+        "can read people's intentions instantly",
+        "never gets caught lacking or slipping",
+        "controls drug distribution in their area",
+        "has bodies buried that no one knows about",
+        "can manipulate gang politics masterfully",
+        "survived multiple hits from professional killers",
+        "is respected even by rival gang members"
     ]
     special_trait = random.choice(traits)
-    
-    # Determine lore bonus (knowledge of lore grants power boost)
-    lore_bonus = random.randint(50, 150)
     
     lore_data = {
         "origin": origin,
         "age": age,
         "experience": experience,
         "personality": personality,
-        "ability_source": ability_source,
+        "skill_source": skill_source,
         "goal": goal,
         "weakness": weakness,
-        "kills": kills,
+        "bodies": bodies,
         "territory": territory,
         "special_trait": special_trait,
-        "lore_bonus": lore_bonus,
+        "gang_affiliation": gang_affiliation,
+        "set_name": set_name,
         "lore_revealed": False
     }
     
@@ -279,9 +311,9 @@ def generate_unique_id():
         if new_id not in existing_ids:
             return new_id
 
-# Generate completely random AI power (10-2000, super unpredictable)
-def generate_ai_power():
-    """Generate completely random AI power from 10 to 2000"""
+# Generate completely random street power (10-2000)
+def generate_street_power():
+    """Generate completely random street power from 10 to 2000"""
     
     roll = random.randint(1, 100)
     
@@ -294,9 +326,9 @@ def generate_ai_power():
     else:
         return random.randint(1801, 2000)
 
-# Generate completely random vampire power for new vampires (10-2000)
-def generate_random_vampire_power():
-    """Generate completely random power for new vampires"""
+# Generate completely random gang member power (10-2000)
+def generate_random_member_power():
+    """Generate completely random power for new gang members"""
     
     roll = random.randint(1, 100)
     
@@ -330,23 +362,23 @@ def calculate_death_chance(player_power, enemy_power, player_won):
     
     return int(death_chance)
 
-# Calculate gang death chance (lower than solo)
-def calculate_gang_death_chance(player_won):
-    """Calculate death chance for gang battles - lower risk due to group support"""
+# Calculate crew death chance (lower than solo)
+def calculate_crew_death_chance(player_won):
+    """Calculate death chance for crew battles - lower risk due to backup"""
     
     if player_won:
         return random.randint(2, 8)
     else:
         return random.randint(15, 35)
 
-# Simulate instant battle with lore bonus
+# Simulate instant street battle with lore bonus
 def simulate_battle(player_name, player_power, enemy_name, enemy_power, lore_revealed=False):
-    """Simulate an instant vampire battle"""
+    """Simulate an instant street battle"""
     
     # Apply lore bonus if revealed
     effective_player_power = player_power
     if lore_revealed:
-        # Lore knowledge gives strategic advantage
+        # Street knowledge gives tactical advantage
         lore_bonus_multiplier = random.uniform(1.05, 1.15)  # 5-15% power boost
         effective_player_power = int(player_power * lore_bonus_multiplier)
     
@@ -371,37 +403,44 @@ def simulate_battle(player_name, player_power, enemy_name, enemy_power, lore_rev
         "effective_power": effective_player_power if lore_revealed else player_power
     }
 
-# Generate AI gang with SUPER RANDOM size
-def generate_ai_gang():
-    """Generate a random AI vampire gang with SUPER RANDOM size (1-20 vampires)"""
+# Generate rival gang crew with SUPER RANDOM size
+def generate_rival_crew():
+    """Generate a random rival gang crew with SUPER RANDOM size (1-20 members)"""
     
     roll = random.randint(1, 100)
     
     if roll <= 30:
-        gang_size = random.randint(1, 3)
+        crew_size = random.randint(1, 3)
     elif roll <= 55:
-        gang_size = random.randint(4, 6)
+        crew_size = random.randint(4, 6)
     elif roll <= 75:
-        gang_size = random.randint(7, 10)
+        crew_size = random.randint(7, 10)
     elif roll <= 90:
-        gang_size = random.randint(11, 15)
+        crew_size = random.randint(11, 15)
     else:
-        gang_size = random.randint(16, 20)
+        crew_size = random.randint(16, 20)
     
-    ai_gang = []
+    # Pick random rival gang
+    rival_gang = random.choice(list(LA_GANGS.keys()))
+    gang_sets = LA_GANGS[rival_gang]['sets']
+    rival_set = random.choice(gang_sets)
     
-    for _ in range(gang_size):
-        ai_first_name = random.choice(FIRST_NAMES)
-        ai_last_name = random.choice(LAST_NAMES)
-        ai_name = f"{ai_first_name} {ai_last_name}"
-        ai_power = generate_ai_power()
+    rival_crew = []
+    
+    for _ in range(crew_size):
+        first_name = random.choice(FIRST_NAMES)
+        last_name = random.choice(LAST_NAMES)
+        member_name = f"{first_name} '{last_name[:3].upper()}' {last_name}"
+        member_power = generate_street_power()
         
-        ai_gang.append({
-            "name": ai_name,
-            "power": ai_power
+        rival_crew.append({
+            "name": member_name,
+            "power": member_power,
+            "gang": rival_gang,
+            "set": rival_set
         })
     
-    return ai_gang
+    return rival_crew, rival_gang, rival_set
 
 characters = load_characters()
 graveyard = load_graveyard()
@@ -409,7 +448,7 @@ graveyard = load_graveyard()
 @bot.event
 async def on_ready():
     print(f'{bot.user} is online')
-    print('Vampire Battle System Ready')
+    print('LA Gang Battle System Ready')
 
 # Check to block DM commands
 @bot.check
@@ -419,28 +458,35 @@ async def globally_block_dms(ctx):
         return False
     return True
 
-# Make command - Creates a vampire with RANDOM power (10-2000)
+# Make command - Creates a gang member with RANDOM power (10-2000)
 @bot.command(name='make')
 async def make_character(ctx):
-    """Generate a vampire with a random name and power level"""
+    """Generate a gang member with a random name and street power"""
     
     user_id = str(ctx.author.id)
     
-    # Generate random vampire name
+    # Generate random gang member name
     first_name = random.choice(FIRST_NAMES)
     last_name = random.choice(LAST_NAMES)
-    character_name = f"{first_name} {last_name}"
+    # Add street nickname
+    nickname = last_name[:3].upper()
+    character_name = f"{first_name} '{nickname}' {last_name}"
     
     # Generate unique character ID
     character_id = generate_unique_id()
     
     # Generate COMPLETELY RANDOM power level (10 to 2000)
-    power_level = generate_random_vampire_power()
+    power_level = generate_random_member_power()
     
-    # Generate vampire lore
-    lore_data = generate_vampire_lore(character_name, power_level)
+    # Randomly assign gang affiliation
+    gang_affiliation = random.choice(list(LA_GANGS.keys()))
+    gang_sets = LA_GANGS[gang_affiliation]['sets']
+    set_name = random.choice(gang_sets)
     
-    # Create vampire data
+    # Generate gang member lore
+    lore_data = generate_gang_lore(character_name, power_level, gang_affiliation, set_name)
+    
+    # Create gang member data
     character_data = {
         "character_id": character_id,
         "name": character_name,
@@ -450,87 +496,99 @@ async def make_character(ctx):
         "wins": 0,
         "losses": 0,
         "has_been_reborn": False,
+        "gang_affiliation": gang_affiliation,
+        "set_name": set_name,
         "lore": lore_data,
         "created_at": datetime.now().strftime('%Y-%m-%d %H:%M:%S')
     }
     
-    # Save vampire
+    # Save gang member
     characters[character_id] = character_data
     save_characters(characters)
     
     # Determine power tier for description
     if power_level <= 400:
-        tier = "Fledgling"
+        tier = "Young Hustler"
         tier_color = discord.Color.dark_grey()
     elif power_level <= 1000:
-        tier = "Experienced"
+        tier = "Seasoned Banger"
         tier_color = discord.Color.blue()
     elif power_level <= 1600:
-        tier = "Ancient"
+        tier = "OG"
         tier_color = discord.Color.purple()
     else:
-        tier = "Primordial"
+        tier = "Shot Caller"
         tier_color = discord.Color.gold()
     
-    # Display new vampire
+    # Get gang color
+    gang_color = LA_GANGS[gang_affiliation]['color']
+    
+    # Display new gang member
     embed = discord.Embed(
-        title="Vampire Created",
+        title="GANG MEMBER CREATED",
         description=f"**{character_name}**",
-        color=tier_color
+        color=gang_color
     )
     
     embed.add_field(name="Owner", value=ctx.author.name, inline=True)
     embed.add_field(name="ID", value=f"`{character_id}`", inline=True)
-    embed.add_field(name="Power Level", value=f"{power_level}", inline=False)
-    embed.add_field(name="Tier", value=tier, inline=True)
+    embed.add_field(name="Street Power", value=f"{power_level}", inline=False)
+    embed.add_field(name="Gang Affiliation", value=f"{gang_affiliation}", inline=True)
+    embed.add_field(name="Set", value=f"{set_name}", inline=True)
+    embed.add_field(name="Rank", value=tier, inline=True)
     embed.add_field(name="Record", value="0-0", inline=True)
     
     embed.add_field(
-        name="Hidden Lore",
-        value=f"Use `?lore {character_id}` to reveal their dark history and unlock combat bonuses",
+        name="Hidden Background",
+        value=f"Use `?lore {character_id}` to reveal their street history and unlock combat bonuses",
         inline=False
     )
     
-    embed.set_footer(text="A new vampire has risen from the darkness")
+    embed.set_footer(text="A new soldier hit the streets")
     
     await ctx.send(embed=embed)
 
-# Lore command - Reveal detailed vampire backstory
+# Lore command - Reveal detailed gang member backstory
 @bot.command(name='lore')
 async def reveal_lore(ctx, character_id: str = None):
-    """Reveal the detailed lore of your vampire. Usage: ?lore <character_id>"""
+    """Reveal the detailed lore of your gang member. Usage: ?lore <character_id>"""
     
     if character_id is None:
         await ctx.send("Usage: `?lore <character_id>`\nExample: `?lore 123456`")
         return
     
-    # Check if vampire exists
+    # Check if gang member exists
     if character_id not in characters:
-        await ctx.send(f"Vampire ID `{character_id}` not found!")
+        await ctx.send(f"Gang member ID `{character_id}` not found!")
         return
     
-    vampire = characters[character_id]
+    member = characters[character_id]
     user_id = str(ctx.author.id)
     
     # Verify ownership
-    if vampire.get('user_id') != user_id:
-        await ctx.send("You don't own this vampire!")
+    if member.get('user_id') != user_id:
+        await ctx.send("You don't own this gang member!")
         return
     
-    # Check if vampire has lore
-    if 'lore' not in vampire:
-        # Generate lore for old vampires
-        lore_data = generate_vampire_lore(vampire['name'], vampire['power_level'])
-        vampire['lore'] = lore_data
-        characters[character_id] = vampire
+    # Check if member has lore
+    if 'lore' not in member:
+        # Generate lore for old members
+        lore_data = generate_gang_lore(
+            member['name'], 
+            member['power_level'],
+            member.get('gang_affiliation', 'Crips'),
+            member.get('set_name', 'Unknown Set')
+        )
+        member['lore'] = lore_data
+        characters[character_id] = member
         save_characters(characters)
     
-    lore = vampire['lore']
+    lore = member['lore']
     
     # Lore reveal animation
     reveal_embed = discord.Embed(
-        title="UNCOVERING DARK HISTORY",
-        description=f"Delving into the past of **{vampire['name']}**...\n\nAncient memories surface from the shadows...",
+        title="DIGGING UP THE HISTORY",
+        description=f"Uncovering the street story of **{member['name']}**...\n\nThe streets remember everything...",
         color=discord.Color.dark_purple()
     )
     
@@ -540,270 +598,284 @@ async def reveal_lore(ctx, character_id: str = None):
     # Mark lore as revealed (grants combat bonus)
     if not lore.get('lore_revealed', False):
         lore['lore_revealed'] = True
-        vampire['lore'] = lore
-        characters[character_id] = vampire
+        member['lore'] = lore
+        characters[character_id] = member
         save_characters(characters)
         
         newly_revealed = True
     else:
         newly_revealed = False
     
+    # Get gang color
+    gang_color = LA_GANGS.get(member.get('gang_affiliation', 'Crips'), {}).get('color', discord.Color.red())
+    
     # Main lore embed
     lore_embed = discord.Embed(
-        title=f"THE LEGEND OF {vampire['name'].upper()}",
-        description=f"**{lore['experience'].title()}** | Age: {lore['age']} years",
-        color=discord.Color.dark_red()
+        title=f"THE STORY OF {member['name'].upper()}",
+        description=f"**{lore['experience'].title()}** | Age: {lore['age']} years old",
+        color=gang_color
     )
     
     lore_embed.add_field(
         name="ORIGIN",
-        value=f"{vampire['name']} was {lore['origin']}. Through centuries of existence, they have become {lore['personality']}.",
+        value=f"{member['name']} {lore['origin']}. Through years in the streets, they became {lore['personality']}.",
         inline=False
     )
     
     lore_embed.add_field(
-        name="POWERS",
-        value=f"They {lore['ability_source']}, granting them supernatural abilities that strike fear into mortals and vampires alike.",
+        name="GANG AFFILIATION",
+        value=f"**{member.get('gang_affiliation', 'Unknown')}** - {member.get('set_name', 'Unknown Set')}",
+        inline=False
+    )
+    
+    lore_embed.add_field(
+        name="STREET REPUTATION",
+        value=f"They {lore['skill_source']}, earning respect and fear throughout the city.",
         inline=False
     )
     
     lore_embed.add_field(
         name="MOTIVATION",
-        value=f"Currently, {vampire['name']} is {lore['goal']}.",
+        value=f"Currently, {member['name']} is {lore['goal']}.",
         inline=False
     )
     
     lore_embed.add_field(
         name="TERRITORY",
-        value=f"They rule over {lore['territory']}, where they are both feared and respected.",
+        value=f"They control operations in {lore['territory']}, where their word is law.",
         inline=False
     )
     
     lore_embed.add_field(
         name="SPECIAL TRAIT",
-        value=f"{vampire['name']} {lore['special_trait']}.",
+        value=f"{member['name']} {lore['special_trait']}.",
         inline=False
     )
     
     lore_embed.add_field(
         name="BODY COUNT",
-        value=f"Confirmed kills: **{lore['kills']}** victims",
+        value=f"Alleged bodies: **{lore['bodies']}** (never convicted)",
         inline=True
     )
     
     lore_embed.add_field(
         name="WEAKNESS",
-        value=f"Despite their power, they remain {lore['weakness']}.",
+        value=f"Despite their power, they {lore['weakness']}.",
         inline=False
     )
     
     if newly_revealed:
         lore_embed.add_field(
-            name="LORE BONUS UNLOCKED",
-            value=f"Knowledge of {vampire['name']}'s history grants **5-15% power boost** in battles!\nEffective in both solo fights and gang wars.",
+            name="STREET KNOWLEDGE UNLOCKED",
+            value=f"Knowledge of {member['name']}'s history grants **5-15% power boost** in battles!\nEffective in both solo fights and crew wars.",
             inline=False
         )
     else:
         lore_embed.add_field(
-            name="LORE BONUS ACTIVE",
+            name="STREET KNOWLEDGE ACTIVE",
             value=f"Combat bonus already unlocked: **5-15% power boost** in battles",
             inline=False
         )
     
-    lore_embed.set_footer(text=f"Current Power: {vampire['power_level']} | Record: {vampire.get('wins', 0)}-{vampire.get('losses', 0)}")
+    lore_embed.set_footer(text=f"Current Street Power: {member['power_level']} | Record: {member.get('wins', 0)}-{member.get('losses', 0)}")
     
     await ctx.send(embed=lore_embed)
 
-# Show command - Display user's vampires
+# Show command - Display user's gang members
 @bot.command(name='show')
-async def show_vampires(ctx):
-    """Display all your vampires"""
+async def show_members(ctx):
+    """Display all your gang members"""
     
     user_id = str(ctx.author.id)
     
-    # Find all vampires owned by user
-    user_vampires = [char for char in characters.values() if char.get('user_id') == user_id]
+    # Find all gang members owned by user
+    user_members = [char for char in characters.values() if char.get('user_id') == user_id]
     
-    if not user_vampires:
-        await ctx.send("You don't have any vampires! Use `?make` to create one.")
+    if not user_members:
+        await ctx.send("You don't have any gang members! Use `?make` to create one.")
         return
     
     # Sort by power level (highest first)
-    user_vampires.sort(key=lambda x: x['power_level'], reverse=True)
+    user_members.sort(key=lambda x: x['power_level'], reverse=True)
     
     # Main embed
     embed = discord.Embed(
-        title=f"{ctx.author.name}'s Vampires",
-        description=f"Total Vampires: {len(user_vampires)}",
+        title=f"{ctx.author.name}'s Gang Members",
+        description=f"Total Members: {len(user_members)}",
         color=discord.Color.dark_purple()
     )
     
-    for vamp in user_vampires:
-        # Build vampire info
-        wins = vamp.get('wins', 0)
-        losses = vamp.get('losses', 0)
-        has_been_reborn = vamp.get('has_been_reborn', False)
-        is_hybrid = vamp.get('is_hybrid', False)
+    for member in user_members:
+        # Build member info
+        wins = member.get('wins', 0)
+        losses = member.get('losses', 0)
+        has_been_reborn = member.get('has_been_reborn', False)
+        is_merged = member.get('is_merged', False)
         
         # Check lore status
         lore_revealed = False
-        if 'lore' in vamp:
-            lore_revealed = vamp['lore'].get('lore_revealed', False)
+        if 'lore' in member:
+            lore_revealed = member['lore'].get('lore_revealed', False)
         
         # Determine tier
-        power = vamp['power_level']
+        power = member['power_level']
         if power <= 400:
-            tier = "Fledgling"
+            tier = "Young Hustler"
         elif power <= 1000:
-            tier = "Experienced"
+            tier = "Seasoned Banger"
         elif power <= 1600:
-            tier = "Ancient"
+            tier = "OG"
         else:
-            tier = "Primordial"
+            tier = "Shot Caller"
         
         # Status indicators
-        if is_hybrid:
-            status = "HYBRID"
+        if is_merged:
+            status = "MERGED"
         elif has_been_reborn:
-            status = "REBORN"
+            status = "CAME BACK"
         else:
             status = "Original"
         
         rebirth_eligible = "No" if has_been_reborn else "Yes"
-        lore_status = "Revealed" if lore_revealed else "Hidden"
+        lore_status = "Known" if lore_revealed else "Unknown"
         
         value_text = (
-            f"**ID:** `{vamp['character_id']}`\n"
-            f"**Power:** {vamp['power_level']}\n"
-            f"**Tier:** {tier}\n"
+            f"**ID:** `{member['character_id']}`\n"
+            f"**Power:** {member['power_level']}\n"
+            f"**Rank:** {tier}\n"
+            f"**Gang:** {member.get('gang_affiliation', 'Unknown')}\n"
+            f"**Set:** {member.get('set_name', 'Unknown')}\n"
             f"**Record:** {wins}-{losses}\n"
             f"**Status:** {status}\n"
-            f"**Lore:** {lore_status}\n"
-            f"**Rebirth:** {rebirth_eligible}"
+            f"**History:** {lore_status}\n"
+            f"**Can Revive:** {rebirth_eligible}"
         )
         
         embed.add_field(
-            name=f"{vamp['name']}",
+            name=f"{member['name']}",
             value=value_text,
             inline=True
         )
     
-    embed.set_footer(text="Use ?lore <id> to reveal backstory | ?gang for group battles | ?fight <id> for solo")
+    embed.set_footer(text="Use ?lore <id> to reveal history | ?crew for crew battles | ?slide <id> for solo")
     
     await ctx.send(embed=embed)
 
-# Gang command - Group battle with lore bonuses
-@bot.command(name='gang')
-async def gang_battle(ctx):
-    """Battle as a gang with ALL your vampires against a RANDOM sized AI gang (1-20 vampires)"""
+# Crew command - Group battle with lore bonuses
+@bot.command(name='crew')
+async def crew_battle(ctx):
+    """Battle as a crew with ALL your gang members against a RANDOM sized rival crew (1-20 members)"""
     
     user_id = str(ctx.author.id)
     
-    # Find all vampires owned by user
-    user_vampires = [char for char in characters.values() if char.get('user_id') == user_id]
+    # Find all gang members owned by user
+    user_members = [char for char in characters.values() if char.get('user_id') == user_id]
     
-    if not user_vampires:
-        await ctx.send("You don't have any vampires! Use `?make` to create one.")
+    if not user_members:
+        await ctx.send("You don't have any gang members! Use `?make` to create one.")
         return
     
-    if len(user_vampires) < 2:
-        await ctx.send("You need at least 2 vampires to form a gang! Use `?make` to create more vampires.")
+    if len(user_members) < 2:
+        await ctx.send("You need at least 2 gang members to form a crew! Use `?make` to recruit more.")
         return
     
-    # Calculate total gang power with lore bonuses
-    player_gang_power = 0
+    # Calculate total crew power with lore bonuses
+    player_crew_power = 0
     lore_bonus_count = 0
     
-    for vamp in user_vampires:
-        base_power = vamp['power_level']
-        if 'lore' in vamp and vamp['lore'].get('lore_revealed', False):
+    for member in user_members:
+        base_power = member['power_level']
+        if 'lore' in member and member['lore'].get('lore_revealed', False):
             # Apply lore bonus
             lore_bonus_multiplier = random.uniform(1.05, 1.15)
             effective_power = int(base_power * lore_bonus_multiplier)
-            player_gang_power += effective_power
+            player_crew_power += effective_power
             lore_bonus_count += 1
         else:
-            player_gang_power += base_power
+            player_crew_power += base_power
     
-    # Generate SUPER RANDOM AI gang (1-20 vampires)
-    ai_gang = generate_ai_gang()
-    ai_gang_power = sum(ai['power'] for ai in ai_gang)
+    # Generate SUPER RANDOM rival crew (1-20 members)
+    rival_crew, rival_gang, rival_set = generate_rival_crew()
+    rival_crew_power = sum(rival['power'] for rival in rival_crew)
     
-    # Gang intro embed
+    # Get rival gang color
+    rival_gang_color = LA_GANGS.get(rival_gang, {}).get('color', discord.Color.red())
+    
+    # Crew intro embed
     intro_embed = discord.Embed(
-        title="GANG WAR",
-        description=f"**{ctx.author.name}'s Gang** encounters a rival vampire gang in the shadows!",
-        color=discord.Color.dark_purple()
+        title="CREW WAR",
+        description=f"**{ctx.author.name}'s Crew** encounters a rival {rival_gang} crew in enemy territory!",
+        color=rival_gang_color
     )
     
-    # Player gang info
-    player_gang_text = ""
-    for vamp in user_vampires:
-        lore_indicator = " [LORE]" if 'lore' in vamp and vamp['lore'].get('lore_revealed', False) else ""
-        player_gang_text += f"**{vamp['name']}**{lore_indicator} - Power: {vamp['power_level']}\n"
+    # Player crew info
+    player_crew_text = ""
+    for member in user_members:
+        lore_indicator = " [STREET KNOWLEDGE]" if 'lore' in member and member['lore'].get('lore_revealed', False) else ""
+        player_crew_text += f"**{member['name']}**{lore_indicator} - Power: {member['power_level']}\n"
     
     intro_embed.add_field(
-        name=f"YOUR GANG ({len(user_vampires)} vampires)",
-        value=f"{player_gang_text}\n**Total Power: {player_gang_power}**",
+        name=f"YOUR CREW ({len(user_members)} members)",
+        value=f"{player_crew_text}\n**Total Power: {player_crew_power}**",
         inline=False
     )
     
     if lore_bonus_count > 0:
         intro_embed.add_field(
-            name="Lore Advantage",
-            value=f"{lore_bonus_count} vampire(s) with revealed lore gain combat bonuses!",
+            name="Street Knowledge Advantage",
+            value=f"{lore_bonus_count} member(s) with revealed history gain combat bonuses!",
             inline=False
         )
     
-    # AI gang info - truncate if too large
-    ai_gang_text = ""
+    # Rival crew info - truncate if too large
+    rival_crew_text = ""
     display_limit = 10
     
-    for idx, ai_vamp in enumerate(ai_gang):
+    for idx, rival_member in enumerate(rival_crew):
         if idx < display_limit:
-            ai_gang_text += f"**{ai_vamp['name']}** - Power: {ai_vamp['power']}\n"
+            rival_crew_text += f"**{rival_member['name']}** - Power: {rival_member['power']}\n"
         elif idx == display_limit:
-            remaining = len(ai_gang) - display_limit
-            ai_gang_text += f"... and {remaining} more vampires\n"
+            remaining = len(rival_crew) - display_limit
+            rival_crew_text += f"... and {remaining} more members\n"
             break
     
     intro_embed.add_field(
-        name=f"ENEMY GANG ({len(ai_gang)} vampires)",
-        value=f"{ai_gang_text}\n**Total Power: {ai_gang_power}**",
+        name=f"RIVAL CREW - {rival_set} ({len(rival_crew)} members)",
+        value=f"{rival_crew_text}\n**Total Power: {rival_crew_power}**",
         inline=False
     )
     
     # Power difference
-    power_diff = player_gang_power - ai_gang_power
+    power_diff = player_crew_power - rival_crew_power
     
     if power_diff > 2000:
         threat_level = "EASY TARGET"
         threat_color = discord.Color.dark_green()
     elif power_diff > 1000:
-        threat_level = "FAVORABLE MATCHUP"
+        threat_level = "FAVORABLE ODDS"
         threat_color = discord.Color.green()
     elif power_diff > -1000:
         threat_level = "EVEN MATCH"
         threat_color = discord.Color.gold()
     elif power_diff > -2000:
-        threat_level = "DANGEROUS GANG"
+        threat_level = "DANGEROUS SITUATION"
         threat_color = discord.Color.orange()
     else:
-        threat_level = "EXTREMELY DANGEROUS GANG"
+        threat_level = "EXTREMELY DANGEROUS"
         threat_color = discord.Color.dark_red()
     
     intro_embed.add_field(
-        name="Threat Level",
+        name="Threat Assessment",
         value=threat_level,
         inline=False
     )
     
-    # Gang size comparison
-    size_diff = len(user_vampires) - len(ai_gang)
+    # Crew size comparison
+    size_diff = len(user_members) - len(rival_crew)
     if size_diff > 0:
-        size_advantage = f"You outnumber them by {size_diff} vampires"
+        size_advantage = f"You outnumber them by {size_diff} members"
     elif size_diff < 0:
-        size_advantage = f"They outnumber you by {abs(size_diff)} vampires"
+        size_advantage = f"They outnumber you by {abs(size_diff)} members"
     else:
         size_advantage = "Equal numbers"
     
@@ -813,43 +885,43 @@ async def gang_battle(ctx):
         inline=False
     )
     
-    intro_embed.set_footer(text="The gang war begins...")
+    intro_embed.set_footer(text="The crew war begins...")
     
     await ctx.send(embed=intro_embed)
     await asyncio.sleep(4)
     
-    # Simulate the gang battle
+    # Simulate the crew battle
     battle_result = simulate_battle(
-        f"{ctx.author.name}'s Gang",
-        player_gang_power,
-        "Enemy Gang",
-        ai_gang_power,
-        lore_revealed=True  # Gang has lore advantage if any member has it
+        f"{ctx.author.name}'s Crew",
+        player_crew_power,
+        f"{rival_set}",
+        rival_crew_power,
+        lore_revealed=True  # Crew has advantage if any member has it
     )
     
     player_won = battle_result['player_won']
     
-    # Calculate death chance (lower for gang battles)
-    death_chance = calculate_gang_death_chance(player_won)
+    # Calculate death chance (lower for crew battles)
+    death_chance = calculate_crew_death_chance(player_won)
     
     # Determine casualties
     casualties = []
     survivors = []
     
-    for vamp in user_vampires:
+    for member in user_members:
         death_roll = random.randint(1, 100)
-        vampire_dies = death_roll <= death_chance
+        member_dies = death_roll <= death_chance
         
-        if vampire_dies:
-            casualties.append(vamp)
+        if member_dies:
+            casualties.append(member)
         else:
-            survivors.append(vamp)
+            survivors.append(member)
     
     # Outcome embed
     if player_won:
         outcome_embed = discord.Embed(
-            title="GANG WAR VICTORY",
-            description=f"**{ctx.author.name}'s Gang** has defeated the enemy gang of {len(ai_gang)} vampires!",
+            title="CREW WAR VICTORY",
+            description=f"**{ctx.author.name}'s Crew** has defeated the {rival_set} crew of {len(rival_crew)} members!",
             color=discord.Color.green()
         )
         
@@ -861,15 +933,15 @@ async def gang_battle(ctx):
         
         if battle_result.get('lore_bonus_applied'):
             outcome_embed.add_field(
-                name="Lore Bonus Applied",
-                value=f"Revealed lore provided strategic advantage in battle!",
+                name="Street Knowledge Applied",
+                value=f"Revealed history provided tactical advantage in battle!",
                 inline=False
             )
         
     else:
         outcome_embed = discord.Embed(
-            title="GANG WAR DEFEAT",
-            description=f"**{ctx.author.name}'s Gang** was defeated by the enemy gang of {len(ai_gang)} vampires!",
+            title="CREW WAR DEFEAT",
+            description=f"**{ctx.author.name}'s Crew** was defeated by the {rival_set} crew of {len(rival_crew)} members!",
             color=discord.Color.red()
         )
         
@@ -882,20 +954,20 @@ async def gang_battle(ctx):
     # Show casualties
     if casualties:
         casualty_text = ""
-        for vamp in casualties:
-            casualty_text += f"{vamp['name']} (Power: {vamp['power_level']})\n"
+        for member in casualties:
+            casualty_text += f"{member['name']} (Power: {member['power_level']})\n"
             
             # Add to graveyard
-            dead_vampire = vamp.copy()
-            dead_vampire['death_date'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-            dead_vampire['killed_by'] = "Gang War"
-            graveyard.append(dead_vampire)
+            dead_member = member.copy()
+            dead_member['death_date'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+            dead_member['killed_by'] = f"{rival_set} Crew War"
+            graveyard.append(dead_member)
             
-            # Delete vampire
-            del characters[vamp['character_id']]
+            # Delete member
+            del characters[member['character_id']]
         
         outcome_embed.add_field(
-            name=f"CASUALTIES ({len(casualties)} vampires)",
+            name=f"CASUALTIES ({len(casualties)} members)",
             value=casualty_text,
             inline=False
         )
@@ -905,62 +977,62 @@ async def gang_battle(ctx):
     else:
         outcome_embed.add_field(
             name="CASUALTIES",
-            value="All gang members survived!",
+            value="All crew members survived!",
             inline=False
         )
     
     # Update survivors
     if survivors:
         survivor_text = ""
-        for vamp in survivors:
+        for member in survivors:
             if player_won:
-                vamp['wins'] = vamp.get('wins', 0) + 1
+                member['wins'] = member.get('wins', 0) + 1
             else:
-                vamp['losses'] = vamp.get('losses', 0) + 1
+                member['losses'] = member.get('losses', 0) + 1
             
-            characters[vamp['character_id']] = vamp
-            survivor_text += f"{vamp['name']} (Power: {vamp['power_level']}) - Record: {vamp['wins']}-{vamp['losses']}\n"
+            characters[member['character_id']] = member
+            survivor_text += f"{member['name']} (Power: {member['power_level']}) - Record: {member['wins']}-{member['losses']}\n"
         
         outcome_embed.add_field(
-            name=f"SURVIVORS ({len(survivors)} vampires)",
+            name=f"SURVIVORS ({len(survivors)} members)",
             value=survivor_text,
             inline=False
         )
         
         save_characters(characters)
     
-    # Show rebirth info if applicable
-    rebirth_ids = []
-    for vamp in casualties:
-        if not vamp.get('has_been_reborn', False):
-            rebirth_ids.append(vamp['character_id'])
+    # Show revival info if applicable
+    revival_ids = []
+    for member in casualties:
+        if not member.get('has_been_reborn', False):
+            revival_ids.append(member['character_id'])
     
-    if rebirth_ids:
-        rebirth_text = "Fallen gang members can be reborn:\n"
-        for char_id in rebirth_ids:
-            rebirth_text += f"`?rebirth {char_id}`\n"
-        outcome_embed.set_footer(text=rebirth_text)
+    if revival_ids:
+        revival_text = "Fallen crew members can be brought back:\n"
+        for char_id in revival_ids:
+            revival_text += f"`?revive {char_id}`\n"
+        outcome_embed.set_footer(text=revival_text)
     
     await ctx.send(embed=outcome_embed)
 
-# Fight command - Battle against AI vampires with lore bonus
-@bot.command(name='fight')
-async def fight_character(ctx, character_id: str = None):
-    """Fight an AI vampire opponent. Usage: ?fight <character_id>"""
+# Slide command - Battle against rival gang members with lore bonus
+@bot.command(name='slide')
+async def slide_on_opps(ctx, character_id: str = None):
+    """Slide on rival gang members. Usage: ?slide <character_id>"""
     
     if character_id is None:
-        await ctx.send("Usage: `?fight <character_id>`\nExample: `?fight 123456`")
+        await ctx.send("Usage: `?slide <character_id>`\nExample: `?slide 123456`")
         return
     
     if character_id not in characters:
-        await ctx.send(f"Vampire ID `{character_id}` not found!")
+        await ctx.send(f"Gang member ID `{character_id}` not found!")
         return
     
     player_char = characters[character_id]
     user_id = str(ctx.author.id)
     
     if player_char.get('user_id') != user_id:
-        await ctx.send("You don't own this vampire!")
+        await ctx.send("You don't own this gang member!")
         return
     
     # Check lore status
@@ -968,78 +1040,92 @@ async def fight_character(ctx, character_id: str = None):
     if 'lore' in player_char:
         lore_revealed = player_char['lore'].get('lore_revealed', False)
     
-    # Generate COMPLETELY RANDOM AI opponent (10-2000)
-    ai_power = generate_ai_power()
+    # Generate COMPLETELY RANDOM rival (10-2000)
+    rival_power = generate_street_power()
     
-    ai_first_name = random.choice(FIRST_NAMES)
-    ai_last_name = random.choice(LAST_NAMES)
-    ai_name = f"{ai_first_name} {ai_last_name}"
+    rival_first_name = random.choice(FIRST_NAMES)
+    rival_last_name = random.choice(LAST_NAMES)
+    rival_nickname = rival_last_name[:3].upper()
+    rival_name = f"{rival_first_name} '{rival_nickname}' {rival_last_name}"
+    
+    # Generate rival gang affiliation (different from player if possible)
+    available_gangs = [g for g in LA_GANGS.keys() if g != player_char.get('gang_affiliation')]
+    if not available_gangs:
+        available_gangs = list(LA_GANGS.keys())
+    
+    rival_gang = random.choice(available_gangs)
+    rival_sets = LA_GANGS[rival_gang]['sets']
+    rival_set = random.choice(rival_sets)
     
     # Determine power difference for threat level
     effective_power = player_char['power_level']
     if lore_revealed:
         effective_power = int(player_char['power_level'] * random.uniform(1.05, 1.15))
     
-    power_diff = ai_power - effective_power
+    power_diff = rival_power - effective_power
     
     if power_diff > 600:
-        threat_level = "EXTREMELY DANGEROUS OPPONENT"
+        threat_level = "EXTREMELY DANGEROUS OPP"
         threat_color = discord.Color.dark_red()
     elif power_diff > 300:
-        threat_level = "DANGEROUS OPPONENT"
+        threat_level = "DANGEROUS OPP"
         threat_color = discord.Color.red()
     elif power_diff > 100:
-        threat_level = "TOUGH CHALLENGER"
+        threat_level = "TOUGH OPPOSITION"
         threat_color = discord.Color.orange()
     elif power_diff > -100:
         threat_level = "EVEN MATCH"
         threat_color = discord.Color.gold()
     elif power_diff > -300:
-        threat_level = "FAVORABLE MATCHUP"
+        threat_level = "FAVORABLE ODDS"
         threat_color = discord.Color.green()
     else:
         threat_level = "EASY TARGET"
         threat_color = discord.Color.dark_green()
     
-    # Determine AI tier
-    if ai_power <= 400:
-        ai_tier = "Fledgling"
-    elif ai_power <= 1000:
-        ai_tier = "Experienced"
-    elif ai_power <= 1600:
-        ai_tier = "Ancient"
+    # Determine rival tier
+    if rival_power <= 400:
+        rival_tier = "Young Hustler"
+    elif rival_power <= 1000:
+        rival_tier = "Seasoned Banger"
+    elif rival_power <= 1600:
+        rival_tier = "OG"
     else:
-        ai_tier = "Primordial"
+        rival_tier = "Shot Caller"
+    
+    # Get gang colors
+    player_gang_color = LA_GANGS.get(player_char.get('gang_affiliation', 'Crips'), {}).get('color', discord.Color.blue())
+    rival_gang_color = LA_GANGS.get(rival_gang, {}).get('color', discord.Color.red())
     
     # Battle intro embed
     intro_embed = discord.Embed(
-        title="BLOOD BATTLE",
-        description=f"**{player_char['name']}** encounters **{ai_name}** in the darkness\n\n{threat_level}",
+        title="SLIDING ON OPPS",
+        description=f"**{player_char['name']}** spots **{rival_name}** in enemy territory\n\n{threat_level}",
         color=threat_color
     )
     
-    lore_indicator = " [LORE BONUS]" if lore_revealed else ""
+    lore_indicator = " [STREET KNOWLEDGE]" if lore_revealed else ""
     
     intro_embed.add_field(
         name=f"{player_char['name']} (YOU)",
-        value=f"Power: **{player_char['power_level']}**{lore_indicator}\nRecord: {player_char.get('wins', 0)}-{player_char.get('losses', 0)}",
+        value=f"Power: **{player_char['power_level']}**{lore_indicator}\nGang: {player_char.get('gang_affiliation', 'Unknown')}\nSet: {player_char.get('set_name', 'Unknown')}\nRecord: {player_char.get('wins', 0)}-{player_char.get('losses', 0)}",
         inline=True
     )
     
     intro_embed.add_field(
-        name=f"{ai_name} (ENEMY)",
-        value=f"Power: **{ai_power}**\nTier: {ai_tier}",
+        name=f"{rival_name} (OPP)",
+        value=f"Power: **{rival_power}**\nGang: {rival_gang}\nSet: {rival_set}\nRank: {rival_tier}",
         inline=True
     )
     
     if lore_revealed:
         intro_embed.add_field(
-            name="Strategic Advantage",
-            value="Knowledge of your vampire's lore grants combat bonus!",
+            name="Tactical Advantage",
+            value="Street knowledge grants combat bonus!",
             inline=False
         )
     
-    intro_embed.set_footer(text="The battle begins...")
+    intro_embed.set_footer(text="The confrontation begins...")
     
     await ctx.send(embed=intro_embed)
     await asyncio.sleep(3)
@@ -1048,8 +1134,8 @@ async def fight_character(ctx, character_id: str = None):
     battle_result = simulate_battle(
         player_char['name'], 
         player_char['power_level'],
-        ai_name,
-        ai_power,
+        rival_name,
+        rival_power,
         lore_revealed=lore_revealed
     )
     
@@ -1058,20 +1144,20 @@ async def fight_character(ctx, character_id: str = None):
     # Calculate death chance
     death_chance = calculate_death_chance(
         player_char['power_level'],
-        ai_power,
+        rival_power,
         player_won
     )
     
     # Roll for death
     death_roll = random.randint(1, 100)
-    vampire_dies = death_roll <= death_chance
+    member_dies = death_roll <= death_chance
     
     # Outcome embed
     if player_won:
-        if vampire_dies:
+        if member_dies:
             outcome_embed = discord.Embed(
-                title="PYRRHIC VICTORY",
-                description=f"**{player_char['name']}** defeated **{ai_name}**, but succumbed to fatal wounds",
+                title="CAUGHT A BODY BUT PAID THE PRICE",
+                description=f"**{player_char['name']}** eliminated **{rival_name}**, but was fatally wounded",
                 color=discord.Color.dark_red()
             )
             
@@ -1083,7 +1169,7 @@ async def fight_character(ctx, character_id: str = None):
             
             outcome_embed.add_field(
                 name="Final Moments",
-                value=f"Despite victory, {player_char['name']} collapses into ash",
+                value=f"Despite the victory, {player_char['name']} didn't make it",
                 inline=False
             )
             
@@ -1094,14 +1180,14 @@ async def fight_character(ctx, character_id: str = None):
             )
             
             if not player_char.get('has_been_reborn', False):
-                outcome_embed.set_footer(text=f"Use ?rebirth {character_id} to bring them back")
+                outcome_embed.set_footer(text=f"Use ?revive {character_id} to bring them back")
             else:
-                outcome_embed.set_footer(text="This vampire has already been reborn once and cannot be resurrected again")
+                outcome_embed.set_footer(text="This member already came back once and cannot be revived again")
             
-            dead_vampire = player_char.copy()
-            dead_vampire['death_date'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-            dead_vampire['killed_by'] = f"{ai_name} (Fatal Wounds)"
-            graveyard.append(dead_vampire)
+            dead_member = player_char.copy()
+            dead_member['death_date'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+            dead_member['killed_by'] = f"{rival_name} ({rival_set}) - Fatal Wounds"
+            graveyard.append(dead_member)
             save_graveyard(graveyard)
             
             del characters[character_id]
@@ -1109,8 +1195,8 @@ async def fight_character(ctx, character_id: str = None):
             
         else:
             outcome_embed = discord.Embed(
-                title="VICTORY",
-                description=f"**{player_char['name']}** has defeated **{ai_name}**",
+                title="BODY CAUGHT",
+                description=f"**{player_char['name']}** has eliminated **{rival_name}** from {rival_set}",
                 color=discord.Color.green()
             )
             
@@ -1122,7 +1208,7 @@ async def fight_character(ctx, character_id: str = None):
             
             if battle_result.get('lore_bonus_applied'):
                 outcome_embed.add_field(
-                    name="Lore Bonus Applied",
+                    name="Street Knowledge Applied",
                     value=f"Effective Power: {battle_result['effective_power']} (boosted from {player_char['power_level']})",
                     inline=False
                 )
@@ -1144,10 +1230,10 @@ async def fight_character(ctx, character_id: str = None):
             )
             
     else:
-        if vampire_dies:
+        if member_dies:
             outcome_embed = discord.Embed(
-                title="PERMANENT DEATH",
-                description=f"**{player_char['name']}** has been destroyed by **{ai_name}**",
+                title="CAUGHT SLIPPING",
+                description=f"**{player_char['name']}** was eliminated by **{rival_name}** from {rival_set}",
                 color=discord.Color.dark_red()
             )
             
@@ -1170,20 +1256,20 @@ async def fight_character(ctx, character_id: str = None):
             )
             
             outcome_embed.add_field(
-                name="The End",
-                value=f"{player_char['name']} has been staked through the heart and turned to ash",
+                name="RIP",
+                value=f"{player_char['name']} was caught lacking in enemy territory",
                 inline=False
             )
             
             if not player_char.get('has_been_reborn', False):
-                outcome_embed.set_footer(text=f"Use ?rebirth {character_id} to bring them back")
+                outcome_embed.set_footer(text=f"Use ?revive {character_id} to bring them back")
             else:
-                outcome_embed.set_footer(text="This vampire has already been reborn once and cannot be resurrected again")
+                outcome_embed.set_footer(text="This member already came back once and cannot be revived again")
             
-            dead_vampire = player_char.copy()
-            dead_vampire['death_date'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-            dead_vampire['killed_by'] = ai_name
-            graveyard.append(dead_vampire)
+            dead_member = player_char.copy()
+            dead_member['death_date'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+            dead_member['killed_by'] = f"{rival_name} ({rival_set})"
+            graveyard.append(dead_member)
             save_graveyard(graveyard)
             
             del characters[character_id]
@@ -1191,8 +1277,8 @@ async def fight_character(ctx, character_id: str = None):
             
         else:
             outcome_embed = discord.Embed(
-                title="DEFEAT - BUT ALIVE",
-                description=f"**{player_char['name']}** was defeated by **{ai_name}** but managed to escape",
+                title="TOOK AN L BUT SURVIVED",
+                description=f"**{player_char['name']}** was defeated by **{rival_name}** but managed to escape",
                 color=discord.Color.orange()
             )
             
@@ -1218,66 +1304,84 @@ async def fight_character(ctx, character_id: str = None):
                 inline=False
             )
             
-            outcome_embed.set_footer(text="Your vampire fled into the shadows, wounded but alive")
+            outcome_embed.set_footer(text="Your member got away but took an L")
     
     await ctx.send(embed=outcome_embed)
 
-# Revenge command - Battle the AI vampire that killed your vampire
+# Revenge command - Battle the rival that killed your gang member
 @bot.command(name='revenge')
 async def revenge_battle(ctx, dead_character_id: str = None, avenger_character_id: str = None):
-    """Take revenge on the AI that killed your vampire. Usage: ?revenge <dead_vampire_id> <avenger_vampire_id>"""
+    """Take revenge on the rival that killed your gang member. Usage: ?revenge <dead_member_id> <avenger_member_id>"""
     
     if dead_character_id is None or avenger_character_id is None:
-        await ctx.send("Usage: `?revenge <dead_vampire_id> <avenger_vampire_id>`\nExample: `?revenge 123456 789012`\n\nUse the ID of your dead vampire and the ID of the vampire you want to use for revenge!")
+        await ctx.send("Usage: `?revenge <dead_member_id> <avenger_member_id>`\nExample: `?revenge 123456 789012`\n\nUse the ID of your dead member and the ID of the member you want to use for revenge!")
         return
     
     user_id = str(ctx.author.id)
     
-    # Check if avenger vampire exists and is owned by user
+    # Check if avenger exists and is owned by user
     if avenger_character_id not in characters:
-        await ctx.send(f"Avenger vampire ID `{avenger_character_id}` not found!")
+        await ctx.send(f"Avenger member ID `{avenger_character_id}` not found!")
         return
     
     avenger_char = characters[avenger_character_id]
     
     if avenger_char.get('user_id') != user_id:
-        await ctx.send("You don't own this avenger vampire!")
+        await ctx.send("You don't own this avenger!")
         return
     
-    # Find the dead vampire in graveyard
+    # Find the dead member in graveyard
     current_graveyard = load_graveyard()
     
-    dead_vampire = None
-    for vamp in current_graveyard:
-        if vamp.get('character_id') == dead_character_id:
-            dead_vampire = vamp
+    dead_member = None
+    for member in current_graveyard:
+        if member.get('character_id') == dead_character_id:
+            dead_member = member
             break
     
-    if dead_vampire is None:
-        await ctx.send(f"No dead vampire with ID `{dead_character_id}` found in the graveyard!")
+    if dead_member is None:
+        await ctx.send(f"No dead member with ID `{dead_character_id}` found in the graveyard!")
         return
     
-    if dead_vampire.get('user_id') != user_id:
-        await ctx.send("The dead vampire doesn't belong to you!")
+    if dead_member.get('user_id') != user_id:
+        await ctx.send("The dead member doesn't belong to you!")
         return
     
-    # Check if the vampire was killed by an AI (not gang war or ritual)
-    killer_name = dead_vampire.get('killed_by', 'Unknown')
+    # Check if the member was killed by a rival (not crew war or merge)
+    killer_name = dead_member.get('killed_by', 'Unknown')
     
-    if killer_name == "Gang War":
-        await ctx.send(f"**{dead_vampire['name']}** was killed in a gang war, not by a specific AI vampire. Revenge is not available for gang war deaths.")
+    if "Crew War" in killer_name:
+        await ctx.send(f"**{dead_member['name']}** was killed in a crew war, not by a specific rival. Revenge is not available for crew war deaths.")
         return
     
-    if killer_name == "Blood Transfer Ritual":
-        await ctx.send(f"**{dead_vampire['name']}** was sacrificed in a blood transfer ritual. Revenge is not available for ritual sacrifices.")
+    if "Merge Operation" in killer_name or "Blood Merge" in killer_name:
+        await ctx.send(f"**{dead_member['name']}** was sacrificed in a merge operation. Revenge is not available for merges.")
         return
     
-    if "(Fatal Wounds)" in killer_name:
+    if "(Fatal Wounds)" in killer_name or "- Fatal Wounds" in killer_name:
         # Extract the actual killer name
-        killer_name = killer_name.replace(" (Fatal Wounds)", "").strip()
+        killer_name = killer_name.replace(" (Fatal Wounds)", "").replace(" - Fatal Wounds", "").strip()
+        # Try to extract set name if present
+        if "(" in killer_name and ")" in killer_name:
+            killer_name = killer_name.split("(")[0].strip()
     
-    # Recreate the AI opponent with the same name but new random power
-    ai_power = generate_ai_power()
+    # Recreate the rival with the same name but new random power
+    rival_power = generate_street_power()
+    
+    # Try to extract rival gang/set from killer name
+    rival_gang = "Unknown Gang"
+    rival_set = "Unknown Set"
+    if "(" in dead_member.get('killed_by', '') and ")" in dead_member.get('killed_by', ''):
+        try:
+            set_info = dead_member['killed_by'].split("(")[1].split(")")[0]
+            rival_set = set_info
+            # Try to match to known gangs
+            for gang, info in LA_GANGS.items():
+                if rival_set in info['sets']:
+                    rival_gang = gang
+                    break
+        except:
+            pass
     
     # Check lore status of avenger
     lore_revealed = False
@@ -1289,72 +1393,72 @@ async def revenge_battle(ctx, dead_character_id: str = None, avenger_character_i
     if lore_revealed:
         effective_power = int(avenger_char['power_level'] * random.uniform(1.05, 1.15))
     
-    power_diff = ai_power - effective_power
+    power_diff = rival_power - effective_power
     
     if power_diff > 600:
-        threat_level = "EXTREMELY DANGEROUS OPPONENT"
+        threat_level = "EXTREMELY DANGEROUS OPP"
         threat_color = discord.Color.dark_red()
     elif power_diff > 300:
-        threat_level = "DANGEROUS OPPONENT"
+        threat_level = "DANGEROUS OPP"
         threat_color = discord.Color.red()
     elif power_diff > 100:
-        threat_level = "TOUGH CHALLENGER"
+        threat_level = "TOUGH OPPOSITION"
         threat_color = discord.Color.orange()
     elif power_diff > -100:
         threat_level = "EVEN MATCH"
         threat_color = discord.Color.gold()
     elif power_diff > -300:
-        threat_level = "FAVORABLE MATCHUP"
+        threat_level = "FAVORABLE ODDS"
         threat_color = discord.Color.green()
     else:
         threat_level = "EASY TARGET"
         threat_color = discord.Color.dark_green()
     
-    # Determine AI tier
-    if ai_power <= 400:
-        ai_tier = "Fledgling"
-    elif ai_power <= 1000:
-        ai_tier = "Experienced"
-    elif ai_power <= 1600:
-        ai_tier = "Ancient"
+    # Determine rival tier
+    if rival_power <= 400:
+        rival_tier = "Young Hustler"
+    elif rival_power <= 1000:
+        rival_tier = "Seasoned Banger"
+    elif rival_power <= 1600:
+        rival_tier = "OG"
     else:
-        ai_tier = "Primordial"
+        rival_tier = "Shot Caller"
     
     # Revenge intro embed
     intro_embed = discord.Embed(
-        title="REVENGE BATTLE",
-        description=f"**{avenger_char['name']}** seeks vengeance for the death of **{dead_vampire['name']}**\n\nThe killer, **{killer_name}**, emerges from the shadows...\n\n{threat_level}",
+        title="REVENGE MISSION",
+        description=f"**{avenger_char['name']}** seeks vengeance for **{dead_member['name']}**\n\nThe killer, **{killer_name}**, has been located...\n\n{threat_level}",
         color=threat_color
     )
     
-    lore_indicator = " [LORE BONUS]" if lore_revealed else ""
+    lore_indicator = " [STREET KNOWLEDGE]" if lore_revealed else ""
     
     intro_embed.add_field(
         name=f"{avenger_char['name']} (AVENGER)",
-        value=f"Power: **{avenger_char['power_level']}**{lore_indicator}\nRecord: {avenger_char.get('wins', 0)}-{avenger_char.get('losses', 0)}",
+        value=f"Power: **{avenger_char['power_level']}**{lore_indicator}\nGang: {avenger_char.get('gang_affiliation', 'Unknown')}\nRecord: {avenger_char.get('wins', 0)}-{avenger_char.get('losses', 0)}",
         inline=True
     )
     
     intro_embed.add_field(
         name=f"{killer_name} (KILLER)",
-        value=f"Power: **{ai_power}**\nTier: {ai_tier}",
+        value=f"Power: **{rival_power}**\nGang: {rival_gang}\nSet: {rival_set}\nRank: {rival_tier}",
         inline=True
     )
     
     intro_embed.add_field(
-        name="Fallen Comrade",
-        value=f"{dead_vampire['name']} (Power: {dead_vampire['power_level']})\nKilled on: {dead_vampire.get('death_date', 'Unknown')}",
+        name="Fallen Homie",
+        value=f"{dead_member['name']} (Power: {dead_member['power_level']})\nKilled on: {dead_member.get('death_date', 'Unknown')}",
         inline=False
     )
     
     if lore_revealed:
         intro_embed.add_field(
-            name="Strategic Advantage",
-            value="Knowledge of your vampire's lore grants combat bonus!",
+            name="Tactical Advantage",
+            value="Street knowledge grants combat bonus!",
             inline=False
         )
     
-    intro_embed.set_footer(text="The battle for revenge begins...")
+    intro_embed.set_footer(text="The revenge mission begins...")
     
     await ctx.send(embed=intro_embed)
     await asyncio.sleep(3)
@@ -1364,7 +1468,7 @@ async def revenge_battle(ctx, dead_character_id: str = None, avenger_character_i
         avenger_char['name'], 
         avenger_char['power_level'],
         killer_name,
-        ai_power,
+        rival_power,
         lore_revealed=lore_revealed
     )
     
@@ -1373,20 +1477,20 @@ async def revenge_battle(ctx, dead_character_id: str = None, avenger_character_i
     # Calculate death chance
     death_chance = calculate_death_chance(
         avenger_char['power_level'],
-        ai_power,
+        rival_power,
         player_won
     )
     
     # Roll for death
     death_roll = random.randint(1, 100)
-    vampire_dies = death_roll <= death_chance
+    member_dies = death_roll <= death_chance
     
     # Outcome embed
     if player_won:
-        if vampire_dies:
+        if member_dies:
             outcome_embed = discord.Embed(
-                title="REVENGE ACHIEVED - BUT AT A COST",
-                description=f"**{avenger_char['name']}** destroyed **{killer_name}**, avenging **{dead_vampire['name']}**, but succumbed to fatal wounds",
+                title="REVENGE COMPLETE - BUT AT A COST",
+                description=f"**{avenger_char['name']}** eliminated **{killer_name}**, avenging **{dead_member['name']}**, but was fatally wounded",
                 color=discord.Color.dark_red()
             )
             
@@ -1398,7 +1502,7 @@ async def revenge_battle(ctx, dead_character_id: str = None, avenger_character_i
             
             if battle_result.get('lore_bonus_applied'):
                 outcome_embed.add_field(
-                    name="Lore Bonus Applied",
+                    name="Street Knowledge Applied",
                     value=f"Effective Power: {battle_result['effective_power']} (boosted from {avenger_char['power_level']})",
                     inline=False
                 )
@@ -1411,7 +1515,7 @@ async def revenge_battle(ctx, dead_character_id: str = None, avenger_character_i
             
             outcome_embed.add_field(
                 name="Final Moments",
-                value=f"{avenger_char['name']} fulfilled their vendetta but paid the ultimate price",
+                value=f"{avenger_char['name']} avenged their fallen homie but paid the ultimate price",
                 inline=False
             )
             
@@ -1422,9 +1526,9 @@ async def revenge_battle(ctx, dead_character_id: str = None, avenger_character_i
             )
             
             if not avenger_char.get('has_been_reborn', False):
-                outcome_embed.set_footer(text=f"Use ?rebirth {avenger_character_id} to bring them back")
+                outcome_embed.set_footer(text=f"Use ?revive {avenger_character_id} to bring them back")
             else:
-                outcome_embed.set_footer(text="This vampire has already been reborn once and cannot be resurrected again")
+                outcome_embed.set_footer(text="This member already came back once and cannot be revived again")
             
             dead_avenger = avenger_char.copy()
             dead_avenger['death_date'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
@@ -1438,7 +1542,7 @@ async def revenge_battle(ctx, dead_character_id: str = None, avenger_character_i
         else:
             outcome_embed = discord.Embed(
                 title="REVENGE COMPLETE",
-                description=f"**{avenger_char['name']}** has destroyed **{killer_name}**, avenging **{dead_vampire['name']}**!",
+                description=f"**{avenger_char['name']}** has eliminated **{killer_name}**, avenging **{dead_member['name']}**!",
                 color=discord.Color.green()
             )
             
@@ -1450,7 +1554,7 @@ async def revenge_battle(ctx, dead_character_id: str = None, avenger_character_i
             
             if battle_result.get('lore_bonus_applied'):
                 outcome_embed.add_field(
-                    name="Lore Bonus Applied",
+                    name="Street Knowledge Applied",
                     value=f"Effective Power: {battle_result['effective_power']} (boosted from {avenger_char['power_level']})",
                     inline=False
                 )
@@ -1463,7 +1567,7 @@ async def revenge_battle(ctx, dead_character_id: str = None, avenger_character_i
             
             outcome_embed.add_field(
                 name="Vengeance",
-                value=f"{dead_vampire['name']} has been avenged! {killer_name} has been destroyed!",
+                value=f"{dead_member['name']} has been avenged! {killer_name} is dead!",
                 inline=False
             )
             
@@ -1478,10 +1582,10 @@ async def revenge_battle(ctx, dead_character_id: str = None, avenger_character_i
             )
             
     else:
-        if vampire_dies:
+        if member_dies:
             outcome_embed = discord.Embed(
-                title="REVENGE FAILED - PERMANENT DEATH",
-                description=f"**{avenger_char['name']}** has been destroyed by **{killer_name}**\n\n{dead_vampire['name']} remains unavenged...",
+                title="REVENGE FAILED - ELIMINATED",
+                description=f"**{avenger_char['name']}** was eliminated by **{killer_name}**\n\n{dead_member['name']} remains unavenged...",
                 color=discord.Color.dark_red()
             )
             
@@ -1504,15 +1608,15 @@ async def revenge_battle(ctx, dead_character_id: str = None, avenger_character_i
             )
             
             outcome_embed.add_field(
-                name="The End",
-                value=f"{avenger_char['name']} fell to the same killer that destroyed {dead_vampire['name']}",
+                name="RIP",
+                value=f"{avenger_char['name']} fell to the same killer that got {dead_member['name']}",
                 inline=False
             )
             
             if not avenger_char.get('has_been_reborn', False):
-                outcome_embed.set_footer(text=f"Use ?rebirth {avenger_character_id} to bring them back")
+                outcome_embed.set_footer(text=f"Use ?revive {avenger_character_id} to bring them back")
             else:
-                outcome_embed.set_footer(text="This vampire has already been reborn once and cannot be resurrected again")
+                outcome_embed.set_footer(text="This member already came back once and cannot be revived again")
             
             dead_avenger = avenger_char.copy()
             dead_avenger['death_date'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
@@ -1526,7 +1630,7 @@ async def revenge_battle(ctx, dead_character_id: str = None, avenger_character_i
         else:
             outcome_embed = discord.Embed(
                 title="REVENGE FAILED - RETREAT",
-                description=f"**{avenger_char['name']}** was defeated by **{killer_name}** but managed to escape\n\n{dead_vampire['name']} remains unavenged...",
+                description=f"**{avenger_char['name']}** was defeated by **{killer_name}** but managed to escape\n\n{dead_member['name']} remains unavenged...",
                 color=discord.Color.orange()
             )
             
@@ -1552,320 +1656,345 @@ async def revenge_battle(ctx, dead_character_id: str = None, avenger_character_i
                 inline=False
             )
             
-            outcome_embed.set_footer(text=f"{avenger_char['name']} fled into the shadows, wounded and defeated")
+            outcome_embed.set_footer(text=f"{avenger_char['name']} got away but took an L")
     
     await ctx.send(embed=outcome_embed)
 
-# Transfer command - Sacrifice two vampires to create a hybrid
-@bot.command(name='transfer')
-async def transfer_vampires(ctx, vampire1_id: str = None, vampire2_id: str = None):
-    """Sacrifice two of your vampires to create a powerful hybrid. Usage: ?transfer <id1> <id2>"""
+# Merge command - Combine two gang members to create a more powerful member
+@bot.command(name='merge')
+async def merge_members(ctx, member1_id: str = None, member2_id: str = None):
+    """Merge two gang members to create a more powerful member. Usage: ?merge <id1> <id2>"""
     
-    if vampire1_id is None or vampire2_id is None:
-        await ctx.send("Usage: `?transfer <vampire1_id> <vampire2_id>`\nExample: `?transfer 123456 789012`\n\nBoth vampires will be sacrificed to create a powerful hybrid!")
+    if member1_id is None or member2_id is None:
+        await ctx.send("Usage: `?merge <member1_id> <member2_id>`\nExample: `?merge 123456 789012`\n\nBoth members will be merged to create a more powerful gang member!")
         return
     
-    if vampire1_id == vampire2_id:
-        await ctx.send("You cannot transfer a vampire with itself!")
+    if member1_id == member2_id:
+        await ctx.send("You cannot merge a member with themselves!")
         return
     
     user_id = str(ctx.author.id)
     
-    if vampire1_id not in characters:
-        await ctx.send(f"Vampire ID `{vampire1_id}` not found!")
+    if member1_id not in characters:
+        await ctx.send(f"Gang member ID `{member1_id}` not found!")
         return
     
-    if vampire2_id not in characters:
-        await ctx.send(f"Vampire ID `{vampire2_id}` not found!")
+    if member2_id not in characters:
+        await ctx.send(f"Gang member ID `{member2_id}` not found!")
         return
     
-    vampire1 = characters[vampire1_id]
-    vampire2 = characters[vampire2_id]
+    member1 = characters[member1_id]
+    member2 = characters[member2_id]
     
-    if vampire1.get('user_id') != user_id:
-        await ctx.send(f"You don't own the vampire with ID `{vampire1_id}`!")
+    if member1.get('user_id') != user_id:
+        await ctx.send(f"You don't own the member with ID `{member1_id}`!")
         return
     
-    if vampire2.get('user_id') != user_id:
-        await ctx.send(f"You don't own the vampire with ID `{vampire2_id}`!")
+    if member2.get('user_id') != user_id:
+        await ctx.send(f"You don't own the member with ID `{member2_id}`!")
         return
     
     ritual_embed = discord.Embed(
-        title="BLOOD TRANSFER RITUAL",
-        description=f"**{vampire1['name']}** and **{vampire2['name']}** begin the forbidden ritual...\n\nTheir blood mingles in darkness...",
+        title="BLOOD MERGE OPERATION",
+        description=f"**{member1['name']}** and **{member2['name']}** begin the merge ritual...\n\nTwo become one...",
         color=discord.Color.dark_purple()
     )
     
     ritual_embed.add_field(
-        name=f"{vampire1['name']}",
-        value=f"Power: {vampire1['power_level']}\nRecord: {vampire1.get('wins', 0)}-{vampire1.get('losses', 0)}",
+        name=f"{member1['name']}",
+        value=f"Power: {member1['power_level']}\nGang: {member1.get('gang_affiliation', 'Unknown')}\nRecord: {member1.get('wins', 0)}-{member1.get('losses', 0)}",
         inline=True
     )
     
     ritual_embed.add_field(
-        name=f"{vampire2['name']}",
-        value=f"Power: {vampire2['power_level']}\nRecord: {vampire2.get('wins', 0)}-{vampire2.get('losses', 0)}",
+        name=f"{member2['name']}",
+        value=f"Power: {member2['power_level']}\nGang: {member2.get('gang_affiliation', 'Unknown')}\nRecord: {member2.get('wins', 0)}-{member2.get('losses', 0)}",
         inline=True
     )
     
-    ritual_embed.set_footer(text="Both vampires will be sacrificed...")
+    ritual_embed.set_footer(text="Both members will be sacrificed...")
     
     await ctx.send(embed=ritual_embed)
     await asyncio.sleep(4)
     
     first_name = random.choice(FIRST_NAMES)
     last_name = random.choice(LAST_NAMES)
-    hybrid_name = f"{first_name} {last_name}"
+    nickname = last_name[:3].upper()
+    merged_name = f"{first_name} '{nickname}' {last_name}"
     
-    hybrid_id = generate_unique_id()
+    merged_id = generate_unique_id()
     
-    combined_power = vampire1['power_level'] + vampire2['power_level']
-    ritual_bonus = random.randint(200, 600)
-    hybrid_power = combined_power + ritual_bonus
+    combined_power = member1['power_level'] + member2['power_level']
+    merge_bonus = random.randint(200, 600)
+    merged_power = combined_power + merge_bonus
     
-    if hybrid_power > 2000:
-        hybrid_power = 2000
+    if merged_power > 2000:
+        merged_power = 2000
         actual_bonus = 2000 - combined_power
     else:
-        actual_bonus = ritual_bonus
+        actual_bonus = merge_bonus
     
-    total_wins = vampire1.get('wins', 0) + vampire2.get('wins', 0)
+    total_wins = member1.get('wins', 0) + member2.get('wins', 0)
     total_losses = 0
     
-    has_been_reborn = vampire1.get('has_been_reborn', False) or vampire2.get('has_been_reborn', False)
+    has_been_reborn = member1.get('has_been_reborn', False) or member2.get('has_been_reborn', False)
     
-    # Generate hybrid lore
-    hybrid_lore = generate_vampire_lore(hybrid_name, hybrid_power)
+    # Use gang affiliation from stronger member
+    if member1['power_level'] > member2['power_level']:
+        merged_gang = member1.get('gang_affiliation', 'Crips')
+        merged_set = member1.get('set_name', 'Unknown Set')
+    else:
+        merged_gang = member2.get('gang_affiliation', 'Crips')
+        merged_set = member2.get('set_name', 'Unknown Set')
     
-    hybrid_data = {
-        "character_id": hybrid_id,
-        "name": hybrid_name,
+    # Generate merged member lore
+    merged_lore = generate_gang_lore(merged_name, merged_power, merged_gang, merged_set)
+    
+    merged_data = {
+        "character_id": merged_id,
+        "name": merged_name,
         "username": str(ctx.author),
         "user_id": user_id,
-        "power_level": hybrid_power,
+        "power_level": merged_power,
         "wins": total_wins,
         "losses": total_losses,
         "has_been_reborn": has_been_reborn,
-        "is_hybrid": True,
-        "parent1_name": vampire1['name'],
-        "parent2_name": vampire2['name'],
-        "parent1_id": vampire1_id,
-        "parent2_id": vampire2_id,
-        "lore": hybrid_lore,
+        "is_merged": True,
+        "parent1_name": member1['name'],
+        "parent2_name": member2['name'],
+        "parent1_id": member1_id,
+        "parent2_id": member2_id,
+        "gang_affiliation": merged_gang,
+        "set_name": merged_set,
+        "lore": merged_lore,
         "created_at": datetime.now().strftime('%Y-%m-%d %H:%M:%S')
     }
     
-    dead_vamp1 = vampire1.copy()
-    dead_vamp1['death_date'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-    dead_vamp1['killed_by'] = "Blood Transfer Ritual"
+    dead_member1 = member1.copy()
+    dead_member1['death_date'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    dead_member1['killed_by'] = "Blood Merge Operation"
     
-    dead_vamp2 = vampire2.copy()
-    dead_vamp2['death_date'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-    dead_vamp2['killed_by'] = "Blood Transfer Ritual"
+    dead_member2 = member2.copy()
+    dead_member2['death_date'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    dead_member2['killed_by'] = "Blood Merge Operation"
     
     current_graveyard = load_graveyard()
-    current_graveyard.append(dead_vamp1)
-    current_graveyard.append(dead_vamp2)
+    current_graveyard.append(dead_member1)
+    current_graveyard.append(dead_member2)
     save_graveyard(current_graveyard)
     
-    del characters[vampire1_id]
-    del characters[vampire2_id]
+    del characters[member1_id]
+    del characters[member2_id]
     
-    characters[hybrid_id] = hybrid_data
+    characters[merged_id] = merged_data
     save_characters(characters)
     
-    if hybrid_power <= 400:
-        tier = "Fledgling"
+    if merged_power <= 400:
+        tier = "Young Hustler"
         tier_color = discord.Color.dark_grey()
-    elif hybrid_power <= 1000:
-        tier = "Experienced"
+    elif merged_power <= 1000:
+        tier = "Seasoned Banger"
         tier_color = discord.Color.blue()
-    elif hybrid_power <= 1600:
-        tier = "Ancient"
+    elif merged_power <= 1600:
+        tier = "OG"
         tier_color = discord.Color.purple()
     else:
-        tier = "Primordial"
+        tier = "Shot Caller"
         tier_color = discord.Color.gold()
     
+    # Get gang color
+    gang_color = LA_GANGS.get(merged_gang, {}).get('color', discord.Color.blue())
+    
     success_embed = discord.Embed(
-        title="HYBRID VAMPIRE BORN",
-        description=f"The ritual is complete! **{hybrid_name}** emerges from the crimson flames!",
-        color=tier_color
+        title="MERGED GANG MEMBER CREATED",
+        description=f"The merge is complete! **{merged_name}** emerges as a more powerful member!",
+        color=gang_color
     )
     
     success_embed.add_field(
-        name="Hybrid Name",
-        value=hybrid_name,
+        name="Merged Name",
+        value=merged_name,
         inline=False
     )
     
     success_embed.add_field(
         name="New ID",
-        value=f"`{hybrid_id}`",
+        value=f"`{merged_id}`",
         inline=False
     )
     
     success_embed.add_field(
         name="Power Fusion",
-        value=f"{vampire1['power_level']} + {vampire2['power_level']} + {actual_bonus} (ritual bonus) = **{hybrid_power}**",
+        value=f"{member1['power_level']} + {member2['power_level']} + {actual_bonus} (merge bonus) = **{merged_power}**",
         inline=False
     )
     
     success_embed.add_field(
-        name="Tier",
+        name="Gang Affiliation",
+        value=f"{merged_gang} - {merged_set}",
+        inline=False
+    )
+    
+    success_embed.add_field(
+        name="Rank",
         value=tier,
         inline=True
     )
     
     success_embed.add_field(
-        name="Combined Victories",
+        name="Combined Wins",
         value=f"Total Wins: {total_wins}",
         inline=True
     )
     
     success_embed.add_field(
         name="Sacrificed",
-        value=f"{vampire1['name']}\n{vampire2['name']}",
+        value=f"{member1['name']}\n{member2['name']}",
         inline=False
     )
     
     success_embed.add_field(
-        name="New Lore",
-        value=f"Use `?lore {hybrid_id}` to discover the hybrid's dark history",
+        name="New History",
+        value=f"Use `?lore {merged_id}` to discover the merged member's street story",
         inline=False
     )
     
     if has_been_reborn:
         success_embed.add_field(
             name="WARNING",
-            value="This hybrid inherited rebirth status and CANNOT be reborn if killed",
+            value="This merged member inherited revival status and CANNOT be revived if killed",
             inline=False
         )
     else:
         success_embed.add_field(
-            name="Rebirth Status",
-            value="This hybrid can be reborn once if killed",
+            name="Revival Status",
+            value="This merged member can be revived once if killed",
             inline=False
         )
     
-    success_embed.set_footer(text="A new apex predator has been created")
+    success_embed.set_footer(text="A more powerful soldier has been created")
     
     await ctx.send(embed=success_embed)
 
-# Rebirth command - Bring a dead vampire back to life with more power (ONE TIME ONLY)
-@bot.command(name='rebirth')
-async def rebirth_vampire(ctx, character_id: str = None):
-    """Resurrect a fallen vampire with increased power (ONE TIME ONLY). Usage: ?rebirth <character_id>"""
+# Revive command - Bring a dead gang member back with more power (ONE TIME ONLY)
+@bot.command(name='revive')
+async def revive_member(ctx, character_id: str = None):
+    """Revive a fallen gang member with increased power (ONE TIME ONLY). Usage: ?revive <character_id>"""
     
     if character_id is None:
-        await ctx.send("Usage: `?rebirth <character_id>`\nExample: `?rebirth 123456`")
+        await ctx.send("Usage: `?revive <character_id>`\nExample: `?revive 123456`")
         return
     
     user_id = str(ctx.author.id)
     
     current_graveyard = load_graveyard()
     
-    dead_vampire = None
+    dead_member = None
     graveyard_index = None
     
-    for idx, vamp in enumerate(current_graveyard):
-        if vamp.get('character_id') == character_id:
-            dead_vampire = vamp
+    for idx, member in enumerate(current_graveyard):
+        if member.get('character_id') == character_id:
+            dead_member = member
             graveyard_index = idx
             break
     
-    if dead_vampire is None:
-        await ctx.send(f"No dead vampire with ID `{character_id}` found in the graveyard!")
+    if dead_member is None:
+        await ctx.send(f"No dead member with ID `{character_id}` found in the graveyard!")
         return
     
-    if dead_vampire.get('user_id') != user_id:
-        await ctx.send("You don't own this vampire!")
+    if dead_member.get('user_id') != user_id:
+        await ctx.send("You don't own this member!")
         return
     
-    if dead_vampire.get('has_been_reborn', False):
-        await ctx.send(f"**{dead_vampire['name']}** has already been reborn once and cannot be resurrected again!\n\nEach vampire can only be reborn ONE time. Use `?make` to create a new vampire.")
+    if dead_member.get('has_been_reborn', False):
+        await ctx.send(f"**{dead_member['name']}** already came back once and cannot be revived again!\n\nEach member can only be revived ONE time. Use `?make` to create a new member.")
         return
     
     ritual_embed = discord.Embed(
-        title="REBIRTH RITUAL",
-        description=f"Ancient blood magic awakens **{dead_vampire['name']}** from eternal slumber...",
+        title="REVIVAL OPERATION",
+        description=f"Street doctors work to bring back **{dead_member['name']}** from the dead...",
         color=discord.Color.dark_purple()
     )
     
     ritual_embed.add_field(
         name="Former Power",
-        value=f"{dead_vampire['power_level']}",
+        value=f"{dead_member['power_level']}",
         inline=True
     )
     
     ritual_embed.add_field(
         name="Previous Record",
-        value=f"{dead_vampire.get('wins', 0)}-{dead_vampire.get('losses', 0)}",
+        value=f"{dead_member.get('wins', 0)}-{dead_member.get('losses', 0)}",
         inline=True
     )
     
-    ritual_embed.set_footer(text="The ritual begins...")
+    ritual_embed.set_footer(text="The operation begins...")
     
     await ctx.send(embed=ritual_embed)
     await asyncio.sleep(3)
     
     base_boost = random.randint(200, 500)
-    percentage_boost = int(dead_vampire['power_level'] * 0.15)
+    percentage_boost = int(dead_member['power_level'] * 0.15)
     total_boost = base_boost + percentage_boost
     
-    new_power = dead_vampire['power_level'] + total_boost
+    new_power = dead_member['power_level'] + total_boost
     
     if new_power > 2000:
         new_power = 2000
-        total_boost = 2000 - dead_vampire['power_level']
+        total_boost = 2000 - dead_member['power_level']
     
     new_character_id = generate_unique_id()
     
-    reborn_data = {
+    revived_data = {
         "character_id": new_character_id,
-        "name": dead_vampire['name'],
-        "username": dead_vampire.get('username'),
+        "name": dead_member['name'],
+        "username": dead_member.get('username'),
         "user_id": user_id,
         "power_level": new_power,
-        "wins": dead_vampire.get('wins', 0),
-        "losses": dead_vampire.get('losses', 0),
+        "wins": dead_member.get('wins', 0),
+        "losses": dead_member.get('losses', 0),
         "has_been_reborn": True,
-        "is_hybrid": dead_vampire.get('is_hybrid', False),
-        "lore": dead_vampire.get('lore', {}),
+        "is_merged": dead_member.get('is_merged', False),
+        "gang_affiliation": dead_member.get('gang_affiliation', 'Crips'),
+        "set_name": dead_member.get('set_name', 'Unknown Set'),
+        "lore": dead_member.get('lore', {}),
         "original_id": character_id,
         "created_at": datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
-        "reborn_at": datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        "revived_at": datetime.now().strftime('%Y-%m-%d %H:%M:%S')
     }
     
-    if dead_vampire.get('is_hybrid', False):
-        reborn_data['parent1_name'] = dead_vampire.get('parent1_name')
-        reborn_data['parent2_name'] = dead_vampire.get('parent2_name')
-        reborn_data['parent1_id'] = dead_vampire.get('parent1_id')
-        reborn_data['parent2_id'] = dead_vampire.get('parent2_id')
+    if dead_member.get('is_merged', False):
+        revived_data['parent1_name'] = dead_member.get('parent1_name')
+        revived_data['parent2_name'] = dead_member.get('parent2_name')
+        revived_data['parent1_id'] = dead_member.get('parent1_id')
+        revived_data['parent2_id'] = dead_member.get('parent2_id')
     
-    characters[new_character_id] = reborn_data
+    characters[new_character_id] = revived_data
     save_characters(characters)
     
     current_graveyard.pop(graveyard_index)
     save_graveyard(current_graveyard)
     
     if new_power <= 400:
-        tier = "Fledgling"
+        tier = "Young Hustler"
         tier_color = discord.Color.dark_grey()
     elif new_power <= 1000:
-        tier = "Experienced"
+        tier = "Seasoned Banger"
         tier_color = discord.Color.blue()
     elif new_power <= 1600:
-        tier = "Ancient"
+        tier = "OG"
         tier_color = discord.Color.purple()
     else:
-        tier = "Primordial"
+        tier = "Shot Caller"
         tier_color = discord.Color.gold()
     
+    # Get gang color
+    gang_color = LA_GANGS.get(revived_data['gang_affiliation'], {}).get('color', discord.Color.blue())
+    
     success_embed = discord.Embed(
-        title="RESURRECTION COMPLETE",
-        description=f"**{dead_vampire['name']}** rises from the ashes, reborn with ancient power!",
-        color=tier_color
+        title="REVIVAL SUCCESSFUL",
+        description=f"**{dead_member['name']}** is back on the streets, stronger than ever!",
+        color=gang_color
     )
     
     success_embed.add_field(
@@ -1876,37 +2005,37 @@ async def rebirth_vampire(ctx, character_id: str = None):
     
     success_embed.add_field(
         name="Power Increase",
-        value=f"{dead_vampire['power_level']} → **{new_power}** (+{total_boost})",
+        value=f"{dead_member['power_level']} → **{new_power}** (+{total_boost})",
         inline=False
     )
     
     success_embed.add_field(
-        name="New Tier",
+        name="New Rank",
         value=tier,
         inline=True
     )
     
     success_embed.add_field(
         name="Retained Record",
-        value=f"{dead_vampire.get('wins', 0)}-{dead_vampire.get('losses', 0)}",
+        value=f"{dead_member.get('wins', 0)}-{dead_member.get('losses', 0)}",
         inline=True
     )
     
     # Check if lore was revealed
-    if 'lore' in dead_vampire and dead_vampire['lore'].get('lore_revealed', False):
+    if 'lore' in dead_member and dead_member['lore'].get('lore_revealed', False):
         success_embed.add_field(
-            name="Lore Preserved",
-            value="Ancient knowledge retained through rebirth - combat bonus still active!",
+            name="Street Knowledge Preserved",
+            value="Street history retained - combat bonus still active!",
             inline=False
         )
     
     success_embed.add_field(
         name="WARNING",
-        value="This vampire has used their ONE rebirth. If they die again, they cannot be resurrected.",
+        value="This member has used their ONE revival. If they die again, they cannot be brought back.",
         inline=False
     )
     
-    success_embed.set_footer(text="Your vampire has returned stronger than ever")
+    success_embed.set_footer(text="Your member is back in the game")
     
     await ctx.send(embed=success_embed)
 
