@@ -20,6 +20,9 @@ CHARACTERS_FILE = 'characters.json'
 GRAVEYARD_FILE = 'graveyard.json'
 COVENS_FILE = 'covens.json'
 
+# Admin user IDs (add your Discord user ID here)
+ADMIN_IDS = []  # Add admin Discord IDs here, e.g., ["123456789012345678", "987654321098765432"]
+
 # Vampire abilities pool with power ratings
 SKILLS = {
     "Blood Manipulation": {"offensive": 8, "defensive": 6},
@@ -292,6 +295,10 @@ def generate_unique_coven_id():
         if new_id not in existing_ids:
             return new_id
 
+# Check if user is admin
+def is_admin(user_id):
+    return str(user_id) in ADMIN_IDS
+
 characters = load_characters()
 graveyard = load_graveyard()
 covens = load_covens()
@@ -309,46 +316,12 @@ async def globally_block_dms(ctx):
         return False
     return True
 
-# Make command - Creates a vampire
+# Make command - Creates a vampire (INFINITE VAMPIRES)
 @bot.command(name='make')
 async def make_character(ctx):
     """Generate a unique vampire with random abilities and power level"""
     
     user_id = str(ctx.author.id)
-    
-    # Check if user already has a vampire
-    if user_id in characters:
-        char = characters[user_id]
-        
-        # Display existing vampire
-        embed = discord.Embed(
-            title=char['name'],
-            description=f"Owner: {ctx.author.name}\nID: `{char['character_id']}`\nRace: Vampire",
-            color=discord.Color.dark_red()
-        )
-        
-        embed.add_field(name="Blood Power", value=f"{char['power_level']}", inline=False)
-        
-        # Add rank
-        rank = get_vampire_rank(char['power_level'])
-        embed.add_field(name="Rank", value=f"{rank}", inline=False)
-        
-        # Show coven if in one
-        if char.get('coven_id'):
-            coven_data = covens.get(char['coven_id'])
-            if coven_data:
-                embed.add_field(name="Coven", value=f"{coven_data['name']}", inline=False)
-        
-        skills_text = "\n".join([f"- {skill}" for skill in char['skills']])
-        embed.add_field(name="Vampiric Abilities", value=skills_text, inline=False)
-        
-        # Show record
-        wins = char.get('wins', 0)
-        losses = char.get('losses', 0)
-        embed.add_field(name="Battle Record", value=f"{wins}-{losses}", inline=False)
-        
-        await ctx.send(embed=embed)
-        return
     
     # Generate random vampire name
     first_name = random.choice(FIRST_NAMES)
@@ -365,7 +338,7 @@ async def make_character(ctx):
     num_skills = random.randint(3, 5)
     selected_skills = random.sample(list(SKILLS.keys()), num_skills)
     
-    # Create vampire data
+    # Create vampire data with unique ID as key
     character_data = {
         "character_id": character_id,
         "name": character_name,
@@ -379,8 +352,8 @@ async def make_character(ctx):
         "created_at": datetime.now().strftime('%Y-%m-%d %H:%M:%S')
     }
     
-    # Save vampire
-    characters[user_id] = character_data
+    # Save vampire with character_id as key (allows infinite vampires per user)
+    characters[character_id] = character_data
     save_characters(characters)
     
     # Display new vampire
@@ -402,26 +375,30 @@ async def make_character(ctx):
     # Show initial record
     embed.add_field(name="Battle Record", value="0-0", inline=False)
     
+    embed.set_footer(text="Use this ID for commands: ?show, ?train, ?fight")
+    
     await ctx.send(embed=embed)
 
-# Show command - Shows your vampire
+# Show command - Shows a vampire by ID
 @bot.command(name='show')
-async def show_character(ctx):
-    """Show your vampire"""
+async def show_character(ctx, character_id: str = None):
+    """Show a vampire by ID. Usage: ?show <character_id>"""
     
-    user_id = str(ctx.author.id)
-    
-    # Check if user has a vampire
-    if user_id not in characters:
-        await ctx.send("You don't have a vampire yet! Use `?make` to create one.")
+    if character_id is None:
+        await ctx.send("Usage: `?show <character_id>`\nExample: `?show 123456`")
         return
     
-    char = characters[user_id]
+    # Check if vampire exists
+    if character_id not in characters:
+        await ctx.send(f"Vampire ID `{character_id}` not found!")
+        return
+    
+    char = characters[character_id]
     
     # Display vampire
     embed = discord.Embed(
         title=char['name'],
-        description=f"Owner: {ctx.author.name}\nID: `{char['character_id']}`\nRace: Vampire",
+        description=f"Owner: {char.get('username', 'Unknown')}\nID: `{char['character_id']}`\nRace: Vampire",
         color=discord.Color.dark_red()
     )
     
@@ -444,6 +421,46 @@ async def show_character(ctx):
     wins = char.get('wins', 0)
     losses = char.get('losses', 0)
     embed.add_field(name="Battle Record", value=f"{wins}-{losses}", inline=False)
+    
+    await ctx.send(embed=embed)
+
+# List command - Lists all vampires owned by user
+@bot.command(name='list')
+async def list_vampires(ctx):
+    """List all your vampires"""
+    
+    user_id = str(ctx.author.id)
+    
+    # Find all vampires owned by user
+    user_vampires = [char for char in characters.values() if char.get('user_id') == user_id]
+    
+    if not user_vampires:
+        await ctx.send("You don't have any vampires yet! Use `?make` to create one.")
+        return
+    
+    # Sort by power level
+    user_vampires.sort(key=lambda x: x['power_level'], reverse=True)
+    
+    embed = discord.Embed(
+        title=f"{ctx.author.name}'s Vampires",
+        description=f"Total: {len(user_vampires)} vampires",
+        color=discord.Color.dark_purple()
+    )
+    
+    # Show first 10 vampires
+    for vamp in user_vampires[:10]:
+        rank = get_vampire_rank(vamp['power_level'])
+        wins = vamp.get('wins', 0)
+        losses = vamp.get('losses', 0)
+        
+        embed.add_field(
+            name=f"{vamp['name']}",
+            value=f"ID: `{vamp['character_id']}` | {rank} | Power: {vamp['power_level']} | Record: {wins}-{losses}",
+            inline=False
+        )
+    
+    if len(user_vampires) > 10:
+        embed.set_footer(text=f"Showing 10 of {len(user_vampires)} vampires")
     
     await ctx.send(embed=embed)
 
@@ -506,17 +523,6 @@ async def vampire_ranks(ctx):
         inline=False
     )
     
-    # Show user's current rank if they have a vampire
-    user_id = str(ctx.author.id)
-    if user_id in characters:
-        char = characters[user_id]
-        current_rank = get_vampire_rank(char['power_level'])
-        rank_embed.add_field(
-            name="Your Current Rank",
-            value=f"{char['name']} - **{current_rank}** (Power: {char['power_level']})",
-            inline=False
-        )
-    
     await ctx.send(embed=rank_embed)
 
 # Train command - Train your vampire to become more powerful
@@ -526,21 +532,20 @@ async def train_vampire(ctx, character_id: str = None):
     
     # Check if character ID was provided
     if character_id is None:
-        await ctx.send("Usage: `?train <character_id>`\nExample: `?train 123456`\n\nUse `?show` to see your vampire ID.")
+        await ctx.send("Usage: `?train <character_id>`\nExample: `?train 123456`\n\nUse `?list` to see your vampire IDs.")
         return
     
+    # Check if vampire exists
+    if character_id not in characters:
+        await ctx.send(f"Vampire ID `{character_id}` not found!")
+        return
+    
+    player_char = characters[character_id]
     user_id = str(ctx.author.id)
     
-    # Check if user has a vampire
-    if user_id not in characters:
-        await ctx.send("You don't have a vampire yet! Use `?make` to create one.")
-        return
-    
-    player_char = characters[user_id]
-    
-    # Verify the character ID matches
-    if player_char['character_id'] != character_id:
-        await ctx.send(f"Invalid vampire ID! Your vampire ID is `{player_char['character_id']}`")
+    # Verify ownership
+    if player_char.get('user_id') != user_id and player_char.get('shared_user_id') != user_id:
+        await ctx.send("You don't own this vampire!")
         return
     
     # Training embed
@@ -555,7 +560,7 @@ async def train_vampire(ctx, character_id: str = None):
     # 3 second delay for training
     await asyncio.sleep(3)
     
-    # Random power increase (5 to 25) - increased for higher max
+    # Random power increase (5 to 25)
     power_gain = random.randint(5, 25)
     old_power = player_char['power_level']
     new_power = old_power + power_gain
@@ -575,7 +580,7 @@ async def train_vampire(ctx, character_id: str = None):
     learned_new_skill = False
     new_skill = None
     
-    if random.randint(1, 100) <= 20 and len(player_char['skills']) < 15:  # Increased max skills to 15
+    if random.randint(1, 100) <= 20 and len(player_char['skills']) < 15:
         # Get skills the vampire doesn't have yet
         available_skills = [skill for skill in SKILLS.keys() if skill not in player_char['skills']]
         if available_skills:
@@ -583,15 +588,18 @@ async def train_vampire(ctx, character_id: str = None):
             player_char['skills'].append(new_skill)
             learned_new_skill = True
     
-    # If hybrid, update both users
+    # If hybrid, update shared vampire
     if player_char.get('is_hybrid', False):
         shared_user_id = player_char.get('shared_user_id')
-        if shared_user_id and shared_user_id in characters:
-            characters[shared_user_id]['power_level'] = new_power
-            characters[shared_user_id]['skills'] = player_char['skills']
+        if shared_user_id:
+            # Find the shared vampire by character_id
+            for char_id, char in characters.items():
+                if char.get('character_id') == player_char['character_id'] and char_id != character_id:
+                    characters[char_id]['power_level'] = new_power
+                    characters[char_id]['skills'] = player_char['skills']
     
     # Save updated vampire
-    characters[user_id] = player_char
+    characters[character_id] = player_char
     save_characters(characters)
     
     # Results embed
@@ -631,42 +639,46 @@ async def train_vampire(ctx, character_id: str = None):
 
 # Transfer command - Blood transfer ritual between two vampires
 @bot.command(name='transfer')
-async def blood_transfer(ctx, member: discord.Member = None):
-    """Initiate a blood transfer ritual with another vampire. Both vampires die and create a powerful hybrid! Usage: ?transfer @user"""
+async def blood_transfer(ctx, character_id_1: str = None, character_id_2: str = None):
+    """Initiate a blood transfer ritual between two vampires. Usage: ?transfer <your_vampire_id> <target_vampire_id>"""
     
-    if member is None:
-        await ctx.send("Usage: `?transfer @user`\nExample: `?transfer @JohnDoe`\n\nBoth vampires will be sacrificed to create a powerful hybrid vampire that both users can control!")
+    if character_id_1 is None or character_id_2 is None:
+        await ctx.send("Usage: `?transfer <your_vampire_id> <target_vampire_id>`\nExample: `?transfer 123456 789012`\n\nBoth vampires will be sacrificed to create a powerful hybrid!")
         return
     
-    # Can't transfer with yourself
-    if member.id == ctx.author.id:
-        await ctx.send("You cannot perform a blood transfer ritual with yourself!")
+    # Check if both vampires exist
+    if character_id_1 not in characters:
+        await ctx.send(f"Vampire ID `{character_id_1}` not found!")
         return
     
-    initiator_id = str(ctx.author.id)
-    target_id = str(member.id)
-    
-    # Check if both users have vampires
-    if initiator_id not in characters:
-        await ctx.send("You don't have a vampire yet! Use `?make` to create one.")
+    if character_id_2 not in characters:
+        await ctx.send(f"Vampire ID `{character_id_2}` not found!")
         return
     
-    if target_id not in characters:
-        await ctx.send(f"{member.name} doesn't have a vampire yet!")
+    initiator_char = characters[character_id_1]
+    target_char = characters[character_id_2]
+    
+    user_id = str(ctx.author.id)
+    
+    # Verify ownership of first vampire
+    if initiator_char.get('user_id') != user_id and initiator_char.get('shared_user_id') != user_id:
+        await ctx.send("You don't own the first vampire!")
         return
     
-    initiator_char = characters[initiator_id]
-    target_char = characters[target_id]
+    # Both vampires must have different owners
+    if initiator_char.get('user_id') == target_char.get('user_id'):
+        await ctx.send("You cannot transfer with your own vampire! Both vampires must have different owners.")
+        return
+    
+    target_user_id = target_char.get('user_id')
     
     # Create transfer request
-    request_key = f"{initiator_id}_{target_id}"
-    
-    # Check if there's already a pending request FROM the target TO the initiator
-    reverse_key = f"{target_id}_{initiator_id}"
+    request_key = f"{character_id_1}_{character_id_2}"
+    reverse_key = f"{character_id_2}_{character_id_1}"
     
     if reverse_key in transfer_requests:
         # Both agreed! Perform the transfer
-        await ctx.send(f"{ctx.author.mention} and {member.mention} - Both vampires have agreed to the blood transfer ritual!")
+        await ctx.send(f"Both vampire owners have agreed to the blood transfer ritual!")
         
         # Ritual embed
         ritual_embed = discord.Embed(
@@ -693,24 +705,19 @@ async def blood_transfer(ctx, member: discord.Member = None):
         await asyncio.sleep(5)
         
         # Create new hybrid vampire
-        # Generate new name
         first_name = random.choice(FIRST_NAMES)
         last_name = random.choice(LAST_NAMES)
         hybrid_name = f"{first_name} {last_name}"
         
-        # Generate new ID (SINGLE ID for both users)
+        # Generate new ID for hybrid
         hybrid_id = generate_unique_id()
         
-        # Combine powers (average + bonus)
+        # Combine powers
         combined_power = initiator_char['power_level'] + target_char['power_level']
-        bonus = random.randint(50, 150)  # Increased bonus for higher power levels
-        hybrid_power = combined_power + bonus
+        bonus = random.randint(50, 150)
+        hybrid_power = min(combined_power + bonus, 1000)
         
-        # Cap at 1000
-        if hybrid_power > 1000:
-            hybrid_power = 1000
-        
-        # Combine skills (all unique skills from both)
+        # Combine skills
         all_skills = list(set(initiator_char['skills'] + target_char['skills']))
         
         # Add 1-3 random new skills
@@ -728,13 +735,13 @@ async def blood_transfer(ctx, member: discord.Member = None):
         if initiator_char.get('coven_id') == target_char.get('coven_id') and initiator_char.get('coven_id'):
             coven_id = initiator_char['coven_id']
         
-        # Create SINGLE hybrid vampire data
+        # Create hybrid vampire
         hybrid_data = {
             "character_id": hybrid_id,
             "name": hybrid_name,
-            "username": f"{ctx.author.name} & {member.name}",
-            "user_id": initiator_id,
-            "shared_user_id": target_id,
+            "username": f"{initiator_char.get('username', 'Unknown')} & {target_char.get('username', 'Unknown')}",
+            "user_id": user_id,
+            "shared_user_id": target_user_id,
             "power_level": hybrid_power,
             "skills": all_skills,
             "wins": total_wins,
@@ -758,15 +765,11 @@ async def blood_transfer(ctx, member: discord.Member = None):
         save_graveyard(graveyard)
         
         # Delete old vampires
-        del characters[initiator_id]
-        del characters[target_id]
+        del characters[character_id_1]
+        del characters[character_id_2]
         
-        # Save THE SAME hybrid vampire for both users (exact copy with swapped IDs)
-        characters[initiator_id] = hybrid_data
-        characters[target_id] = hybrid_data.copy()
-        characters[target_id]['user_id'] = target_id
-        characters[target_id]['shared_user_id'] = initiator_id
-        
+        # Save hybrid vampire
+        characters[hybrid_id] = hybrid_data
         save_characters(characters)
         
         # Clear the request
@@ -778,7 +781,7 @@ async def blood_transfer(ctx, member: discord.Member = None):
         # Result embed
         result_embed = discord.Embed(
             title="HYBRID VAMPIRE BORN",
-            description=f"The ritual is complete! {hybrid_name} emerges from the darkness!\n\nBoth {ctx.author.mention} and {member.mention} can now use this vampire with ID: `{hybrid_id}`",
+            description=f"The ritual is complete! {hybrid_name} emerges from the darkness!\n\nID: `{hybrid_id}`",
             color=discord.Color.gold()
         )
         
@@ -787,50 +790,45 @@ async def blood_transfer(ctx, member: discord.Member = None):
         result_embed.add_field(name="Rank", value=f"{hybrid_rank}", inline=False)
         result_embed.add_field(name="Total Abilities", value=f"{len(all_skills)} abilities", inline=False)
         result_embed.add_field(name="Battle Record", value=f"{total_wins}-0", inline=False)
-        result_embed.add_field(
-            name="Shared Ownership",
-            value=f"{ctx.author.name} and {member.name} both control this vampire",
-            inline=False
-        )
         
         await ctx.send(embed=result_embed)
         
     else:
         # Create new request
         transfer_requests[request_key] = {
-            "initiator": ctx.author.id,
-            "target": member.id,
+            "initiator": user_id,
+            "target": target_user_id,
             "timestamp": datetime.now()
         }
         
         # Request embed
         request_embed = discord.Embed(
             title="BLOOD TRANSFER REQUEST",
-            description=f"{ctx.author.mention} has initiated a blood transfer ritual with {member.mention}!",
+            description=f"Blood transfer ritual initiated!",
             color=discord.Color.orange()
         )
         
         request_embed.add_field(
             name="Warning",
-            value="Both vampires will be sacrificed to create a powerful hybrid vampire that both users can control!",
+            value="Both vampires will be sacrificed to create a powerful hybrid vampire!",
             inline=False
         )
         
         request_embed.add_field(
-            name=f"{ctx.author.name}'s Vampire",
-            value=f"{initiator_char['name']} - Power: {initiator_char['power_level']}",
+            name=f"Vampire 1",
+            value=f"{initiator_char['name']} (ID: `{character_id_1}`) - Power: {initiator_char['power_level']}",
             inline=True
         )
         
         request_embed.add_field(
-            name=f"{member.name}'s Vampire",
-            value=f"{target_char['name']} - Power: {target_char['power_level']}",
+            name=f"Vampire 2",
+            value=f"{target_char['name']} (ID: `{character_id_2}`) - Power: {target_char['power_level']}",
             inline=True
         )
         
         request_embed.add_field(
             name="To Accept",
-            value=f"{member.mention} use `?transfer {ctx.author.mention}` to accept and complete the ritual!",
+            value=f"The owner of {target_char['name']} must use `?transfer {character_id_2} {character_id_1}` to accept!",
             inline=False
         )
         
@@ -843,21 +841,20 @@ async def fight_character(ctx, character_id: str = None):
     
     # Check if character ID was provided
     if character_id is None:
-        await ctx.send("Usage: `?fight <character_id>`\nExample: `?fight 123456`\n\nUse `?show` to see your vampire ID.")
+        await ctx.send("Usage: `?fight <character_id>`\nExample: `?fight 123456`\n\nUse `?list` to see your vampire IDs.")
         return
     
+    # Check if vampire exists
+    if character_id not in characters:
+        await ctx.send(f"Vampire ID `{character_id}` not found!")
+        return
+    
+    player_char = characters[character_id]
     user_id = str(ctx.author.id)
     
-    # Check if user has a vampire
-    if user_id not in characters:
-        await ctx.send("You don't have a vampire yet! Use `?make` to create one.")
-        return
-    
-    player_char = characters[user_id]
-    
-    # Verify the character ID matches
-    if player_char['character_id'] != character_id:
-        await ctx.send(f"Invalid vampire ID! Your vampire ID is `{player_char['character_id']}`")
+    # Verify ownership
+    if player_char.get('user_id') != user_id and player_char.get('shared_user_id') != user_id:
+        await ctx.send("You don't own this vampire!")
         return
     
     # Generate rank-appropriate AI vampire opponent
@@ -978,18 +975,18 @@ async def fight_character(ctx, character_id: str = None):
             player_char['wins'] = 0
         player_char['wins'] += 1
         
-        # If hybrid, update both users
+        # If hybrid, update shared vampire
         if player_char.get('is_hybrid', False):
-            shared_user_id = player_char.get('shared_user_id')
-            if shared_user_id and shared_user_id in characters:
-                characters[shared_user_id]['wins'] = player_char['wins']
+            for char_id, char in characters.items():
+                if char.get('character_id') == player_char['character_id'] and char_id != character_id:
+                    characters[char_id]['wins'] = player_char['wins']
         
         # Update coven stats
         if player_char.get('coven_id') and player_char['coven_id'] in covens:
             covens[player_char['coven_id']]['total_wins'] += 1
             save_covens(covens)
         
-        characters[user_id] = player_char
+        characters[character_id] = player_char
         save_characters(characters)
         
         result_embed = discord.Embed(
@@ -1045,10 +1042,10 @@ async def fight_character(ctx, character_id: str = None):
             # Remove from coven if in one
             if player_char.get('coven_id') and player_char['coven_id'] in covens:
                 coven = covens[player_char['coven_id']]
-                if user_id in coven['members']:
-                    coven['members'].remove(user_id)
-                    coven['total_deaths'] += 1
-                    save_covens(covens)
+                # Remove all instances of this character_id from coven
+                coven['members'] = [m for m in coven['members'] if m != character_id]
+                coven['total_deaths'] += 1
+                save_covens(covens)
             
             # Add to graveyard before deleting
             dead_vampire = player_char.copy()
@@ -1057,14 +1054,14 @@ async def fight_character(ctx, character_id: str = None):
             graveyard.append(dead_vampire)
             save_graveyard(graveyard)
             
-            # If hybrid, delete from both users
+            # If hybrid, delete shared vampire
             if player_char.get('is_hybrid', False):
-                shared_user_id = player_char.get('shared_user_id')
-                if shared_user_id and shared_user_id in characters:
-                    del characters[shared_user_id]
+                for char_id in list(characters.keys()):
+                    if characters[char_id].get('character_id') == player_char['character_id'] and char_id != character_id:
+                        del characters[char_id]
             
             # Delete the vampire
-            del characters[user_id]
+            del characters[character_id]
             save_characters(characters)
             
         else:
@@ -1092,18 +1089,18 @@ async def fight_character(ctx, character_id: str = None):
                 player_char['losses'] = 0
             player_char['losses'] += 1
             
-            # If hybrid, update both users
+            # If hybrid, update shared vampire
             if player_char.get('is_hybrid', False):
-                shared_user_id = player_char.get('shared_user_id')
-                if shared_user_id and shared_user_id in characters:
-                    characters[shared_user_id]['losses'] = player_char['losses']
+                for char_id, char in characters.items():
+                    if char.get('character_id') == player_char['character_id'] and char_id != character_id:
+                        characters[char_id]['losses'] = player_char['losses']
             
             # Update coven stats
             if player_char.get('coven_id') and player_char['coven_id'] in covens:
                 covens[player_char['coven_id']]['total_losses'] += 1
                 save_covens(covens)
             
-            characters[user_id] = player_char
+            characters[character_id] = player_char
             save_characters(characters)
             
             # Show updated record
@@ -1192,50 +1189,38 @@ async def world_stats(ctx):
     
     await ctx.send(embed=combined_embed)
 
-# Coven create command
+# Coven command
 @bot.command(name='coven')
-async def coven_command(ctx, action: str = None, *, coven_name: str = None):
-    """Manage vampire covens. Usage: ?coven create <name>, ?coven info, ?coven join <id>, ?coven leave, ?coven leaderboard, ?coven battle <coven_id>"""
+async def coven_command(ctx, action: str = None, *, coven_identifier: str = None):
+    """Manage vampire covens. Usage: ?coven create <name>, ?coven info <coven_id>, ?coven join <coven_id> <vampire_id>, ?coven leave <vampire_id>, ?coven leaderboard, ?coven battle <your_coven_id> <enemy_coven_id>"""
     
     if action is None:
         await ctx.send(
             "**COVEN COMMANDS**\n"
             "`?coven create <name>` - Create a new coven\n"
-            "`?coven info` - View your coven's info\n"
-            "`?coven join <id>` - Join a coven\n"
-            "`?coven leave` - Leave your current coven\n"
+            "`?coven info <coven_id>` - View a coven's info\n"
+            "`?coven join <coven_id> <vampire_id>` - Join a coven with your vampire\n"
+            "`?coven leave <vampire_id>` - Leave coven with your vampire\n"
             "`?coven leaderboard` - View top covens\n"
-            "`?coven battle <coven_id>` - Challenge another coven to battle"
+            "`?coven battle <your_coven_id> <enemy_coven_id>` - Challenge another coven"
         )
         return
     
     user_id = str(ctx.author.id)
     
-    # Check if user has a vampire
-    if user_id not in characters:
-        await ctx.send("You need a vampire to use coven commands! Use `?make` to create one.")
-        return
-    
-    player_char = characters[user_id]
-    
     if action.lower() == "create":
         # Create coven
-        if coven_name is None:
+        if coven_identifier is None:
             await ctx.send("Usage: `?coven create <name>`\nExample: `?coven create The Nightborn`")
-            return
-        
-        # Check if already in a coven
-        if player_char.get('coven_id'):
-            await ctx.send("You're already in a coven! Use `?coven leave` first.")
             return
         
         # Create new coven
         coven_id = generate_unique_coven_id()
         coven_data = {
             "coven_id": coven_id,
-            "name": coven_name,
+            "name": coven_identifier,
             "leader": user_id,
-            "members": [user_id],
+            "members": [],
             "total_wins": 0,
             "total_losses": 0,
             "total_deaths": 0,
@@ -1243,41 +1228,29 @@ async def coven_command(ctx, action: str = None, *, coven_name: str = None):
         }
         
         covens[coven_id] = coven_data
-        player_char['coven_id'] = coven_id
-        
-        # If hybrid, update both users
-        if player_char.get('is_hybrid', False):
-            shared_user_id = player_char.get('shared_user_id')
-            if shared_user_id and shared_user_id in characters:
-                characters[shared_user_id]['coven_id'] = coven_id
-                if shared_user_id not in coven_data['members']:
-                    coven_data['members'].append(shared_user_id)
-        
         save_covens(covens)
-        save_characters(characters)
         
         embed = discord.Embed(
             title="COVEN CREATED",
-            description=f"{coven_name} has been formed!",
+            description=f"{coven_identifier} has been formed!",
             color=discord.Color.dark_purple()
         )
         
         embed.add_field(name="Coven ID", value=f"`{coven_id}`", inline=False)
         embed.add_field(name="Leader", value=f"{ctx.author.name}", inline=False)
-        embed.add_field(name="Members", value=f"{len(coven_data['members'])}", inline=False)
-        embed.add_field(name="Join Command", value=f"Others can join with: `?coven join {coven_id}`", inline=False)
+        embed.add_field(name="Members", value="0 (Add vampires with `?coven join <coven_id> <vampire_id>`)", inline=False)
         
         await ctx.send(embed=embed)
     
     elif action.lower() == "info":
         # Show coven info
-        if not player_char.get('coven_id'):
-            await ctx.send("You're not in a coven! Use `?coven create <name>` or `?coven join <id>`")
+        if coven_identifier is None:
+            await ctx.send("Usage: `?coven info <coven_id>`\nExample: `?coven info 123456`")
             return
         
-        coven = covens.get(player_char['coven_id'])
+        coven = covens.get(coven_identifier)
         if not coven:
-            await ctx.send("Error: Coven not found!")
+            await ctx.send(f"Coven ID `{coven_identifier}` not found!")
             return
         
         # Calculate total power
@@ -1291,8 +1264,11 @@ async def coven_command(ctx, action: str = None, *, coven_name: str = None):
         )
         
         leader_name = "Unknown"
-        if coven['leader'] in characters:
-            leader_name = characters[coven['leader']]['name']
+        try:
+            leader = await bot.fetch_user(int(coven['leader']))
+            leader_name = leader.name
+        except:
+            pass
         
         embed.add_field(name="Leader", value=f"{leader_name}", inline=True)
         embed.add_field(name="Members", value=f"{len(coven['members'])}", inline=True)
@@ -1306,50 +1282,62 @@ async def coven_command(ctx, action: str = None, *, coven_name: str = None):
         for member_id in coven['members'][:10]:  # Show first 10
             if member_id in characters:
                 member_char = characters[member_id]
-                member_list.append(f"• {member_char['name']} (Power: {member_char['power_level']})")
+                member_list.append(f"• {member_char['name']} (ID: `{member_id}` | Power: {member_char['power_level']})")
         
         if member_list:
-            embed.add_field(name="Members", value="\n".join(member_list), inline=False)
+            embed.add_field(name="Vampires", value="\n".join(member_list), inline=False)
         
         await ctx.send(embed=embed)
     
     elif action.lower() == "join":
         # Join coven
-        if coven_name is None:
-            await ctx.send("Usage: `?coven join <coven_id>`\nExample: `?coven join 123456`")
+        if coven_identifier is None:
+            await ctx.send("Usage: `?coven join <coven_id> <vampire_id>`\nExample: `?coven join 123456 789012`")
+            return
+        
+        # Parse coven_id and vampire_id
+        parts = coven_identifier.split()
+        if len(parts) != 2:
+            await ctx.send("Usage: `?coven join <coven_id> <vampire_id>`\nExample: `?coven join 123456 789012`")
+            return
+        
+        coven_id = parts[0]
+        vampire_id = parts[1]
+        
+        # Find coven
+        if coven_id not in covens:
+            await ctx.send(f"Coven ID `{coven_id}` not found!")
+            return
+        
+        # Check if vampire exists
+        if vampire_id not in characters:
+            await ctx.send(f"Vampire ID `{vampire_id}` not found!")
+            return
+        
+        vampire = characters[vampire_id]
+        
+        # Verify ownership
+        if vampire.get('user_id') != user_id and vampire.get('shared_user_id') != user_id:
+            await ctx.send("You don't own this vampire!")
             return
         
         # Check if already in a coven
-        if player_char.get('coven_id'):
-            await ctx.send("You're already in a coven! Use `?coven leave` first.")
-            return
-        
-        # Find coven
-        coven_id = coven_name  # Actually coven_id
-        if coven_id not in covens:
-            await ctx.send(f"Coven ID `{coven_id}` not found!")
+        if vampire.get('coven_id'):
+            await ctx.send(f"{vampire['name']} is already in a coven! Use `?coven leave {vampire_id}` first.")
             return
         
         coven = covens[coven_id]
         
         # Join coven
-        coven['members'].append(user_id)
-        player_char['coven_id'] = coven_id
-        
-        # If hybrid, update both users
-        if player_char.get('is_hybrid', False):
-            shared_user_id = player_char.get('shared_user_id')
-            if shared_user_id and shared_user_id in characters:
-                characters[shared_user_id]['coven_id'] = coven_id
-                if shared_user_id not in coven['members']:
-                    coven['members'].append(shared_user_id)
+        coven['members'].append(vampire_id)
+        vampire['coven_id'] = coven_id
         
         save_covens(covens)
         save_characters(characters)
         
         embed = discord.Embed(
             title="JOINED COVEN",
-            description=f"{player_char['name']} has joined {coven['name']}!",
+            description=f"{vampire['name']} has joined {coven['name']}!",
             color=discord.Color.green()
         )
         
@@ -1359,42 +1347,49 @@ async def coven_command(ctx, action: str = None, *, coven_name: str = None):
     
     elif action.lower() == "leave":
         # Leave coven
-        if not player_char.get('coven_id'):
-            await ctx.send("You're not in a coven!")
+        if coven_identifier is None:
+            await ctx.send("Usage: `?coven leave <vampire_id>`\nExample: `?coven leave 123456`")
             return
         
-        coven = covens.get(player_char['coven_id'])
+        vampire_id = coven_identifier
+        
+        # Check if vampire exists
+        if vampire_id not in characters:
+            await ctx.send(f"Vampire ID `{vampire_id}` not found!")
+            return
+        
+        vampire = characters[vampire_id]
+        
+        # Verify ownership
+        if vampire.get('user_id') != user_id and vampire.get('shared_user_id') != user_id:
+            await ctx.send("You don't own this vampire!")
+            return
+        
+        # Check if in a coven
+        if not vampire.get('coven_id'):
+            await ctx.send(f"{vampire['name']} is not in a coven!")
+            return
+        
+        coven = covens.get(vampire['coven_id'])
         if not coven:
             await ctx.send("Error: Coven not found!")
             return
         
         # Remove from coven
-        if user_id in coven['members']:
-            coven['members'].remove(user_id)
+        if vampire_id in coven['members']:
+            coven['members'].remove(vampire_id)
         
         old_coven_name = coven['name']
-        player_char['coven_id'] = None
-        
-        # If hybrid, update both users
-        if player_char.get('is_hybrid', False):
-            shared_user_id = player_char.get('shared_user_id')
-            if shared_user_id and shared_user_id in characters:
-                if shared_user_id in coven['members']:
-                    coven['members'].remove(shared_user_id)
-                characters[shared_user_id]['coven_id'] = None
-        
-        # If leader left and coven has members, assign new leader
-        if coven['leader'] == user_id and coven['members']:
-            coven['leader'] = coven['members'][0]
+        vampire['coven_id'] = None
         
         # If coven is empty, delete it
         if not coven['members']:
-            del covens[player_char['coven_id']]
+            del covens[vampire['coven_id']]
         
         save_covens(covens)
         save_characters(characters)
         
-        await ctx.send(f"You have left {old_coven_name}.")
+        await ctx.send(f"{vampire['name']} has left {old_coven_name}.")
     
     elif action.lower() == "leaderboard":
         # Show coven leaderboard
@@ -1424,36 +1419,39 @@ async def coven_command(ctx, action: str = None, *, coven_name: str = None):
     
     elif action.lower() == "battle":
         # Challenge another coven to battle
-        if coven_name is None:
-            await ctx.send("Usage: `?coven battle <coven_id>`\nExample: `?coven battle 123456`")
+        if coven_identifier is None:
+            await ctx.send("Usage: `?coven battle <your_coven_id> <enemy_coven_id>`\nExample: `?coven battle 123456 789012`")
             return
         
-        # Check if in a coven
-        if not player_char.get('coven_id'):
-            await ctx.send("You need to be in a coven to start a coven battle!")
+        # Parse coven IDs
+        parts = coven_identifier.split()
+        if len(parts) != 2:
+            await ctx.send("Usage: `?coven battle <your_coven_id> <enemy_coven_id>`\nExample: `?coven battle 123456 789012`")
             return
         
-        player_coven = covens.get(player_char['coven_id'])
-        if not player_coven:
-            await ctx.send("Error: Your coven not found!")
+        player_coven_id = parts[0]
+        enemy_coven_id = parts[1]
+        
+        # Find covens
+        if player_coven_id not in covens:
+            await ctx.send(f"Your coven ID `{player_coven_id}` not found!")
             return
+        
+        if enemy_coven_id not in covens:
+            await ctx.send(f"Enemy coven ID `{enemy_coven_id}` not found!")
+            return
+        
+        if player_coven_id == enemy_coven_id:
+            await ctx.send("You can't battle your own coven!")
+            return
+        
+        player_coven = covens[player_coven_id]
+        enemy_coven = covens[enemy_coven_id]
         
         # Check if leader
         if player_coven['leader'] != user_id:
             await ctx.send("Only the coven leader can start coven battles!")
             return
-        
-        # Find enemy coven
-        enemy_coven_id = coven_name  # Actually coven_id
-        if enemy_coven_id not in covens:
-            await ctx.send(f"Coven ID `{enemy_coven_id}` not found!")
-            return
-        
-        if enemy_coven_id == player_char['coven_id']:
-            await ctx.send("You can't battle your own coven!")
-            return
-        
-        enemy_coven = covens[enemy_coven_id]
         
         # Battle intro embed
         battle_embed = discord.Embed(
@@ -1522,6 +1520,126 @@ async def coven_command(ctx, action: str = None, *, coven_name: str = None):
     
     else:
         await ctx.send("Unknown coven command! Use `?coven` to see available commands.")
+
+# Admin command - Delete coven
+@bot.command(name='admin')
+async def admin_command(ctx, action: str = None, *, target: str = None):
+    """Admin commands. Usage: ?admin deletecoven <coven_id>, ?admin deletevampire <vampire_id>"""
+    
+    # Check if user is admin
+    if not is_admin(ctx.author.id):
+        await ctx.send("You don't have permission to use admin commands!")
+        return
+    
+    if action is None:
+        await ctx.send(
+            "**ADMIN COMMANDS**\n"
+            "`?admin deletecoven <coven_id>` - Delete a coven\n"
+            "`?admin deletevampire <vampire_id>` - Delete a vampire\n"
+            "`?admin addadmin <user_id>` - Add an admin\n"
+            "`?admin listadmins` - List all admins"
+        )
+        return
+    
+    if action.lower() == "deletecoven":
+        if target is None:
+            await ctx.send("Usage: `?admin deletecoven <coven_id>`\nExample: `?admin deletecoven 123456`")
+            return
+        
+        coven_id = target
+        
+        if coven_id not in covens:
+            await ctx.send(f"Coven ID `{coven_id}` not found!")
+            return
+        
+        coven = covens[coven_id]
+        coven_name = coven['name']
+        
+        # Remove coven_id from all vampires in this coven
+        for member_id in coven['members']:
+            if member_id in characters:
+                characters[member_id]['coven_id'] = None
+        
+        save_characters(characters)
+        
+        # Delete coven
+        del covens[coven_id]
+        save_covens(covens)
+        
+        embed = discord.Embed(
+            title="COVEN DELETED",
+            description=f"**{coven_name}** (ID: `{coven_id}`) has been permanently deleted by admin.",
+            color=discord.Color.red()
+        )
+        
+        await ctx.send(embed=embed)
+    
+    elif action.lower() == "deletevampire":
+        if target is None:
+            await ctx.send("Usage: `?admin deletevampire <vampire_id>`\nExample: `?admin deletevampire 123456`")
+            return
+        
+        vampire_id = target
+        
+        if vampire_id not in characters:
+            await ctx.send(f"Vampire ID `{vampire_id}` not found!")
+            return
+        
+        vampire = characters[vampire_id]
+        vampire_name = vampire['name']
+        
+        # Remove from coven if in one
+        if vampire.get('coven_id') and vampire['coven_id'] in covens:
+            coven = covens[vampire['coven_id']]
+            if vampire_id in coven['members']:
+                coven['members'].remove(vampire_id)
+            save_covens(covens)
+        
+        # Delete vampire
+        del characters[vampire_id]
+        save_characters(characters)
+        
+        embed = discord.Embed(
+            title="VAMPIRE DELETED",
+            description=f"**{vampire_name}** (ID: `{vampire_id}`) has been permanently deleted by admin.",
+            color=discord.Color.red()
+        )
+        
+        await ctx.send(embed=embed)
+    
+    elif action.lower() == "addadmin":
+        if target is None:
+            await ctx.send("Usage: `?admin addadmin <user_id>`\nExample: `?admin addadmin 123456789012345678`")
+            return
+        
+        new_admin_id = target
+        
+        if new_admin_id in ADMIN_IDS:
+            await ctx.send(f"User ID `{new_admin_id}` is already an admin!")
+            return
+        
+        ADMIN_IDS.append(new_admin_id)
+        
+        await ctx.send(f"User ID `{new_admin_id}` has been added as an admin!")
+    
+    elif action.lower() == "listadmins":
+        if not ADMIN_IDS:
+            await ctx.send("No admins configured!")
+            return
+        
+        embed = discord.Embed(
+            title="ADMIN LIST",
+            description="Current bot administrators",
+            color=discord.Color.gold()
+        )
+        
+        admin_list = "\n".join([f"• {admin_id}" for admin_id in ADMIN_IDS])
+        embed.add_field(name="Admin User IDs", value=admin_list, inline=False)
+        
+        await ctx.send(embed=embed)
+    
+    else:
+        await ctx.send("Unknown admin command! Use `?admin` to see available commands.")
 
 # Run the bot
 if __name__ == "__main__":
