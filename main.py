@@ -185,11 +185,35 @@ def simulate_battle(player_name, player_power, enemy_name, enemy_power):
         "roll": roll
     }
 
-# Generate AI gang
+# Generate AI gang with SUPER RANDOM size
 def generate_ai_gang():
-    """Generate a random AI vampire gang (2-5 vampires)"""
+    """Generate a random AI vampire gang with SUPER RANDOM size (1-20 vampires)"""
     
-    gang_size = random.randint(2, 5)
+    # SUPER RANDOM gang size distribution
+    # 30% chance: Small gang (1-3 vampires)
+    # 25% chance: Medium gang (4-6 vampires)
+    # 20% chance: Large gang (7-10 vampires)
+    # 15% chance: Huge gang (11-15 vampires)
+    # 10% chance: MASSIVE gang (16-20 vampires)
+    
+    roll = random.randint(1, 100)
+    
+    if roll <= 30:
+        # Small gang
+        gang_size = random.randint(1, 3)
+    elif roll <= 55:
+        # Medium gang
+        gang_size = random.randint(4, 6)
+    elif roll <= 75:
+        # Large gang
+        gang_size = random.randint(7, 10)
+    elif roll <= 90:
+        # Huge gang
+        gang_size = random.randint(11, 15)
+    else:
+        # MASSIVE gang
+        gang_size = random.randint(16, 20)
+    
     ai_gang = []
     
     for _ in range(gang_size):
@@ -358,10 +382,10 @@ async def show_vampires(ctx):
     
     await ctx.send(embed=embed)
 
-# Gang command - Group battle with all user's vampires
+# Gang command - Group battle with all user's vampires vs SUPER RANDOM AI gang
 @bot.command(name='gang')
 async def gang_battle(ctx):
-    """Battle as a gang with ALL your vampires against an AI gang"""
+    """Battle as a gang with ALL your vampires against a RANDOM sized AI gang (1-20 vampires)"""
     
     user_id = str(ctx.author.id)
     
@@ -379,7 +403,7 @@ async def gang_battle(ctx):
     # Calculate total gang power
     player_gang_power = sum(vamp['power_level'] for vamp in user_vampires)
     
-    # Generate AI gang
+    # Generate SUPER RANDOM AI gang (1-20 vampires)
     ai_gang = generate_ai_gang()
     ai_gang_power = sum(ai['power'] for ai in ai_gang)
     
@@ -401,10 +425,17 @@ async def gang_battle(ctx):
         inline=False
     )
     
-    # AI gang info
+    # AI gang info - truncate if too large
     ai_gang_text = ""
-    for ai_vamp in ai_gang:
-        ai_gang_text += f"**{ai_vamp['name']}** - Power: {ai_vamp['power']}\n"
+    display_limit = 10  # Show first 10, then summarize rest
+    
+    for idx, ai_vamp in enumerate(ai_gang):
+        if idx < display_limit:
+            ai_gang_text += f"**{ai_vamp['name']}** - Power: {ai_vamp['power']}\n"
+        elif idx == display_limit:
+            remaining = len(ai_gang) - display_limit
+            ai_gang_text += f"... and {remaining} more vampires\n"
+            break
     
     intro_embed.add_field(
         name=f"ENEMY GANG ({len(ai_gang)} vampires)",
@@ -415,16 +446,16 @@ async def gang_battle(ctx):
     # Power difference
     power_diff = player_gang_power - ai_gang_power
     
-    if power_diff > 500:
+    if power_diff > 1000:
         threat_level = "EASY TARGET"
         threat_color = discord.Color.dark_green()
-    elif power_diff > 100:
+    elif power_diff > 500:
         threat_level = "FAVORABLE MATCHUP"
         threat_color = discord.Color.green()
-    elif power_diff > -100:
+    elif power_diff > -500:
         threat_level = "EVEN MATCH"
         threat_color = discord.Color.gold()
-    elif power_diff > -500:
+    elif power_diff > -1000:
         threat_level = "DANGEROUS GANG"
         threat_color = discord.Color.orange()
     else:
@@ -434,6 +465,21 @@ async def gang_battle(ctx):
     intro_embed.add_field(
         name="Threat Level",
         value=threat_level,
+        inline=False
+    )
+    
+    # Gang size comparison
+    size_diff = len(user_vampires) - len(ai_gang)
+    if size_diff > 0:
+        size_advantage = f"You outnumber them by {size_diff} vampires"
+    elif size_diff < 0:
+        size_advantage = f"They outnumber you by {abs(size_diff)} vampires"
+    else:
+        size_advantage = "Equal numbers"
+    
+    intro_embed.add_field(
+        name="Numbers",
+        value=size_advantage,
         inline=False
     )
     
@@ -472,7 +518,7 @@ async def gang_battle(ctx):
     if player_won:
         outcome_embed = discord.Embed(
             title="GANG WAR VICTORY",
-            description=f"**{ctx.author.name}'s Gang** has defeated the enemy gang!",
+            description=f"**{ctx.author.name}'s Gang** has defeated the enemy gang of {len(ai_gang)} vampires!",
             color=discord.Color.green()
         )
         
@@ -485,7 +531,7 @@ async def gang_battle(ctx):
     else:
         outcome_embed = discord.Embed(
             title="GANG WAR DEFEAT",
-            description=f"**{ctx.author.name}'s Gang** was defeated by the enemy gang!",
+            description=f"**{ctx.author.name}'s Gang** was defeated by the enemy gang of {len(ai_gang)} vampires!",
             color=discord.Color.red()
         )
         
