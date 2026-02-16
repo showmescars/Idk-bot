@@ -22,60 +22,6 @@ def random_var(length=8):
     chars = string.ascii_letters
     return ''.join(random.choices(chars, k=length))
 
-def random_hex_var():
-    return '_0x' + ''.join(random.choices('0123456789abcdef', k=6))
-
-# ──────────────────────────────────────────────
-#  PYTHON OBFUSCATOR
-# ──────────────────────────────────────────────
-
-def obfuscate_python(code: str) -> str:
-    lines = code.split('\n')
-    cleaned = []
-    for line in lines:
-        stripped = re.sub(r'#.*', '', line).rstrip()
-        if stripped.strip():
-            cleaned.append(stripped)
-    code = '\n'.join(cleaned)
-
-    encoded = base64.b64encode(code.encode()).decode()
-
-    obfuscated = (
-        "import base64 as _b\n"
-        f"_c = '{encoded}'\n"
-        "exec(compile(_b.b64decode(_c.encode()), '<string>', 'exec'))\n"
-    )
-    return obfuscated
-
-# ──────────────────────────────────────────────
-#  JAVASCRIPT OBFUSCATOR
-# ──────────────────────────────────────────────
-
-def obfuscate_js(code: str) -> str:
-    code = re.sub(r'//.*', '', code)
-    code = re.sub(r'/\*.*?\*/', '', code, flags=re.DOTALL)
-
-    identifiers = re.findall(r'\b([a-zA-Z_$][a-zA-Z0-9_$]*)\b', code)
-    keywords = {
-        'var', 'let', 'const', 'function', 'return', 'if', 'else',
-        'for', 'while', 'do', 'break', 'continue', 'new', 'this',
-        'true', 'false', 'null', 'undefined', 'typeof', 'instanceof',
-        'class', 'extends', 'import', 'export', 'default', 'switch',
-        'case', 'try', 'catch', 'finally', 'throw', 'delete', 'in',
-        'of', 'async', 'await', 'yield', 'console', 'log'
-    }
-    mapping = {}
-    for ident in identifiers:
-        if ident not in keywords and ident not in mapping:
-            mapping[ident] = random_hex_var()
-
-    for original, obf in mapping.items():
-        code = re.sub(rf'\b{re.escape(original)}\b', obf, code)
-
-    encoded = base64.b64encode(code.encode()).decode()
-    result = f"eval(atob('{encoded}'));"
-    return result
-
 # ──────────────────────────────────────────────
 #  ROBLOX LUA OBFUSCATOR
 # ──────────────────────────────────────────────
@@ -117,22 +63,7 @@ def obfuscate_roblox(code: str) -> str:
     return obfuscated
 
 # ──────────────────────────────────────────────
-#  FILE EXTENSION → LANGUAGE DETECTOR
-# ──────────────────────────────────────────────
-
-def detect_language(filename: str) -> str | None:
-    ext = filename.rsplit('.', 1)[-1].lower() if '.' in filename else ''
-    mapping = {
-        'py':   'python',
-        'js':   'js',
-        'lua':  'roblox',
-        'rbx':  'roblox',
-        'txt':  None,   # needs explicit lang arg
-    }
-    return mapping.get(ext)
-
-# ──────────────────────────────────────────────
-#  GLOBAL CHECK — block DMs
+#  GLOBAL CHECK - block DMs
 # ──────────────────────────────────────────────
 
 @bot.check
@@ -154,115 +85,70 @@ async def on_ready():
 async def on_command_error(ctx, error):
     if isinstance(error, commands.MissingRequiredArgument):
         await ctx.send(
-            "**Missing argument!**\n"
-            "Usage: `?obf <type> <code>` or attach a `.py`, `.js`, `.lua` file.\n"
-            "For `.txt` files, do: `?obf <python|js|roblox>` with attachment.\n"
-            "Types: `python`, `js`, `roblox`"
+            "Missing argument!\n"
+            "Just attach a .lua or .txt file and run ?obf\n"
+            "For .txt files run: ?obf with your file attached."
         )
     elif isinstance(error, commands.CheckFailure):
         pass
     else:
-        await ctx.send(f"An error occurred: `{error}`")
+        await ctx.send(f"An error occurred: {error}")
 
 # ──────────────────────────────────────────────
 #  COMMANDS
 # ──────────────────────────────────────────────
 
 @bot.command(name='obf')
-async def obf(ctx, lang: str = None, *, code: str = None):
+async def obf(ctx, *, code: str = None):
     """
-    Obfuscate code from inline text OR an attached file.
+    Obfuscate Roblox Lua code.
 
-    Inline:      ?obf python print('hi')
-    File auto:   ?obf          (attach a .py / .js / .lua file)
-    File txt:    ?obf python   (attach a .txt file, specify lang)
+    File mode:   attach a .lua or .txt file and run ?obf
+    Inline mode: ?obf <your lua code here>
     """
 
-    # ── FILE MODE ──────────────────────────────
+    # -- FILE MODE --
     if ctx.message.attachments:
         attachment = ctx.message.attachments[0]
         filename = attachment.filename.lower()
 
-        # Read file bytes
-        try:
-            file_bytes = await attachment.read()
-            file_code = file_bytes.decode('utf-8')
-        except Exception as e:
-            await ctx.send(f"Could not read file: `{e}`")
-            return
-
-        # Determine language
-        auto_lang = detect_language(filename)
-
-        if auto_lang is not None:
-            # .py / .js / .lua — language auto-detected
-            resolved_lang = auto_lang
-        elif lang is not None:
-            # .txt or unknown ext — user must supply lang
-            resolved_lang = lang.lower()
-            if resolved_lang in ('lua', 'rbx'):
-                resolved_lang = 'roblox'
-            elif resolved_lang == 'javascript':
-                resolved_lang = 'js'
-        else:
+        # Only accept .lua and .txt files
+        if not filename.endswith(('.lua', '.txt')):
             await ctx.send(
-                "Could not detect language from file extension.\n"
-                "For `.txt` files please specify the language:\n"
-                "`?obf <python|js|roblox>` with your file attached."
+                "Only .lua and .txt files are supported.\n"
+                "Please attach a valid file."
             )
             return
 
-        source_code = file_code
-        input_filename = filename
+        try:
+            file_bytes = await attachment.read()
+            source_code = file_bytes.decode('utf-8')
+        except Exception as e:
+            await ctx.send(f"Could not read file: {e}")
+            return
 
-    # ── INLINE TEXT MODE ───────────────────────
-    elif code is not None and lang is not None:
-        resolved_lang = lang.lower()
-        if resolved_lang in ('lua', 'rbx'):
-            resolved_lang = 'roblox'
-        elif resolved_lang == 'javascript':
-            resolved_lang = 'js'
+        input_filename = attachment.filename.rsplit('.', 1)[0]
 
-        # Strip markdown code blocks
+    # -- INLINE TEXT MODE --
+    elif code is not None:
+        # Strip markdown code blocks if user wraps code in them
         source_code = re.sub(r'^```[a-zA-Z]*\n?', '', code)
         source_code = re.sub(r'```$', '', source_code).strip()
-        input_filename = None
+        input_filename = 'obfuscated'
 
     else:
         await ctx.send(
-            "**Usage:**\n"
-            "Inline: `?obf <python|js|roblox> <code>`\n"
-            "File:   attach a `.py`, `.js`, or `.lua` file and run `?obf`\n"
-            "TXT:    attach a `.txt` file and run `?obf <python|js|roblox>`"
+            "Usage:\n"
+            "Inline: ?obf <your lua code>\n"
+            "File:   attach a .lua or .txt file and run ?obf"
         )
         return
 
-    # ── OBFUSCATE ──────────────────────────────
-    if resolved_lang == 'python':
-        result = obfuscate_python(source_code)
-        out_ext = 'py'
-        label = 'Python'
-    elif resolved_lang == 'js':
-        result = obfuscate_js(source_code)
-        out_ext = 'js'
-        label = 'JavaScript'
-    elif resolved_lang == 'roblox':
-        result = obfuscate_roblox(source_code)
-        out_ext = 'lua'
-        label = 'Roblox Lua'
-    else:
-        await ctx.send(
-            f"Unknown language `{resolved_lang}`.\n"
-            "Supported: `python`, `js`, `roblox`"
-        )
-        return
+    # -- OBFUSCATE --
+    result = obfuscate_roblox(source_code)
 
-    # ── SEND RESULT ────────────────────────────
-    # Always send as a .txt file so Discord doesn't struggle with large outputs
-    out_filename = (
-        input_filename.rsplit('.', 1)[0] + f'_obfuscated.{out_ext}'
-        if input_filename else f'obfuscated.{out_ext}'
-    )
+    # -- SEND RESULT AS FILE --
+    out_filename = f"{input_filename}_obfuscated.lua"
 
     file_obj = discord.File(
         fp=io.BytesIO(result.encode('utf-8')),
@@ -270,7 +156,7 @@ async def obf(ctx, lang: str = None, *, code: str = None):
     )
 
     await ctx.send(
-        f"✅ **{label} obfuscation complete!**\nHere is your obfuscated file:",
+        f"Roblox Lua obfuscation complete. Here is your file:",
         file=file_obj
     )
 
@@ -278,24 +164,20 @@ async def obf(ctx, lang: str = None, *, code: str = None):
 @bot.command(name='obfhelp')
 async def obfhelp(ctx):
     help_text = (
-        "**🔒 Obfuscation Bot Help**\n\n"
-        "**Inline code:**\n"
-        "`?obf python print('hello')`\n"
-        "`?obf js function greet() { console.log('hi') }`\n"
-        "`?obf roblox local x = game.Players.LocalPlayer`\n\n"
-        "**File upload (auto-detect language):**\n"
-        "Attach a `.py`, `.js`, or `.lua` file and just type `?obf`\n\n"
-        "**TXT file (specify language):**\n"
-        "Attach a `.txt` file and type `?obf python` (or js / roblox)\n\n"
-        "**Output:** always returned as a downloadable file.\n\n"
-        "**Supported languages:** `python`, `js`, `roblox` / `lua`"
+        "Obfuscation Bot Help\n\n"
+        "Inline code:\n"
+        "?obf local x = game.Players.LocalPlayer\n\n"
+        "File upload:\n"
+        "Attach a .lua or .txt file and run ?obf\n"
+        "The result will be sent back as a downloadable .lua file.\n\n"
+        "Output file will be named: yourfile_obfuscated.lua"
     )
     await ctx.send(help_text)
 
 
 @bot.command(name='start')
 async def start(ctx):
-    await ctx.send("Bot is running! Use `?obfhelp` to see available commands.")
+    await ctx.send("Bot is running. Use ?obfhelp to see available commands.")
 
 
 # ──────────────────────────────────────────────
