@@ -6,8 +6,6 @@ import re
 import io
 import random
 import string
-import base64
-import hashlib
 
 load_dotenv()
 
@@ -16,7 +14,7 @@ intents.message_content = True
 bot = commands.Bot(command_prefix='?', intents=intents)
 
 # ──────────────────────────────────────────────
-#  ENHANCED OBFUSCATOR
+#  ENHANCED OBFUSCATOR (FIXED)
 # ──────────────────────────────────────────────
 
 class LuaObfuscator:
@@ -24,31 +22,35 @@ class LuaObfuscator:
         self.lua_keywords = {
             'and', 'break', 'do', 'else', 'elseif', 'end', 'false', 'for',
             'function', 'if', 'in', 'local', 'nil', 'not', 'or', 'repeat',
-            'return', 'then', 'true', 'until', 'while', 'game', 'workspace',
-            'script', 'Instance', 'wait', 'print', 'pairs', 'ipairs', 'type',
-            'tostring', 'tonumber', 'require', 'pcall', 'xpcall', 'error',
-            'warn', 'math', 'table', 'string', 'os', 'task', 'self',
-            'rawget', 'rawset', 'setmetatable', 'getmetatable', 'next',
-            'select', 'unpack', 'loadstring', 'coroutine', 'io', 'bit32',
-            '_G', '_VERSION', 'assert', 'collectgarbage', 'dofile', 'getfenv',
-            'setfenv', 'newproxy', 'tick', 'typeof', 'spawn', 'delay'
+            'return', 'then', 'true', 'until', 'while'
         }
         
         self.roblox_globals = {
-            'Workspace', 'Players', 'ReplicatedStorage', 'ServerStorage',
-            'StarterGui', 'StarterPack', 'StarterPlayer', 'Teams', 'SoundService',
-            'Lighting', 'MaterialService', 'BadgeService', 'InsertService',
-            'MarketplaceService', 'TeleportService', 'UserInputService',
-            'ContextActionService', 'RunService', 'HttpService', 'DataStoreService',
-            'AnalyticsService', 'LocalizationService', 'TextService'
+            'game', 'workspace', 'script', 'Instance', 'wait', 'print', 
+            'pairs', 'ipairs', 'type', 'tostring', 'tonumber', 'require', 
+            'pcall', 'xpcall', 'error', 'warn', 'math', 'table', 'string', 
+            'os', 'task', 'self', 'rawget', 'rawset', 'setmetatable', 
+            'getmetatable', 'next', 'select', 'unpack', 'loadstring', 
+            'coroutine', 'io', 'bit32', '_G', '_VERSION', 'assert', 
+            'collectgarbage', 'dofile', 'getfenv', 'setfenv', 'newproxy', 
+            'tick', 'typeof', 'spawn', 'delay', 'Workspace', 'Players', 
+            'ReplicatedStorage', 'ServerStorage', 'StarterGui', 'StarterPack', 
+            'StarterPlayer', 'Teams', 'SoundService', 'Lighting', 
+            'MaterialService', 'BadgeService', 'InsertService', 
+            'MarketplaceService', 'TeleportService', 'UserInputService', 
+            'ContextActionService', 'RunService', 'HttpService', 
+            'DataStoreService', 'AnalyticsService', 'LocalizationService', 
+            'TextService', 'TweenService', 'Vector2', 'Vector3', 'CFrame',
+            'Color3', 'UDim2', 'UDim', 'Enum', 'Ray', 'Region3', 'NumberRange',
+            'NumberSequence', 'ColorSequence', 'DateTime', 'Random', 'utf8'
         }
         
         self.protected_names = self.lua_keywords | self.roblox_globals
 
-    def generate_random_name(self, length=12, prefix='_'):
+    def generate_random_name(self, length=10):
         """Generate a random variable name"""
-        chars = string.ascii_letters + string.digits
-        return prefix + ''.join(random.choices(chars, k=length))
+        chars = string.ascii_letters
+        return '_' + ''.join(random.choices(chars, k=length))
 
     def strip_comments(self, code):
         """Remove all comments from code"""
@@ -58,25 +60,23 @@ class LuaObfuscator:
         code = re.sub(r'--[^\n]*', '', code)
         return code
 
-    def strip_whitespace(self, code):
-        """Remove unnecessary whitespace"""
-        lines = [line.strip() for line in code.split('\n') if line.strip()]
-        return '\n'.join(lines)
-
     def extract_strings(self, code):
         """Extract and protect string literals"""
         strings = {}
         counter = [0]
         
         def replace_string(match):
-            placeholder = f"__STR_{counter[0]}__"
+            placeholder = f"__STRING_PLACEHOLDER_{counter[0]}__"
             strings[placeholder] = match.group(0)
             counter[0] += 1
             return placeholder
         
-        # Match both single and double quoted strings
+        # Match double quoted strings
         code = re.sub(r'"(?:[^"\\]|\\.)*"', replace_string, code)
+        # Match single quoted strings
         code = re.sub(r"'(?:[^'\\]|\\.)*'", replace_string, code)
+        # Match multi-line strings [[...]]
+        code = re.sub(r'\[\[.*?\]\]', replace_string, code, flags=re.DOTALL)
         
         return code, strings
 
@@ -86,69 +86,65 @@ class LuaObfuscator:
             code = code.replace(placeholder, original)
         return code
 
+    def find_local_variables(self, code):
+        """Find all local variable declarations"""
+        variables = set()
+        
+        # Find: local var1, var2, var3 = ...
+        matches = re.finditer(r'\blocal\s+([a-zA-Z_][a-zA-Z0-9_]*(?:\s*,\s*[a-zA-Z_][a-zA-Z0-9_]*)*)', code)
+        for match in matches:
+            var_list = match.group(1)
+            vars_found = re.findall(r'[a-zA-Z_][a-zA-Z0-9_]*', var_list)
+            variables.update(vars_found)
+        
+        # Find: function name(param1, param2)
+        func_matches = re.finditer(r'\bfunction\s+[a-zA-Z_][a-zA-Z0-9_]*\s*\(([^)]*)\)', code)
+        for match in func_matches:
+            params = match.group(1)
+            if params.strip():
+                param_list = re.findall(r'[a-zA-Z_][a-zA-Z0-9_]*', params)
+                variables.update(param_list)
+        
+        # Find: function(param1, param2) -- anonymous functions
+        anon_matches = re.finditer(r'\bfunction\s*\(([^)]*)\)', code)
+        for match in anon_matches:
+            params = match.group(1)
+            if params.strip():
+                param_list = re.findall(r'[a-zA-Z_][a-zA-Z0-9_]*', params)
+                variables.update(param_list)
+        
+        # Find: for var in/= ...
+        for_matches = re.finditer(r'\bfor\s+([a-zA-Z_][a-zA-Z0-9_]*(?:\s*,\s*[a-zA-Z_][a-zA-Z0-9_]*)*)\s+(?:in|=)', code)
+        for match in for_matches:
+            var_list = match.group(1)
+            vars_found = re.findall(r'[a-zA-Z_][a-zA-Z0-9_]*', var_list)
+            variables.update(vars_found)
+        
+        return variables
+
     def rename_variables(self, code):
-        """Rename local variables and function parameters"""
+        """Rename local variables"""
+        # Find all local variables
+        local_vars = self.find_local_variables(code)
+        
+        # Create mapping for variables (exclude protected names)
         mapping = {}
-        
-        # Find local variable declarations
-        local_vars = re.findall(r'\blocal\s+([a-zA-Z_][a-zA-Z0-9_]*)', code)
-        
-        # Find function parameters
-        func_params = re.findall(r'function\s*\(([^)]*)\)', code)
-        for params in func_params:
-            param_list = [p.strip() for p in params.split(',') if p.strip()]
-            local_vars.extend(param_list)
-        
-        # Create mappings for non-protected names
-        for var in set(local_vars):
+        for var in local_vars:
             if var not in self.protected_names and var not in mapping:
                 mapping[var] = self.generate_random_name()
         
         # Replace variables (longest first to avoid partial matches)
         for original, obfuscated in sorted(mapping.items(), key=lambda x: -len(x[0])):
-            # Use word boundaries to avoid replacing parts of other words
-            code = re.sub(rf'\b{re.escape(original)}\b', obfuscated, code)
+            # Use word boundaries to match whole words only
+            pattern = r'\b' + re.escape(original) + r'\b'
+            code = re.sub(pattern, obfuscated, code)
         
         return code
-
-    def add_junk_code(self, code):
-        """Add harmless junk code to confuse deobfuscators"""
-        junk_lines = [
-            "local _unused = nil",
-            "local _dummy = function() end",
-            "local _void = {}",
-        ]
-        
-        junk = '\n'.join(random.sample(junk_lines, k=random.randint(1, 3)))
-        return junk + '\n' + code
-
-    def obfuscate_numbers(self, code):
-        """Obfuscate number literals"""
-        def replace_number(match):
-            num = match.group(0)
-            try:
-                value = int(num)
-                # Simple arithmetic obfuscation
-                offset = random.randint(100, 999)
-                return f"({offset} - {offset - value})"
-            except ValueError:
-                return num
-        
-        # Only replace standalone numbers (not in strings)
-        code = re.sub(r'\b\d+\b', replace_number, code)
-        return code
-
-    def control_flow_obfuscation(self, code):
-        """Add basic control flow obfuscation"""
-        # Wrap code in a do-end block with a dummy condition
-        wrapped = f"do\n{code}\nend"
-        return wrapped
 
     def encode_hex(self, code):
         """Hex encode and wrap in loadstring"""
         hex_encoded = code.encode('utf-8').hex()
         
-        # Use more complex variable names for the loader
         var_hex = self.generate_random_name(8)
         var_decoded = self.generate_random_name(8)
         var_index = self.generate_random_name(6)
@@ -163,83 +159,45 @@ class LuaObfuscator:
         )
         return result
 
-    def encode_base64(self, code):
-        """Base64 encode alternative"""
-        b64_chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"
-        
-        encoded = base64.b64encode(code.encode('utf-8')).decode('utf-8')
-        
-        var_data = self.generate_random_name(8)
-        var_decoded = self.generate_random_name(8)
-        
-        # Custom base64 decoder in Lua
-        result = f'''local {var_data}="{encoded}"
-local {var_decoded}=""
-local b='ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/'
-for i=1,#{var_data},4 do
-    local a,b,c,d=string.byte({var_data},i,i+3)
-    a=string.find(b,string.char(a))-1
-    b=string.find(b,string.char(b or 61))-1
-    c=string.find(b,string.char(c or 61))-1
-    d=string.find(b,string.char(d or 61))-1
-    {var_decoded}={var_decoded}..string.char(bit32.bor(bit32.lshift(a,2),bit32.rshift(b,4)))
-    if c~=nil then {var_decoded}={var_decoded}..string.char(bit32.bor(bit32.lshift(bit32.band(b,15),4),bit32.rshift(c,2)))end
-    if d~=nil then {var_decoded}={var_decoded}..string.char(bit32.bor(bit32.lshift(bit32.band(c,3),6),d))end
-end
-loadstring({var_decoded})()'''
-        return result
-
     def obfuscate(self, code, level='medium', encoding='hex'):
         """
         Main obfuscation method
         
         Levels:
-        - basic: Comments and whitespace removal only
-        - medium: + variable renaming and hex encoding
-        - advanced: + number obfuscation, junk code, control flow
+        - basic: Only comments removal and encoding
+        - medium: + variable renaming (default)
+        - advanced: + variable renaming and minification
         """
-        original_code = code
-        
         try:
-            # Always strip comments and whitespace
+            # Step 1: Always strip comments
             code = self.strip_comments(code)
             
             if level in ['medium', 'advanced']:
-                # Extract strings to protect them
+                # Step 2: Extract strings to protect them
                 code, strings = self.extract_strings(code)
                 
-                # Rename variables
+                # Step 3: Rename variables
                 code = self.rename_variables(code)
                 
-                # Restore strings
+                # Step 4: Restore strings
                 code = self.restore_strings(code, strings)
             
             if level == 'advanced':
-                # Add junk code
-                code = self.add_junk_code(code)
-                
-                # Obfuscate numbers
-                # code = self.obfuscate_numbers(code)  # Can break some code
-                
-                # Control flow obfuscation
-                code = self.control_flow_obfuscation(code)
+                # Step 5: Minify - remove extra whitespace
+                lines = [line.strip() for line in code.split('\n') if line.strip()]
+                code = '\n'.join(lines)
             
-            # Strip final whitespace
-            code = self.strip_whitespace(code)
-            
-            # Encode
+            # Step 6: Encode
             if encoding == 'hex':
                 code = self.encode_hex(code)
-            elif encoding == 'base64':
-                code = self.encode_base64(code)
-            else:
+            elif encoding == 'none':
                 # No encoding, return as-is
                 pass
             
             return code
             
         except Exception as e:
-            raise Exception(f"Obfuscation failed at processing stage: {str(e)}")
+            raise Exception(f"Obfuscation error: {str(e)}")
 
 # ──────────────────────────────────────────────
 #  GLOBAL CHECK - block DMs
@@ -261,7 +219,6 @@ async def on_ready():
     print(f'✅ {bot.user} is online and ready.')
     print(f'📊 Connected to {len(bot.guilds)} server(s)')
     
-    # Set bot status
     await bot.change_presence(
         activity=discord.Activity(
             type=discord.ActivityType.watching,
@@ -284,9 +241,9 @@ async def on_command_error(ctx, error):
         )
         await ctx.send(embed=embed)
     elif isinstance(error, commands.CheckFailure):
-        pass  # Already handled by the check
+        pass
     elif isinstance(error, commands.CommandNotFound):
-        pass  # Ignore invalid commands
+        pass
     else:
         embed = discord.Embed(
             title="⚠️ Error Occurred",
@@ -300,37 +257,30 @@ async def on_command_error(ctx, error):
 # ──────────────────────────────────────────────
 
 @bot.command(name='obf')
-async def obf(ctx, level: str = 'medium', encoding: str = 'hex', *, code: str = None):
-    """
-    Obfuscate Roblox Lua code
+async def obf(ctx, *, args: str = None):
+    """Obfuscate Roblox Lua code"""
     
-    Usage:
-        ?obf [level] [encoding] <code>
-        ?obf [level] [encoding] (with file attachment)
+    # Parse arguments
+    level = 'medium'
+    encoding = 'hex'
+    code = None
     
-    Levels: basic, medium, advanced
-    Encoding: hex, base64, none
-    """
-    
-    # Validate level
-    if level not in ['basic', 'medium', 'advanced']:
-        # If level looks like code, treat it as such
-        if code is None and not ctx.message.attachments:
-            code = level + (' ' + encoding if encoding != 'hex' else '')
-            level = 'medium'
-            encoding = 'hex'
-        elif level not in ['basic', 'medium', 'advanced', 'hex', 'base64', 'none']:
-            await ctx.send("❌ Invalid level. Use: `basic`, `medium`, or `advanced`")
-            return
-    
-    # Validate encoding
-    if encoding not in ['hex', 'base64', 'none']:
-        if code is None:
-            code = encoding
-            encoding = 'hex'
-        else:
-            await ctx.send("❌ Invalid encoding. Use: `hex`, `base64`, or `none`")
-            return
+    if args:
+        parts = args.split(None, 2)
+        
+        # Check if first part is a level
+        if len(parts) > 0 and parts[0] in ['basic', 'medium', 'advanced']:
+            level = parts[0]
+            parts = parts[1:]
+        
+        # Check if first part is an encoding
+        if len(parts) > 0 and parts[0] in ['hex', 'none']:
+            encoding = parts[0]
+            parts = parts[1:]
+        
+        # Rest is code
+        if parts:
+            code = ' '.join(parts)
     
     # Show processing message
     processing_msg = await ctx.send("🔄 Processing your code...")
@@ -344,7 +294,6 @@ async def obf(ctx, level: str = 'medium', encoding: str = 'hex', *, code: str = 
             await processing_msg.edit(content="❌ Only `.lua` and `.txt` files are supported.")
             return
 
-        # Check file size (max 1MB)
         if attachment.size > 1_000_000:
             await processing_msg.edit(content="❌ File too large! Maximum size is 1MB.")
             return
@@ -363,7 +312,6 @@ async def obf(ctx, level: str = 'medium', encoding: str = 'hex', *, code: str = 
 
     # -- INLINE TEXT MODE --
     elif code is not None:
-        # Remove code block formatting if present
         source_code = re.sub(r'^```[a-zA-Z]*\n?', '', code)
         source_code = re.sub(r'```$', '', source_code).strip()
         input_filename = 'obfuscated'
@@ -376,11 +324,11 @@ async def obf(ctx, level: str = 'medium', encoding: str = 'hex', *, code: str = 
                 "💬 Inline: `?obf [level] [encoding] <code>`\n"
                 "📎 File: Attach a `.lua` or `.txt` file and run `?obf [level] [encoding]`\n\n"
                 "**Levels:** `basic`, `medium` (default), `advanced`\n"
-                "**Encoding:** `hex` (default), `base64`, `none`\n\n"
+                "**Encoding:** `hex` (default), `none`\n\n"
                 "**Examples:**\n"
                 "`?obf print('Hello')`\n"
                 "`?obf advanced hex print('Hello')`\n"
-                "`?obf medium base64` (with file)"
+                "`?obf medium none` (with file)"
             ),
             color=discord.Color.blue()
         )
@@ -388,7 +336,6 @@ async def obf(ctx, level: str = 'medium', encoding: str = 'hex', *, code: str = 
         await ctx.send(embed=embed)
         return
 
-    # Check code size
     if len(source_code) > 100_000:
         await processing_msg.edit(content="❌ Code too large! Maximum size is 100,000 characters.")
         return
@@ -398,7 +345,6 @@ async def obf(ctx, level: str = 'medium', encoding: str = 'hex', *, code: str = 
         obfuscator = LuaObfuscator()
         result = obfuscator.obfuscate(source_code, level=level, encoding=encoding)
         
-        # Calculate stats
         original_size = len(source_code)
         obfuscated_size = len(result)
         size_increase = ((obfuscated_size - original_size) / original_size) * 100
@@ -414,7 +360,6 @@ async def obf(ctx, level: str = 'medium', encoding: str = 'hex', *, code: str = 
         filename=out_filename
     )
     
-    # Create result embed
     embed = discord.Embed(
         title="✅ Obfuscation Complete",
         description=f"Your code has been obfuscated successfully!",
@@ -459,12 +404,11 @@ async def obfhelp(ctx):
         value=(
             "`?obf [level] [encoding] <code>`\n\n"
             "**Levels:**\n"
-            "• `basic` - Comments & whitespace removal\n"
+            "• `basic` - Only removes comments\n"
             "• `medium` - + Variable renaming (default)\n"
-            "• `advanced` - + Junk code & control flow\n\n"
+            "• `advanced` - + Minification\n\n"
             "**Encoding:**\n"
             "• `hex` - Hex encoding (default)\n"
-            "• `base64` - Base64 encoding\n"
             "• `none` - No encoding"
         ),
         inline=False
@@ -475,11 +419,10 @@ async def obfhelp(ctx):
         value=(
             "✓ Comment removal\n"
             "✓ Variable renaming\n"
-            "✓ Whitespace optimization\n"
             "✓ String protection\n"
-            "✓ Hex/Base64 encoding\n"
-            "✓ Junk code insertion\n"
-            "✓ Control flow obfuscation"
+            "✓ Hex encoding\n"
+            "✓ Code minification\n"
+            "✓ Preserves functionality"
         ),
         inline=True
     )
@@ -490,7 +433,7 @@ async def obfhelp(ctx):
             "`?obf print('test')`\n"
             "`?obf advanced hex print('test')`\n"
             "`?obf basic none` (with file)\n"
-            "`?obf medium base64` (with file)"
+            "`?obf medium hex` (with file)"
         ),
         inline=True
     )
