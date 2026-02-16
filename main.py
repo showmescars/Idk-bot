@@ -150,25 +150,40 @@ def is_admin(ctx):
     """Check if user has administrator permissions"""
     return ctx.author.guild_permissions.administrator
 
-# Custom cooldown that bypasses for admins
-def custom_cooldown(rate, per, type=commands.BucketType.user):
+# Dynamic cooldown - bypasses for admins
+def dynamic_cooldown(rate, per):
     async def predicate(ctx):
+        # If admin, skip cooldown entirely
         if is_admin(ctx):
             return True
-        
-        # Get the bucket for this command and user
-        bucket = ctx.command._buckets.get_bucket(ctx)
-        retry_after = bucket.update_rate_limit()
-        
-        if retry_after:
-            raise commands.CommandOnCooldown(bucket, retry_after, type)
         return True
     
     def decorator(func):
-        # Add the actual cooldown
-        func = commands.cooldown(rate, per, type)(func)
-        # Add the check that bypasses for admins
-        func = commands.check(predicate)(func)
+        # Apply cooldown normally
+        cooldown_decorator = commands.cooldown(rate, per, commands.BucketType.user)
+        func = cooldown_decorator(func)
+        
+        # Override the cooldown check for admins
+        original_predicate = func._buckets._cooldown
+        
+        def new_cooldown(message):
+            # Check if user is admin
+            if message.author.guild_permissions.administrator:
+                # Return a bucket that never triggers cooldown
+                class NoCooldownBucket:
+                    def update_rate_limit(self, current=None):
+                        return None
+                    def reset(self):
+                        pass
+                    def get_tokens(self, current=None):
+                        return 0
+                    def get_retry_after(self, current=None):
+                        return 0
+                return NoCooldownBucket()
+            # Return normal cooldown bucket for non-admins
+            return original_predicate(message)
+        
+        func._buckets._cooldown = new_cooldown
         return func
     
     return decorator
@@ -236,7 +251,7 @@ async def globally_block_dms(ctx):
 
 # Make command - Creates a gang member
 @bot.command(name='make')
-@custom_cooldown(1, 10, commands.BucketType.user)
+@dynamic_cooldown(1, 10)
 async def make_character(ctx):
     """Generate a gang member with a random name"""
     
@@ -329,7 +344,7 @@ async def make_character(ctx):
 
 # View command - Display all alive and dead characters
 @bot.command(name='view')
-@custom_cooldown(1, 10, commands.BucketType.user)
+@dynamic_cooldown(1, 10)
 async def view_all_characters(ctx):
     """View all characters (alive and dead) including AI-generated rivals"""
     
@@ -445,7 +460,7 @@ async def view_all_characters(ctx):
 
 # Show command - Display user's gang members
 @bot.command(name='show')
-@custom_cooldown(1, 10, commands.BucketType.user)
+@dynamic_cooldown(1, 10)
 async def show_members(ctx):
     """Display all your gang members"""
     
@@ -502,7 +517,7 @@ async def show_members(ctx):
 
 # List command - Show kill list for a character
 @bot.command(name='list')
-@custom_cooldown(1, 10, commands.BucketType.user)
+@dynamic_cooldown(1, 10)
 async def list_kills(ctx, character_id: str = None):
     """Display the kill list for a gang member. Usage: ?list <character_id>"""
     
@@ -591,7 +606,7 @@ async def list_kills(ctx, character_id: str = None):
 
 # Work command - Earn money through street jobs
 @bot.command(name='work')
-@custom_cooldown(1, 10, commands.BucketType.user)
+@dynamic_cooldown(1, 10)
 async def work(ctx, character_id: str = None):
     """Work a street job to earn money. Usage: ?work <character_id>"""
     
@@ -667,7 +682,7 @@ async def work(ctx, character_id: str = None):
 
 # Rob command - Rob local stores for money
 @bot.command(name='rob')
-@custom_cooldown(1, 10, commands.BucketType.user)
+@dynamic_cooldown(1, 10)
 async def rob_store(ctx, character_id: str = None):
     """Rob a local store for money. Usage: ?rob <character_id>"""
     
@@ -886,7 +901,7 @@ async def rob_store(ctx, character_id: str = None):
 
 # Slide command - Battle against rival gang members with JAIL SYSTEM based on kills
 @bot.command(name='slide')
-@custom_cooldown(1, 10, commands.BucketType.user)
+@dynamic_cooldown(1, 10)
 async def slide_on_opps(ctx, *character_ids):
     """Slide on rival gang members. Usage: ?slide <character_id> [character_id2] [character_id3]..."""
     
@@ -1154,7 +1169,7 @@ async def slide_on_opps(ctx, *character_ids):
 
 # Revenge command - Battle the rival that killed your gang member
 @bot.command(name='revenge')
-@custom_cooldown(1, 10, commands.BucketType.user)
+@dynamic_cooldown(1, 10)
 async def revenge_battle(ctx, dead_character_id: str = None, avenger_character_id: str = None):
     """Take revenge on the rival that killed your gang member. Usage: ?revenge <dead_member_id> <avenger_member_id>"""
     
