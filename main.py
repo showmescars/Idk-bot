@@ -214,6 +214,25 @@ def get_opponent_power_range(player_power):
     
     return min_power, max_power
 
+# Function to calculate death chance based on power difference
+def calculate_death_chance(player_power, enemy_power):
+    """Calculate chance of death based on power difference"""
+    power_diff = enemy_power - player_power
+    
+    # Base death chance is 30%
+    base_chance = 30
+    
+    # Adjust based on power difference
+    # Every 50 power difference changes death chance by 5%
+    adjustment = (power_diff / 50) * 5
+    
+    death_chance = base_chance + adjustment
+    
+    # Cap between 10% and 70%
+    death_chance = max(10, min(70, death_chance))
+    
+    return int(death_chance)
+
 # Load characters
 def load_characters():
     if os.path.exists(CHARACTERS_FILE):
@@ -774,7 +793,7 @@ async def blood_transfer(ctx, member: discord.Member = None):
         
         await ctx.send(embed=request_embed)
 
-# Fight command - Fight rank-appropriate vampire opponents with detailed combat
+# Fight command - Fight rank-appropriate vampire opponents with death chance
 @bot.command(name='fight')
 async def fight_character(ctx, character_id: str = None):
     """Fight a vampire opponent matched to your rank! Usage: ?fight <character_id>"""
@@ -826,6 +845,9 @@ async def fight_character(ctx, character_id: str = None):
     
     ai_skills = random.sample(list(SKILLS.keys()), min(ai_num_skills, len(SKILLS)))
     
+    # Calculate death chance
+    death_chance = calculate_death_chance(player_char['power_level'], ai_power_level)
+    
     # Battle intro embed
     battle_embed = discord.Embed(
         title="BLOOD BATTLE",
@@ -843,6 +865,12 @@ async def fight_character(ctx, character_id: str = None):
         name=f"{ai_name} (ENEMY)",
         value=f"Blood Power: {ai_power_level}\nRank: {get_vampire_rank(ai_power_level)}\nAbilities: {len(ai_skills)}",
         inline=True
+    )
+    
+    battle_embed.add_field(
+        name="Death Risk",
+        value=f"{death_chance}% chance of permanent death if defeated",
+        inline=False
     )
     
     await ctx.send(embed=battle_embed)
@@ -935,41 +963,94 @@ async def fight_character(ctx, character_id: str = None):
         
         await ctx.send(embed=result_embed)
     else:
-        result_embed = discord.Embed(
-            title="DEFEAT",
-            description=f"{player_char['name']} has been destroyed by {ai_name}!",
-            color=discord.Color.red()
-        )
+        # Player lost - Roll for death
+        death_roll = random.randint(1, 100)
+        vampire_dies = death_roll <= death_chance
         
-        # Show final record before deletion
-        wins = player_char.get('wins', 0)
-        losses = player_char.get('losses', 0)
-        result_embed.add_field(name="Final Record", value=f"{wins}W - {losses}L", inline=False)
-        
-        result_embed.add_field(
-            name="Battle Summary",
-            value=f"{player_char['name']} has been staked through the heart and turned to ash...\n\nYour vampire has been destroyed. Use `?make` to create a new one.",
-            inline=False
-        )
-        
-        await ctx.send(embed=result_embed)
-        
-        # Add to graveyard before deleting
-        dead_vampire = player_char.copy()
-        dead_vampire['death_date'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-        dead_vampire['killed_by'] = ai_name
-        graveyard.append(dead_vampire)
-        save_graveyard(graveyard)
-        
-        # If hybrid, delete from both users
-        if player_char.get('is_hybrid', False):
-            shared_user_id = player_char.get('shared_user_id')
-            if shared_user_id and shared_user_id in characters:
-                del characters[shared_user_id]
-        
-        # Delete the vampire
-        del characters[user_id]
-        save_characters(characters)
+        if vampire_dies:
+            # Vampire dies permanently
+            result_embed = discord.Embed(
+                title="PERMANENT DEATH",
+                description=f"{player_char['name']} has been destroyed by {ai_name}!",
+                color=discord.Color.dark_red()
+            )
+            
+            # Show final record before deletion
+            wins = player_char.get('wins', 0)
+            losses = player_char.get('losses', 0)
+            result_embed.add_field(name="Final Record", value=f"{wins}W - {losses}L", inline=False)
+            
+            result_embed.add_field(
+                name="Death Roll",
+                value=f"Rolled {death_roll} (Death at ≤{death_chance})",
+                inline=False
+            )
+            
+            result_embed.add_field(
+                name="Battle Summary",
+                value=f"{player_char['name']} has been staked through the heart and turned to ash...\n\nYour vampire has been destroyed. Use `?make` to create a new one.",
+                inline=False
+            )
+            
+            await ctx.send(embed=result_embed)
+            
+            # Add to graveyard before deleting
+            dead_vampire = player_char.copy()
+            dead_vampire['death_date'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+            dead_vampire['killed_by'] = ai_name
+            graveyard.append(dead_vampire)
+            save_graveyard(graveyard)
+            
+            # If hybrid, delete from both users
+            if player_char.get('is_hybrid', False):
+                shared_user_id = player_char.get('shared_user_id')
+                if shared_user_id and shared_user_id in characters:
+                    del characters[shared_user_id]
+            
+            # Delete the vampire
+            del characters[user_id]
+            save_characters(characters)
+            
+        else:
+            # Vampire survives!
+            result_embed = discord.Embed(
+                title="DEFEAT - BUT ALIVE",
+                description=f"{player_char['name']} was defeated by {ai_name} but survived!",
+                color=discord.Color.orange()
+            )
+            
+            result_embed.add_field(
+                name="Death Roll",
+                value=f"Rolled {death_roll} (Death at ≤{death_chance}) - **You survived!**",
+                inline=False
+            )
+            
+            result_embed.add_field(
+                name="Battle Summary",
+                value=f"{player_char['name']} was defeated but managed to escape with their unlife intact!\n\nYou can fight again!",
+                inline=False
+            )
+            
+            # Update losses
+            if 'losses' not in player_char:
+                player_char['losses'] = 0
+            player_char['losses'] += 1
+            
+            # If hybrid, update both users
+            if player_char.get('is_hybrid', False):
+                shared_user_id = player_char.get('shared_user_id')
+                if shared_user_id and shared_user_id in characters:
+                    characters[shared_user_id]['losses'] = player_char['losses']
+            
+            characters[user_id] = player_char
+            save_characters(characters)
+            
+            # Show updated record
+            wins = player_char.get('wins', 0)
+            losses = player_char.get('losses', 0)
+            result_embed.add_field(name="New Record", value=f"{wins}W - {losses}L", inline=False)
+            
+            await ctx.send(embed=result_embed)
 
 # Stats command - Shows world statistics
 @bot.command(name='stats')
@@ -987,7 +1068,7 @@ async def world_stats(ctx):
     
     # Calculate total wins and losses
     total_wins = sum(char.get('wins', 0) for char in alive_vampires.values())
-    total_losses = sum(char.get('wins', 0) for char in dead_vampires)
+    total_losses = sum(char.get('losses', 0) for char in alive_vampires.values())
     
     # Main stats embed
     stats_embed = discord.Embed(
