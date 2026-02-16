@@ -4,7 +4,7 @@ import json
 import os
 import random
 import asyncio
-from datetime import datetime
+from datetime import datetime, timedelta
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -173,22 +173,39 @@ DRINK_OPTIONS = [
     "Olde English", "Modelo", "Corona", "Bud", "Henny and Coke"
 ]
 
-CARS = [
-    "Chevy Impala", "Dodge Charger", "Cadillac Escalade", "Chevy Caprice",
-    "BMW 5 Series", "Mercedes S Class", "Dodge Challenger", "Chevy Monte Carlo",
-    "Buick Regal", "Ford Crown Vic", "Oldsmobile Cutlass", "Pontiac Grand Prix",
-    "Chevy Tahoe", "GMC Yukon", "Lincoln Town Car"
+FLEX_ITEMS = [
+    ("a fresh pair of Jordans", 200, 15),
+    ("a gold chain", 500, 25),
+    ("a Rolex watch", 2000, 60),
+    ("a Cuban link", 1500, 45),
+    ("a diamond grill", 1000, 35),
+    ("a Balmain fit", 800, 30),
+    ("a Dodge Charger", 5000, 100),
+    ("a Chevy Impala on 24s", 8000, 150),
+    ("a AP watch", 3000, 80),
+    ("a pinky ring with VVS", 2500, 70)
 ]
 
-JEWELRY = [
-    "gold chain", "diamond watch", "grillz", "gold ring", "diamond chain",
-    "gold bracelet", "pinky ring", "Cuban link", "Rolex", "AP watch"
+TATTOO_OPTIONS = [
+    ("RIP tattoo on your neck", 100, 10),
+    ("hood name on your chest", 150, 15),
+    ("gang set on your arm", 200, 20),
+    ("teardrops under your eye", 80, 8),
+    ("full sleeve on your right arm", 500, 40),
+    ("back piece of the hood", 800, 60),
+    ("face tattoo", 300, 30),
+    ("LA on your hand", 120, 12)
 ]
 
-CLOTHES = [
-    "Dickies fit", "all blue Chucks", "all red Nikes", "white tee and khakis",
-    "fresh Jordans", "Dior fit", "Amiri jeans", "Givenchy shirt", "Balmain jacket",
-    "Lakers jersey", "Dodgers cap", "Crip blue hoodie", "Blood red hoodie"
+WEAPONS = [
+    ("Glock 19", 500, 20),
+    ("AK-47", 1500, 50),
+    ("AR-15", 1800, 60),
+    ("Draco", 2000, 70),
+    ("Shotgun", 800, 30),
+    ("Desert Eagle", 1200, 45),
+    ("Mac-10", 900, 35),
+    ("Uzi", 1100, 40)
 ]
 
 DRUGS = ["weed", "crack", "pills", "meth", "dope"]
@@ -260,49 +277,6 @@ GIRL_OUTCOMES = [
     "She stays the night. The homies clown you in the morning."
 ]
 
-FLEX_ITEMS = [
-    ("a fresh pair of Jordans", 200, 15),
-    ("a gold chain", 500, 25),
-    ("a Rolex watch", 2000, 60),
-    ("a Cuban link", 1500, 45),
-    ("a diamond grill", 1000, 35),
-    ("a Balmain fit", 800, 30),
-    ("a Dodge Charger", 5000, 100),
-    ("a Chevy Impala on 24s", 8000, 150),
-    ("a AP watch", 3000, 80),
-    ("a pinky ring with VVS", 2500, 70)
-]
-
-JAIL_SENTENCES = {
-    "short":  (1, 3),
-    "medium": (4, 7),
-    "long":   (8, 14)
-}
-
-TATTOO_OPTIONS = [
-    ("RIP tattoo on your neck", 100, 10),
-    ("hood name on your chest", 150, 15),
-    ("gang set on your arm", 200, 20),
-    ("teardrops under your eye", 80, 8),
-    ("full sleeve on your right arm", 500, 40),
-    ("back piece of the hood", 800, 60),
-    ("face tattoo", 300, 30),
-    ("LA on your hand", 120, 12)
-]
-
-WEAPONS = [
-    ("Glock 19", 500, 20),
-    ("AK-47", 1500, 50),
-    ("AR-15", 1800, 60),
-    ("Draco", 2000, 70),
-    ("Shotgun", 800, 30),
-    ("Desert Eagle", 1200, 45),
-    ("Mac-10", 900, 35),
-    ("Uzi", 1100, 40)
-]
-
-GANG_RANKS = ["Recruit", "Soldier", "OG", "Shot Caller", "Boss"]
-
 PRISON_EVENTS = [
     "You keep your head down and do your time clean.",
     "You get into a fight on the yard but handle it.",
@@ -313,6 +287,13 @@ PRISON_EVENTS = [
     "You hear about what happened on the block. It hurts to be locked up.",
     "You get into it with a rival on the yard. You handle your business."
 ]
+
+# Jail sentences now in minutes
+JAIL_SENTENCES = {
+    "short":  (5, 15),
+    "medium": (16, 30),
+    "long":   (31, 60)
+}
 
 
 def load_data(file):
@@ -357,10 +338,10 @@ def is_rival(player_gang, target_gang):
     gang_data = LA_GANGS.get(player_gang, {})
     return target_gang in gang_data.get("rivals", [])
 
-def days_since(date_str):
+def minutes_since(date_str):
     then  = datetime.strptime(date_str, '%Y-%m-%d %H:%M:%S')
     delta = datetime.now() - then
-    return delta.days
+    return int(delta.total_seconds() / 60)
 
 def get_player(user_id):
     players = load_data(GANG_FILE)
@@ -377,8 +358,8 @@ def save_player(player):
 def kill_player(player, killed_by):
     players   = load_data(GANG_FILE)
     graveyard = load_data(GRAVEYARD_FILE)
-    dead              = player.copy()
-    dead['killed_by'] = killed_by
+    dead               = player.copy()
+    dead['killed_by']  = killed_by
     dead['death_date'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
     graveyard[player['id']] = dead
     save_data(GRAVEYARD_FILE, graveyard)
@@ -386,13 +367,13 @@ def kill_player(player, killed_by):
         del players[player['id']]
         save_data(GANG_FILE, players)
 
-def send_to_prison(player, days):
+def send_to_prison(player, minutes):
     players = load_data(GANG_FILE)
     prison  = load_data(PRISON_FILE)
-    inmate                  = player.copy()
-    inmate['release_date']  = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-    inmate['sentence_days'] = days
-    prison[player['id']]    = inmate
+    inmate                     = player.copy()
+    inmate['locked_at']        = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    inmate['sentence_minutes'] = minutes
+    prison[player['id']]       = inmate
     save_data(PRISON_FILE, prison)
     if player['id'] in players:
         del players[player['id']]
@@ -401,18 +382,15 @@ def send_to_prison(player, days):
 def check_prison_release():
     prison  = load_data(PRISON_FILE)
     players = load_data(GANG_FILE)
-    released = []
     for pid, inmate in list(prison.items()):
-        days_served = days_since(inmate['release_date'])
-        if days_served >= inmate['sentence_days']:
-            inmate['heat']  = max(0, inmate.get('heat', 0) - 30)
-            inmate['cash']  = max(0, inmate.get('cash', 0) - random.randint(100, 500))
-            players[pid]    = inmate
+        served = minutes_since(inmate['locked_at'])
+        if served >= inmate['sentence_minutes']:
+            inmate['heat'] = max(0, inmate.get('heat', 0) - 30)
+            inmate['cash'] = max(0, inmate.get('cash', 0) - random.randint(100, 500))
+            players[pid]   = inmate
             del prison[pid]
-            released.append(inmate)
     save_data(PRISON_FILE, prison)
     save_data(GANG_FILE, players)
-    return released
 
 def is_in_prison(user_id):
     prison = load_data(PRISON_FILE)
@@ -436,9 +414,10 @@ async def check_blocked(ctx):
         return True
     inmate = is_in_prison(user_id)
     if inmate:
-        days_left = max(0, inmate['sentence_days'] - days_since(inmate['release_date']))
-        if days_left > 0:
-            await ctx.send(f"**{inmate['name']}** is locked up. {days_left} day(s) left. Use `?status`.")
+        served    = minutes_since(inmate['locked_at'])
+        mins_left = max(0, inmate['sentence_minutes'] - served)
+        if mins_left > 0:
+            await ctx.send(f"**{inmate['name']}** is locked up. {mins_left} minute(s) left. Use ?status.")
             return True
         else:
             check_prison_release()
@@ -464,7 +443,12 @@ async def start(ctx):
     if await check_blocked(ctx): return
 
     if get_player(user_id):
-        await ctx.send("You already have a character. Use `?profile`.")
+        await ctx.send("You already have a character. Use ?profile.")
+        return
+
+    dead = is_dead(user_id)
+    if dead:
+        await ctx.send(f"**{dead['name']}** is dead. One life. It is over.")
         return
 
     name     = f"{random.choice(FIRST_NAMES)} {random.choice(LAST_NAMES)}"
@@ -473,26 +457,26 @@ async def start(ctx):
     pid      = generate_id()
 
     player = {
-        "id":         pid,
-        "name":       name,
-        "hood_name":  hood_tag,
-        "user_id":    user_id,
-        "username":   str(ctx.author),
-        "gang":       None,
-        "rank":       "Recruit",
-        "rep":        0,
-        "cash":       random.randint(50, 200),
-        "heat":       0,
-        "location":   location,
-        "kills":      0,
-        "arrests":    0,
-        "weapon":     None,
-        "car":        None,
-        "tattoos":    [],
-        "body_count": 0,
-        "times_high": 0,
+        "id":          pid,
+        "name":        name,
+        "hood_name":   hood_tag,
+        "user_id":     user_id,
+        "username":    str(ctx.author),
+        "gang":        None,
+        "rank":        "Recruit",
+        "rep":         0,
+        "cash":        random.randint(50, 200),
+        "heat":        0,
+        "location":    location,
+        "kills":       0,
+        "arrests":     0,
+        "weapon":      None,
+        "car":         None,
+        "tattoos":     [],
+        "body_count":  0,
+        "times_high":  0,
         "times_drunk": 0,
-        "created_at": datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        "created_at":  datetime.now().strftime('%Y-%m-%d %H:%M:%S')
     }
 
     save_player(player)
@@ -505,7 +489,7 @@ async def start(ctx):
     embed.add_field(name="Cash",  value=f"${player['cash']}", inline=True)
     embed.add_field(name="Rep",   value="0",                  inline=True)
     embed.add_field(name="Heat",  value="Cold",               inline=True)
-    embed.add_field(name="Gang",  value="None - use `?join`", inline=False)
+    embed.add_field(name="Gang",  value="None - use ?join",   inline=False)
     embed.set_footer(text=f"ID: {pid} | One life. Do not waste it.")
     await ctx.send(embed=embed)
 
@@ -516,14 +500,14 @@ async def join_gang(ctx):
     if await check_blocked(ctx): return
     player = get_player(user_id)
     if not player:
-        await ctx.send("Use `?start` first.")
+        await ctx.send("Use ?start first.")
         return
     if player.get('gang'):
         await ctx.send(f"You are already repping **{player['gang']}**. Ride or die.")
         return
 
     gang_list      = list(LA_GANGS.keys())
-    gang_list_text = "\n".join(f"`{i+1}.` {g}" for i, g in enumerate(gang_list))
+    gang_list_text = "\n".join(f"{i+1}. {g}" for i, g in enumerate(gang_list))
 
     embed = discord.Embed(
         title="Pick Your Set",
@@ -542,10 +526,10 @@ async def join_gang(ctx):
             await ctx.send("Invalid choice.")
             return
 
-        chosen_gang       = gang_list[choice]
-        gang_info         = LA_GANGS[chosen_gang]
-        player['gang']    = chosen_gang
-        player['rep']     = player.get('rep', 0) + 25
+        chosen_gang    = gang_list[choice]
+        gang_info      = LA_GANGS[chosen_gang]
+        player['gang'] = chosen_gang
+        player['rep']  = player.get('rep', 0) + 25
         save_player(player)
 
         embed = discord.Embed(
@@ -553,15 +537,15 @@ async def join_gang(ctx):
             description=f"You are now repping {chosen_gang}. Do not embarrass the set.",
             color=discord.Color(gang_info['color'])
         )
-        embed.add_field(name="Territory", value=gang_info['territory'],                        inline=False)
-        embed.add_field(name="Rivals",    value=", ".join(gang_info['rivals']) or "None",      inline=False)
-        embed.add_field(name="Allies",    value=", ".join(gang_info['allies']) or "None",      inline=False)
-        embed.add_field(name="Rank",      value="Recruit",                                     inline=True)
-        embed.add_field(name="Rep Bonus", value="+25",                                         inline=True)
+        embed.add_field(name="Territory", value=gang_info['territory'],                   inline=False)
+        embed.add_field(name="Rivals",    value=", ".join(gang_info['rivals']) or "None", inline=False)
+        embed.add_field(name="Allies",    value=", ".join(gang_info['allies']) or "None", inline=False)
+        embed.add_field(name="Rank",      value="Recruit",                                inline=True)
+        embed.add_field(name="Rep Bonus", value="+25",                                    inline=True)
         await ctx.send(embed=embed)
 
     except asyncio.TimeoutError:
-        await ctx.send("Took too long. Use `?join` again.")
+        await ctx.send("Took too long. Use ?join again.")
 
 
 @bot.command(name='profile')
@@ -585,19 +569,19 @@ async def profile(ctx, user: discord.Member = None):
         description=f"From {player['location']} | Repping {gang}",
         color=color
     )
-    embed.add_field(name="Rank",       value=rank,                              inline=True)
-    embed.add_field(name="Rep",        value=str(player.get('rep', 0)),         inline=True)
-    embed.add_field(name="Cash",       value=f"${player.get('cash', 0)}",       inline=True)
-    embed.add_field(name="Heat",       value=heat,                              inline=True)
-    embed.add_field(name="Kills",      value=str(player.get('kills', 0)),       inline=True)
-    embed.add_field(name="Arrests",    value=str(player.get('arrests', 0)),     inline=True)
-    embed.add_field(name="Weapon",     value=player.get('weapon') or "None",    inline=True)
-    embed.add_field(name="Car",        value=player.get('car') or "None",       inline=True)
-    embed.add_field(name="Body Count", value=str(player.get('body_count', 0)),  inline=True)
-    embed.add_field(name="Times High", value=str(player.get('times_high', 0)),  inline=True)
-    embed.add_field(name="Times Drunk",value=str(player.get('times_drunk', 0)), inline=True)
+    embed.add_field(name="Rank",        value=rank,                              inline=True)
+    embed.add_field(name="Rep",         value=str(player.get('rep', 0)),         inline=True)
+    embed.add_field(name="Cash",        value=f"${player.get('cash', 0)}",       inline=True)
+    embed.add_field(name="Heat",        value=heat,                              inline=True)
+    embed.add_field(name="Kills",       value=str(player.get('kills', 0)),       inline=True)
+    embed.add_field(name="Arrests",     value=str(player.get('arrests', 0)),     inline=True)
+    embed.add_field(name="Weapon",      value=player.get('weapon') or "None",    inline=True)
+    embed.add_field(name="Car",         value=player.get('car') or "None",       inline=True)
+    embed.add_field(name="Body Count",  value=str(player.get('body_count', 0)),  inline=True)
+    embed.add_field(name="Times High",  value=str(player.get('times_high', 0)),  inline=True)
+    embed.add_field(name="Times Drunk", value=str(player.get('times_drunk', 0)), inline=True)
     if player.get('tattoos'):
-        embed.add_field(name="Tattoos", value=", ".join(player['tattoos'][:3]), inline=False)
+        embed.add_field(name="Tattoos", value=", ".join(player['tattoos'][:3]),  inline=False)
     embed.set_footer(text=f"ID: {player['id']}")
     await ctx.send(embed=embed)
 
@@ -608,15 +592,15 @@ async def deal(ctx):
     if await check_blocked(ctx): return
     player = get_player(user_id)
     if not player:
-        await ctx.send("Use `?start` first.")
+        await ctx.send("Use ?start first.")
         return
     if not player.get('gang'):
-        await ctx.send("Join a gang first with `?join`.")
+        await ctx.send("Join a gang first with ?join.")
         return
 
     heat = player.get('heat', 0)
     if heat >= 80:
-        await ctx.send("Heat is too high. Use `?laylow` first.")
+        await ctx.send("Heat is too high. Use ?laylow first.")
         return
 
     await ctx.send(f"**{player['name']}** hits the block...")
@@ -628,17 +612,16 @@ async def deal(ctx):
     caught        = random.randint(1, 100) <= police_chance
 
     if caught:
-        sentence_type     = random.choice(["short", "medium"])
-        days              = random.randint(*JAIL_SENTENCES[sentence_type])
+        minutes           = random.randint(*JAIL_SENTENCES[random.choice(["short", "medium"])])
         player['arrests'] = player.get('arrests', 0) + 1
         player['heat']    = min(100, heat + 20)
         save_player(player)
-        send_to_prison(player, days)
+        send_to_prison(player, minutes)
 
         embed = discord.Embed(title="BUSTED", description=random.choice(POLICE_OUTCOMES), color=discord.Color.red())
-        embed.add_field(name="Charge",   value="Possession with intent",    inline=False)
-        embed.add_field(name="Sentence", value=f"{days} day(s)",            inline=True)
-        embed.set_footer(text="Use ?status to check release date.")
+        embed.add_field(name="Charge",   value="Possession with intent", inline=False)
+        embed.add_field(name="Sentence", value=f"{minutes} minute(s)",   inline=True)
+        embed.set_footer(text="Use ?status to check release time.")
         await ctx.send(embed=embed)
         return
 
@@ -664,16 +647,16 @@ async def deal(ctx):
 
     desc  = (f"The {drug} moves fast. Cash stacks up." if result == "clean" else
              f"Slow night. The {drug} moves but money is light." if result == "slow" else
-             f"Block is dry. Nothing moves tonight.")
+             "Block is dry. Nothing moves tonight.")
     color = discord.Color.green() if result == "clean" else discord.Color.orange() if result == "slow" else discord.Color.dark_grey()
 
     embed = discord.Embed(title="TRAP REPORT", description=desc, color=color)
-    embed.add_field(name="Earned",    value=f"${cash_earned}",                           inline=True)
-    embed.add_field(name="Rep",       value=f"+{rep_gain}",                              inline=True)
+    embed.add_field(name="Earned",    value=f"${cash_earned}",                              inline=True)
+    embed.add_field(name="Rep",       value=f"+{rep_gain}",                                 inline=True)
     embed.add_field(name="Heat",      value=f"+{heat_gain} ({get_heat_level(player['heat'])})", inline=True)
-    embed.add_field(name="Cash",      value=f"${player['cash']}",                        inline=True)
-    embed.add_field(name="Total Rep", value=str(player['rep']),                          inline=True)
-    embed.add_field(name="Rank",      value=get_rank(player['rep']),                     inline=True)
+    embed.add_field(name="Cash",      value=f"${player['cash']}",                           inline=True)
+    embed.add_field(name="Total Rep", value=str(player['rep']),                             inline=True)
+    embed.add_field(name="Rank",      value=get_rank(player['rep']),                        inline=True)
     await ctx.send(embed=embed)
 
 
@@ -683,15 +666,15 @@ async def rob(ctx):
     if await check_blocked(ctx): return
     player = get_player(user_id)
     if not player:
-        await ctx.send("Use `?start` first.")
+        await ctx.send("Use ?start first.")
         return
     if not player.get('gang'):
-        await ctx.send("Join a gang first with `?join`.")
+        await ctx.send("Join a gang first with ?join.")
         return
 
     heat = player.get('heat', 0)
     if heat >= 80:
-        await ctx.send("Heat is too high. Use `?laylow` first.")
+        await ctx.send("Heat is too high. Use ?laylow first.")
         return
 
     target = random.choice(ROB_TARGETS)
@@ -704,14 +687,14 @@ async def rob(ctx):
     caught         = random.randint(1, 100) <= police_chance
 
     if caught:
-        days              = random.randint(*JAIL_SENTENCES[random.choice(["medium", "long"])])
+        minutes           = random.randint(*JAIL_SENTENCES[random.choice(["medium", "long"])])
         player['arrests'] = player.get('arrests', 0) + 1
         save_player(player)
-        send_to_prison(player, days)
+        send_to_prison(player, minutes)
 
         embed = discord.Embed(title="CAUGHT IN THE ACT", description=random.choice(POLICE_OUTCOMES), color=discord.Color.red())
-        embed.add_field(name="Charge",   value="Armed robbery",  inline=False)
-        embed.add_field(name="Sentence", value=f"{days} day(s)", inline=True)
+        embed.add_field(name="Charge",   value="Armed robbery",      inline=False)
+        embed.add_field(name="Sentence", value=f"{minutes} minute(s)", inline=True)
         await ctx.send(embed=embed)
         return
 
@@ -746,13 +729,13 @@ async def drive_by(ctx, target_user: discord.Member = None):
     player = get_player(user_id)
 
     if not player:
-        await ctx.send("Use `?start` first.")
+        await ctx.send("Use ?start first.")
         return
     if not player.get('gang'):
-        await ctx.send("Join a gang first with `?join`.")
+        await ctx.send("Join a gang first with ?join.")
         return
     if target_user is None:
-        await ctx.send("Usage: `?driveby @user`")
+        await ctx.send("Usage: ?driveby @user")
         return
     if target_user.id == ctx.author.id:
         await ctx.send("You cannot drive by yourself.")
@@ -777,24 +760,24 @@ async def drive_by(ctx, target_user: discord.Member = None):
     await ctx.send(f"**{player['name']}** pulls up on **{target_player['name']}**...")
     await asyncio.sleep(3)
 
-    weapon_bonus    = 20 if player.get('weapon') else 0
-    attacker_power  = player.get('rep', 0) + random.randint(1, 50) + weapon_bonus
-    defender_power  = target_player.get('rep', 0) + random.randint(1, 50)
-    attacker_wins   = attacker_power > defender_power
-    heat_gain       = random.randint(25, 40)
-    police_chance   = int(heat * 0.4) + 20
-    caught          = random.randint(1, 100) <= police_chance
+    weapon_bonus   = 20 if player.get('weapon') else 0
+    attacker_power = player.get('rep', 0) + random.randint(1, 50) + weapon_bonus
+    defender_power = target_player.get('rep', 0) + random.randint(1, 50)
+    attacker_wins  = attacker_power > defender_power
+    heat_gain      = random.randint(25, 40)
+    police_chance  = int(heat * 0.4) + 20
+    caught         = random.randint(1, 100) <= police_chance
 
     if attacker_wins:
-        death_roll   = random.randint(1, 100)
-        target_dies  = death_roll <= 40
-        rep_gain     = random.randint(30, 80)
+        death_roll  = random.randint(1, 100)
+        target_dies = death_roll <= 40
+        rep_gain    = random.randint(30, 80)
         player['rep']   = player.get('rep', 0) + rep_gain
         player['heat']  = min(100, player.get('heat', 0) + heat_gain)
         player['kills'] = player.get('kills', 0) + (1 if target_dies else 0)
 
         embed = discord.Embed(title="DRIVE BY - HIT", description=random.choice(DRIVE_BY_OUTCOMES_WIN), color=discord.Color.green())
-        embed.add_field(name="Rep", value=f"+{rep_gain}", inline=True)
+        embed.add_field(name="Rep",  value=f"+{rep_gain}",  inline=True)
         embed.add_field(name="Heat", value=f"+{heat_gain}", inline=True)
 
         if target_dies:
@@ -825,31 +808,29 @@ async def drive_by(ctx, target_user: discord.Member = None):
         save_player(player)
 
     if caught:
-        days              = random.randint(*JAIL_SENTENCES["long"])
+        minutes           = random.randint(*JAIL_SENTENCES["long"])
         player['arrests'] = player.get('arrests', 0) + 1
         save_player(player)
-        send_to_prison(player, days)
-        embed.add_field(name="THEN LAPD CAME", value=f"Locked up right after. {days} days.", inline=False)
+        send_to_prison(player, minutes)
+        embed.add_field(name="THEN LAPD CAME", value=f"Locked up right after. {minutes} minute(s).", inline=False)
 
     await ctx.send(embed=embed)
 
 
 @bot.command(name='smoke')
 async def smoke(ctx):
-    """Light up and kick back. Usage: ?smoke"""
     user_id = str(ctx.author.id)
     if await check_blocked(ctx): return
     player = get_player(user_id)
     if not player:
-        await ctx.send("Use `?start` first.")
+        await ctx.send("Use ?start first.")
         return
 
-    strain = random.choice(SMOKE_STRAINS)
-    session = random.choice(SMOKE_SESSIONS)
-
-    # Smoking reduces heat slightly and gives a small vibe boost
+    strain         = random.choice(SMOKE_STRAINS)
+    session        = random.choice(SMOKE_SESSIONS)
     heat_reduction = random.randint(3, 8)
     rep_gain       = random.randint(1, 5)
+
     player['heat']       = max(0, player.get('heat', 0) - heat_reduction)
     player['rep']        = player.get('rep', 0) + rep_gain
     player['times_high'] = player.get('times_high', 0) + 1
@@ -868,31 +849,28 @@ async def smoke(ctx):
 
 @bot.command(name='drink')
 async def drink(ctx):
-    """Pour up and get loose. Usage: ?drink"""
     user_id = str(ctx.author.id)
     if await check_blocked(ctx): return
     player = get_player(user_id)
     if not player:
-        await ctx.send("Use `?start` first.")
+        await ctx.send("Use ?start first.")
         return
 
     drink_choice   = random.choice(DRINK_OPTIONS)
     session        = random.choice(DRUNK_SESSIONS)
     heat_reduction = random.randint(2, 6)
     rep_gain       = random.randint(1, 4)
+    trouble        = random.randint(1, 100) <= 15
 
-    # Small chance drinking gets you into trouble
-    trouble = random.randint(1, 100) <= 15
     player['heat']        = max(0, player.get('heat', 0) - heat_reduction)
     player['rep']         = player.get('rep', 0) + rep_gain
     player['times_drunk'] = player.get('times_drunk', 0) + 1
 
+    trouble_text = ""
     if trouble:
         heat_add       = random.randint(5, 15)
         player['heat'] = min(100, player.get('heat', 0) + heat_add)
-        trouble_text   = f"\nYou got drunk and started wilding. Heat went up +{heat_add}."
-    else:
-        trouble_text = ""
+        trouble_text   = f"\n\nYou got drunk and started wilding. Heat went up +{heat_add}."
 
     save_player(player)
 
@@ -909,40 +887,35 @@ async def drink(ctx):
 
 @bot.command(name='hoes')
 async def hoes(ctx):
-    """Link with a girl for the night. Usage: ?hoes"""
     user_id = str(ctx.author.id)
     if await check_blocked(ctx): return
     player = get_player(user_id)
     if not player:
-        await ctx.send("Use `?start` first.")
+        await ctx.send("Use ?start first.")
         return
 
-    cash = player.get('cash', 0)
     cost = random.randint(50, 200)
-
-    if cash < cost:
+    if player.get('cash', 0) < cost:
         await ctx.send(f"You are broke. You need at least ${cost} to be out here like that.")
         return
 
-    girl    = random.choice(FEMALE_NAMES)
+    girl      = random.choice(FEMALE_NAMES)
     encounter = random.choice(GIRL_ENCOUNTERS)
     outcome   = random.choice(GIRL_OUTCOMES)
     rep_gain  = random.randint(2, 8)
+    setup     = random.randint(1, 100) <= 10
 
-    player['cash']       = cash - cost
+    player['cash']       = player.get('cash', 0) - cost
     player['rep']        = player.get('rep', 0) + rep_gain
     player['body_count'] = player.get('body_count', 0) + 1
 
-    # Small chance she sets you up
-    setup = random.randint(1, 100) <= 10
+    setup_text = ""
     if setup:
         cash_lost      = random.randint(100, 500)
         heat_gain      = random.randint(5, 15)
         player['cash'] = max(0, player.get('cash', 0) - cash_lost)
         player['heat'] = min(100, player.get('heat', 0) + heat_gain)
         setup_text     = f"\n\nShe set you up. Lost ${cash_lost} and heat went up +{heat_gain}. Never trust a new face."
-    else:
-        setup_text = ""
 
     save_player(player)
 
@@ -951,23 +924,22 @@ async def hoes(ctx):
         description=f"{encounter}\n\n{outcome}{setup_text}",
         color=discord.Color.dark_magenta()
     )
-    embed.add_field(name="Spent",      value=f"${cost}",                inline=True)
-    embed.add_field(name="Rep",        value=f"+{rep_gain}",            inline=True)
+    embed.add_field(name="Spent",      value=f"${cost}",               inline=True)
+    embed.add_field(name="Rep",        value=f"+{rep_gain}",           inline=True)
     embed.add_field(name="Body Count", value=str(player['body_count']), inline=True)
     await ctx.send(embed=embed)
 
 
 @bot.command(name='flex')
 async def flex(ctx):
-    """Spend cash on drip, chains, and cars. Usage: ?flex"""
     user_id = str(ctx.author.id)
     if await check_blocked(ctx): return
     player = get_player(user_id)
     if not player:
-        await ctx.send("Use `?start` first.")
+        await ctx.send("Use ?start first.")
         return
 
-    items_text = "\n".join(f"`{i+1}.` {item[0]} - ${item[1]}" for i, item in enumerate(FLEX_ITEMS))
+    items_text = "\n".join(f"{i+1}. {item[0]} - ${item[1]}" for i, item in enumerate(FLEX_ITEMS))
     embed = discord.Embed(
         title="WHAT ARE YOU COPPING",
         description=f"Your cash: ${player.get('cash', 0)}\n\n{items_text}\n\nType the number to buy.",
@@ -994,8 +966,7 @@ async def flex(ctx):
         player['cash'] = player.get('cash', 0) - item_cost
         player['rep']  = player.get('rep', 0) + rep_gain
 
-        # If it is a car update the car field
-        if "Chevy" in item_name or "Dodge" in item_name or "BMW" in item_name or "Mercedes" in item_name or "Lincoln" in item_name or "Cadillac" in item_name or "Impala" in item_name or "Charger" in item_name:
+        if any(word in item_name for word in ["Chevy", "Dodge", "BMW", "Mercedes", "Lincoln", "Cadillac", "Impala", "Charger"]):
             player['car'] = item_name
 
         save_player(player)
@@ -1005,26 +976,25 @@ async def flex(ctx):
             description=f"You just bought **{item_name}**. The streets notice.",
             color=discord.Color.gold()
         )
-        embed.add_field(name="Spent",    value=f"${item_cost}",         inline=True)
-        embed.add_field(name="Rep",      value=f"+{rep_gain}",          inline=True)
-        embed.add_field(name="Cash Left",value=f"${player['cash']}",    inline=True)
+        embed.add_field(name="Spent",     value=f"${item_cost}",      inline=True)
+        embed.add_field(name="Rep",       value=f"+{rep_gain}",        inline=True)
+        embed.add_field(name="Cash Left", value=f"${player['cash']}",  inline=True)
         await ctx.send(embed=embed)
 
     except asyncio.TimeoutError:
-        await ctx.send("Took too long. Use `?flex` again.")
+        await ctx.send("Took too long. Use ?flex again.")
 
 
 @bot.command(name='getstrapped')
 async def get_strapped(ctx):
-    """Buy a weapon to boost your power. Usage: ?getstrapped"""
     user_id = str(ctx.author.id)
     if await check_blocked(ctx): return
     player = get_player(user_id)
     if not player:
-        await ctx.send("Use `?start` first.")
+        await ctx.send("Use ?start first.")
         return
 
-    weapons_text = "\n".join(f"`{i+1}.` {w[0]} - ${w[1]}" for i, w in enumerate(WEAPONS))
+    weapons_text = "\n".join(f"{i+1}. {w[0]} - ${w[1]}" for i, w in enumerate(WEAPONS))
     embed = discord.Embed(
         title="WHAT ARE YOU GRABBING",
         description=f"Your cash: ${player.get('cash', 0)}\n\n{weapons_text}\n\nType the number to buy.",
@@ -1058,28 +1028,27 @@ async def get_strapped(ctx):
             description=f"You just grabbed a **{weapon_name}**. Now you are dangerous.",
             color=discord.Color.dark_red()
         )
-        embed.add_field(name="Weapon",    value=weapon_name,           inline=True)
-        embed.add_field(name="Spent",     value=f"${weapon_cost}",     inline=True)
-        embed.add_field(name="Rep",       value=f"+{rep_gain}",        inline=True)
-        embed.add_field(name="Cash Left", value=f"${player['cash']}",  inline=True)
+        embed.add_field(name="Weapon",    value=weapon_name,          inline=True)
+        embed.add_field(name="Spent",     value=f"${weapon_cost}",    inline=True)
+        embed.add_field(name="Rep",       value=f"+{rep_gain}",       inline=True)
+        embed.add_field(name="Cash Left", value=f"${player['cash']}", inline=True)
         embed.set_footer(text="Your weapon gives you a bonus in drive bys.")
         await ctx.send(embed=embed)
 
     except asyncio.TimeoutError:
-        await ctx.send("Took too long. Use `?getstrapped` again.")
+        await ctx.send("Took too long. Use ?getstrapped again.")
 
 
 @bot.command(name='tattoo')
 async def get_tattoo(ctx):
-    """Get inked up. Usage: ?tattoo"""
     user_id = str(ctx.author.id)
     if await check_blocked(ctx): return
     player = get_player(user_id)
     if not player:
-        await ctx.send("Use `?start` first.")
+        await ctx.send("Use ?start first.")
         return
 
-    tattoo_text = "\n".join(f"`{i+1}.` {t[0]} - ${t[1]}" for i, t in enumerate(TATTOO_OPTIONS))
+    tattoo_text = "\n".join(f"{i+1}. {t[0]} - ${t[1]}" for i, t in enumerate(TATTOO_OPTIONS))
     embed = discord.Embed(
         title="WHAT ARE YOU GETTING",
         description=f"Your cash: ${player.get('cash', 0)}\n\n{tattoo_text}\n\nType the number.",
@@ -1119,23 +1088,22 @@ async def get_tattoo(ctx):
             description=f"You just got **{tattoo_name}**. The hood knows who you are.",
             color=discord.Color.dark_grey()
         )
-        embed.add_field(name="Spent",      value=f"${tattoo_cost}",          inline=True)
-        embed.add_field(name="Rep",        value=f"+{rep_gain}",             inline=True)
+        embed.add_field(name="Spent",      value=f"${tattoo_cost}",           inline=True)
+        embed.add_field(name="Rep",        value=f"+{rep_gain}",              inline=True)
         embed.add_field(name="Total Tats", value=str(len(player['tattoos'])), inline=True)
         await ctx.send(embed=embed)
 
     except asyncio.TimeoutError:
-        await ctx.send("Took too long. Use `?tattoo` again.")
+        await ctx.send("Took too long. Use ?tattoo again.")
 
 
 @bot.command(name='kickback')
 async def kickback(ctx):
-    """Throw a kickback at the spot. Usage: ?kickback"""
     user_id = str(ctx.author.id)
     if await check_blocked(ctx): return
     player = get_player(user_id)
     if not player:
-        await ctx.send("Use `?start` first.")
+        await ctx.send("Use ?start first.")
         return
 
     cost = random.randint(200, 600)
@@ -1146,10 +1114,11 @@ async def kickback(ctx):
     await ctx.send(f"**{player['name']}** is throwing a kickback at the spot...")
     await asyncio.sleep(2)
 
-    strain      = random.choice(SMOKE_STRAINS)
+    strain       = random.choice(SMOKE_STRAINS)
     drink_choice = random.choice(DRINK_OPTIONS)
-    rep_gain    = random.randint(20, 50)
-    heat_gain   = random.randint(5, 15)
+    rep_gain     = random.randint(20, 50)
+    heat_gain    = random.randint(5, 15)
+    raided       = random.randint(1, 100) <= 20
 
     player['cash']        = player.get('cash', 0) - cost
     player['rep']         = player.get('rep', 0) + rep_gain
@@ -1157,21 +1126,19 @@ async def kickback(ctx):
     player['times_high']  = player.get('times_high', 0) + 1
     player['times_drunk'] = player.get('times_drunk', 0) + 1
 
-    # Small chance kickback gets raided
-    raided = random.randint(1, 100) <= 20
     if raided:
-        days              = random.randint(*JAIL_SENTENCES["short"])
+        minutes           = random.randint(*JAIL_SENTENCES["short"])
         player['arrests'] = player.get('arrests', 0) + 1
         save_player(player)
-        send_to_prison(player, days)
+        send_to_prison(player, minutes)
 
         embed = discord.Embed(
             title="KICKBACK GOT RAIDED",
             description=f"The spot was lit. {strain} in the air, {drink_choice} everywhere. Then LAPD kicked the door.",
             color=discord.Color.red()
         )
-        embed.add_field(name="Spent",    value=f"${cost}",      inline=True)
-        embed.add_field(name="Sentence", value=f"{days} day(s)", inline=True)
+        embed.add_field(name="Spent",    value=f"${cost}",            inline=True)
+        embed.add_field(name="Sentence", value=f"{minutes} minute(s)", inline=True)
         await ctx.send(embed=embed)
         return
 
@@ -1182,8 +1149,8 @@ async def kickback(ctx):
         description=f"The spot was packed. {strain} in rotation, {drink_choice} on deck. The whole hood came through.",
         color=discord.Color.dark_purple()
     )
-    embed.add_field(name="Spent", value=f"${cost}",      inline=True)
-    embed.add_field(name="Rep",   value=f"+{rep_gain}",  inline=True)
+    embed.add_field(name="Spent", value=f"${cost}",     inline=True)
+    embed.add_field(name="Rep",   value=f"+{rep_gain}", inline=True)
     embed.add_field(name="Heat",  value=f"+{heat_gain}", inline=True)
     await ctx.send(embed=embed)
 
@@ -1194,7 +1161,7 @@ async def lay_low(ctx):
     if await check_blocked(ctx): return
     player = get_player(user_id)
     if not player:
-        await ctx.send("Use `?start` first.")
+        await ctx.send("Use ?start first.")
         return
 
     heat = player.get('heat', 0)
@@ -1228,10 +1195,10 @@ async def status(ctx):
 
     for inmate in prison.values():
         if inmate.get('user_id') == user_id:
-            days_served = days_since(inmate['release_date'])
-            days_left   = max(0, inmate['sentence_days'] - days_served)
+            served    = minutes_since(inmate['locked_at'])
+            mins_left = max(0, inmate['sentence_minutes'] - served)
 
-            if days_left == 0:
+            if mins_left == 0:
                 check_prison_release()
                 await ctx.send(f"**{inmate['name']}** has served their time. You are out.")
                 return
@@ -1242,22 +1209,22 @@ async def status(ctx):
                 description=f"**{inmate['name']}** is locked up.\n\n{prison_event}",
                 color=discord.Color.dark_grey()
             )
-            embed.add_field(name="Sentence",    value=f"{inmate['sentence_days']} day(s)", inline=True)
-            embed.add_field(name="Days Served", value=str(days_served),                    inline=True)
-            embed.add_field(name="Days Left",   value=str(days_left),                      inline=True)
+            embed.add_field(name="Sentence",       value=f"{inmate['sentence_minutes']} minute(s)", inline=True)
+            embed.add_field(name="Minutes Served",  value=str(served),                               inline=True)
+            embed.add_field(name="Minutes Left",    value=str(mins_left),                            inline=True)
             embed.set_footer(text="You cannot do anything until you are released.")
             await ctx.send(embed=embed)
             return
 
     player = get_player(user_id)
     if player:
-        await ctx.send(f"**{player['name']}** is free. Heat: {get_heat_level(player.get('heat', 0))}. Use `?profile` for full stats.")
+        await ctx.send(f"**{player['name']}** is free. Heat: {get_heat_level(player.get('heat', 0))}. Use ?profile for full stats.")
     else:
         dead = is_dead(user_id)
         if dead:
             await ctx.send(f"**{dead['name']}** is dead. Killed by {dead['killed_by']}. One life.")
         else:
-            await ctx.send("No character found. Use `?start`.")
+            await ctx.send("No character found. Use ?start.")
 
 
 @bot.command(name='streets')
@@ -1311,23 +1278,23 @@ async def show_graveyard(ctx):
 @bot.command(name='cmds')
 async def show_commands(ctx):
     embed = discord.Embed(title="GANG SIMULATOR COMMANDS", color=discord.Color.dark_grey())
-    embed.add_field(name="?start",        value="Create your character",                    inline=False)
-    embed.add_field(name="?join",         value="Join a real LA gang",                      inline=False)
-    embed.add_field(name="?profile",      value="View your stats or someone elses",         inline=False)
-    embed.add_field(name="?deal",         value="Move product on the block",                inline=False)
-    embed.add_field(name="?rob",          value="Hit a lick",                               inline=False)
-    embed.add_field(name="?driveby @user",value="Shoot on a rival gang member",             inline=False)
-    embed.add_field(name="?smoke",        value="Light up and chill",                       inline=False)
-    embed.add_field(name="?drink",        value="Pour up",                                  inline=False)
-    embed.add_field(name="?hoes",         value="Link with a girl for the night",           inline=False)
-    embed.add_field(name="?flex",         value="Cop drip, chains, and cars",               inline=False)
-    embed.add_field(name="?getstrapped",  value="Buy a weapon",                             inline=False)
-    embed.add_field(name="?tattoo",       value="Get inked up",                             inline=False)
-    embed.add_field(name="?kickback",     value="Throw a kickback at the spot",             inline=False)
-    embed.add_field(name="?laylow",       value="Reduce your heat",                         inline=False)
-    embed.add_field(name="?status",       value="Check prison time remaining",              inline=False)
-    embed.add_field(name="?streets",      value="Top 10 players by rep",                   inline=False)
-    embed.add_field(name="?graveyard",    value="See all fallen members",                   inline=False)
+    embed.add_field(name="?start",         value="Create your character",              inline=False)
+    embed.add_field(name="?join",          value="Join a real LA gang",                inline=False)
+    embed.add_field(name="?profile",       value="View your stats or someone elses",   inline=False)
+    embed.add_field(name="?deal",          value="Move product on the block",          inline=False)
+    embed.add_field(name="?rob",           value="Hit a lick",                         inline=False)
+    embed.add_field(name="?driveby @user", value="Shoot on a rival gang member",       inline=False)
+    embed.add_field(name="?smoke",         value="Light up and chill",                 inline=False)
+    embed.add_field(name="?drink",         value="Pour up",                            inline=False)
+    embed.add_field(name="?hoes",          value="Link with a girl for the night",     inline=False)
+    embed.add_field(name="?flex",          value="Cop drip, chains, and cars",         inline=False)
+    embed.add_field(name="?getstrapped",   value="Buy a weapon",                       inline=False)
+    embed.add_field(name="?tattoo",        value="Get inked up",                       inline=False)
+    embed.add_field(name="?kickback",      value="Throw a kickback at the spot",       inline=False)
+    embed.add_field(name="?laylow",        value="Reduce your heat",                   inline=False)
+    embed.add_field(name="?status",        value="Check prison time remaining",        inline=False)
+    embed.add_field(name="?streets",       value="Top 10 players by rep",              inline=False)
+    embed.add_field(name="?graveyard",     value="See all fallen members",             inline=False)
     await ctx.send(embed=embed)
 
 
