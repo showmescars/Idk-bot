@@ -256,6 +256,7 @@ async def make_character(ctx):
         "gang_affiliation": gang_affiliation,
         "set_name": set_name,
         "kills": 0,
+        "kill_list": [],  # NEW: Track who this member has killed
         "created_at": datetime.now().strftime('%Y-%m-%d %H:%M:%S')
     }
     
@@ -334,7 +335,98 @@ async def show_members(ctx):
             inline=True
         )
     
-    embed.set_footer(text="Use ?crew for crew battles | ?slide <id> for solo")
+    embed.set_footer(text="Use ?crew for crew battles | ?slide <id> for solo | ?list <id> for kill list")
+    
+    await ctx.send(embed=embed)
+
+# List command - Show kill list for a character
+@bot.command(name='list')
+async def list_kills(ctx, character_id: str = None):
+    """Display the kill list for a gang member. Usage: ?list <character_id>"""
+    
+    if character_id is None:
+        await ctx.send("Usage: `?list <character_id>`\nExample: `?list 123456`")
+        return
+    
+    if character_id not in characters:
+        await ctx.send(f"Gang member ID `{character_id}` not found!")
+        return
+    
+    player_char = characters[character_id]
+    user_id = str(ctx.author.id)
+    
+    if player_char.get('user_id') != user_id:
+        await ctx.send("You don't own this gang member!")
+        return
+    
+    # Get kill list
+    kill_list = player_char.get('kill_list', [])
+    total_kills = player_char.get('kills', 0)
+    
+    # Get gang color
+    gang_color = LA_GANGS.get(player_char.get('gang_affiliation', 'Crips'), {}).get('color', discord.Color.dark_red())
+    
+    # Create embed
+    embed = discord.Embed(
+        title=f"KILL LIST - {player_char['name']}",
+        description=f"**Total Bodies:** {total_kills}",
+        color=gang_color
+    )
+    
+    embed.add_field(
+        name="Gang Member Info",
+        value=f"**Gang:** {player_char.get('gang_affiliation', 'Unknown')}\n**Set:** {player_char.get('set_name', 'Unknown')}",
+        inline=False
+    )
+    
+    if kill_list:
+        # Sort by date (most recent first)
+        sorted_kills = sorted(kill_list, key=lambda x: x.get('date', ''), reverse=True)
+        
+        # Display kills (limit to 25 fields due to Discord embed limits)
+        display_limit = 25
+        
+        for idx, kill in enumerate(sorted_kills):
+            if idx >= display_limit:
+                remaining = len(sorted_kills) - display_limit
+                embed.add_field(
+                    name=f"... and {remaining} more",
+                    value="Too many bodies to display",
+                    inline=False
+                )
+                break
+            
+            victim_name = kill.get('victim_name', 'Unknown')
+            victim_gang = kill.get('victim_gang', 'Unknown')
+            victim_set = kill.get('victim_set', 'Unknown')
+            kill_date = kill.get('date', 'Unknown')
+            kill_type = kill.get('type', 'slide')
+            
+            # Format date nicely
+            try:
+                date_obj = datetime.strptime(kill_date, '%Y-%m-%d %H:%M:%S')
+                formatted_date = date_obj.strftime('%b %d, %Y at %I:%M %p')
+            except:
+                formatted_date = kill_date
+            
+            field_value = f"**Gang:** {victim_gang}\n**Set:** {victim_set}\n**Date:** {formatted_date}"
+            
+            if kill_type == "revenge":
+                field_value += "\n**Type:** Revenge Kill"
+            
+            embed.add_field(
+                name=f"#{idx + 1} - {victim_name}",
+                value=field_value,
+                inline=True
+            )
+    else:
+        embed.add_field(
+            name="No Bodies",
+            value=f"{player_char['name']} hasn't caught any bodies yet.",
+            inline=False
+        )
+    
+    embed.set_footer(text="Bodies caught in the streets")
     
     await ctx.send(embed=embed)
 
@@ -594,6 +686,18 @@ async def slide_on_opps(ctx, character_id: str = None):
         # Increment kill count
         player_char['kills'] = player_char.get('kills', 0) + 1
         
+        # Add to kill list
+        if 'kill_list' not in player_char:
+            player_char['kill_list'] = []
+        
+        player_char['kill_list'].append({
+            'victim_name': rival_name,
+            'victim_gang': rival_gang,
+            'victim_set': rival_set,
+            'date': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+            'type': 'slide'
+        })
+        
         # 30% chance of getting caught after killing someone
         jail_chance = 30
         goes_to_jail = jail_roll <= jail_chance
@@ -827,6 +931,18 @@ async def revenge_battle(ctx, dead_character_id: str = None, avenger_character_i
     if not member_dies and player_won:
         # Increment kill count
         avenger_char['kills'] = avenger_char.get('kills', 0) + 1
+        
+        # Add to kill list
+        if 'kill_list' not in avenger_char:
+            avenger_char['kill_list'] = []
+        
+        avenger_char['kill_list'].append({
+            'victim_name': killer_name,
+            'victim_gang': rival_gang,
+            'victim_set': rival_set,
+            'date': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+            'type': 'revenge'
+        })
         
         # 30% chance of getting caught
         jail_chance = 30
