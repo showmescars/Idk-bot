@@ -691,13 +691,13 @@ async def slide_on_opps(ctx, character_id: str = None):
                 
                 outcome_embed.add_field(
                     name="ARRESTED",
-                    value=f"Rolled **{jail_roll}** (Jail at {jail_chance}% or less)\n**Locked up for {jail_minutes} minute(s)!** (1 minute per kill)",
+                    value=f"Locked up for **{jail_minutes} minute(s)**",
                     inline=False
                 )
             else:
                 outcome_embed.add_field(
                     name="EVADED POLICE",
-                    value=f"Rolled **{jail_roll}** (Jail at {jail_chance}% or less) - Got away clean!",
+                    value=f"Got away clean!",
                     inline=False
                 )
             
@@ -978,13 +978,13 @@ async def revenge_battle(ctx, dead_character_id: str = None, avenger_character_i
                 
                 outcome_embed.add_field(
                     name="ARRESTED",
-                    value=f"Rolled **{jail_roll}** (Jail at {jail_chance}% or less)\n**Locked up for {jail_minutes} minute(s)!** (1 minute per kill)",
+                    value=f"Locked up for **{jail_minutes} minute(s)**",
                     inline=False
                 )
             else:
                 outcome_embed.add_field(
                     name="EVADED POLICE",
-                    value=f"Rolled **{jail_roll}** (Jail at {jail_chance}% or less) - Got away clean!",
+                    value=f"Got away clean!",
                     inline=False
                 )
             
