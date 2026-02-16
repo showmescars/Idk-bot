@@ -691,7 +691,7 @@ async def slide_on_opps(ctx, character_id: str = None):
                 
                 outcome_embed.add_field(
                     name="ARRESTED",
-                    value=f"Locked up for **{jail_minutes} minute(s)**",
+                    value=f"Locked up for **{jail_minutes} minutes**",
                     inline=False
                 )
             else:
