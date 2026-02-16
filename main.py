@@ -201,7 +201,7 @@ def generate_rival_crew():
     for _ in range(crew_size):
         first_name = random.choice(FIRST_NAMES)
         last_name = random.choice(LAST_NAMES)
-        member_name = f"{first_name} {last_name}"  # CHANGED: Removed nickname
+        member_name = f"{first_name} {last_name}"
         
         rival_crew.append({
             "name": member_name,
@@ -237,7 +237,7 @@ async def make_character(ctx):
     # Generate random gang member name
     first_name = random.choice(FIRST_NAMES)
     last_name = random.choice(LAST_NAMES)
-    character_name = f"{first_name} {last_name}"  # CHANGED: Removed nickname
+    character_name = f"{first_name} {last_name}"
     
     # Generate unique character ID
     character_id = generate_unique_id()
@@ -453,23 +453,11 @@ async def crew_battle(ctx):
             color=discord.Color.green()
         )
         
-        outcome_embed.add_field(
-            name="Battle Result",
-            value=f"Rolled: {battle_result['roll']} (50 or less to win)",
-            inline=False
-        )
-        
     else:
         outcome_embed = discord.Embed(
             title="CREW WAR DEFEAT",
             description=f"**{ctx.author.name}'s Crew** was defeated by the {rival_set} crew of {len(rival_crew)} members!",
             color=discord.Color.red()
-        )
-        
-        outcome_embed.add_field(
-            name="Battle Result",
-            value=f"Rolled: {battle_result['roll']} (50 or less to win)",
-            inline=False
         )
     
     # Show casualties
@@ -551,7 +539,7 @@ async def slide_on_opps(ctx, character_id: str = None):
     # Generate rival
     rival_first_name = random.choice(FIRST_NAMES)
     rival_last_name = random.choice(LAST_NAMES)
-    rival_name = f"{rival_first_name} {rival_last_name}"  # CHANGED: Removed nickname
+    rival_name = f"{rival_first_name} {rival_last_name}"
     
     # Generate rival gang affiliation (different from player if possible)
     available_gangs = [g for g in LA_GANGS.keys() if g != player_char.get('gang_affiliation')]
@@ -624,18 +612,6 @@ async def slide_on_opps(ctx, character_id: str = None):
             )
             
             outcome_embed.add_field(
-                name="Battle Result",
-                value=f"Rolled: {battle_result['roll']} (50 or less to win)",
-                inline=False
-            )
-            
-            outcome_embed.add_field(
-                name="Death Roll",
-                value=f"Rolled **{death_roll}** (Death at {death_chance}% or less)",
-                inline=False
-            )
-            
-            outcome_embed.add_field(
                 name="Final Moments",
                 value=f"Despite the victory, {player_char['name']} didn't make it",
                 inline=False
@@ -663,18 +639,6 @@ async def slide_on_opps(ctx, character_id: str = None):
                     description=f"**{player_char['name']}** has eliminated **{rival_name}** from {rival_set}",
                     color=discord.Color.green()
                 )
-            
-            outcome_embed.add_field(
-                name="Battle Result",
-                value=f"Rolled: {battle_result['roll']} (50 or less to win)",
-                inline=False
-            )
-            
-            outcome_embed.add_field(
-                name="Survival Roll",
-                value=f"Rolled **{death_roll}** (Death at {death_chance}% or less) - SURVIVED",
-                inline=False
-            )
             
             outcome_embed.add_field(
                 name="Kill Count",
@@ -711,18 +675,6 @@ async def slide_on_opps(ctx, character_id: str = None):
             )
             
             outcome_embed.add_field(
-                name="Battle Result",
-                value=f"Rolled: {battle_result['roll']} (50 or less to win)",
-                inline=False
-            )
-            
-            outcome_embed.add_field(
-                name="Death Roll",
-                value=f"Rolled **{death_roll}** (Death at {death_chance}% or less)",
-                inline=False
-            )
-            
-            outcome_embed.add_field(
                 name="RIP",
                 value=f"{player_char['name']} was caught lacking in enemy territory\nFinal Kill Count: {player_char.get('kills', 0)}",
                 inline=False
@@ -742,18 +694,6 @@ async def slide_on_opps(ctx, character_id: str = None):
                 title="TOOK AN L BUT SURVIVED",
                 description=f"**{player_char['name']}** was defeated by **{rival_name}** but managed to escape",
                 color=discord.Color.orange()
-            )
-            
-            outcome_embed.add_field(
-                name="Battle Result",
-                value=f"Rolled: {battle_result['roll']} (50 or less to win)",
-                inline=False
-            )
-            
-            outcome_embed.add_field(
-                name="Survival Roll",
-                value=f"Rolled **{death_roll}** (Death at {death_chance}% or less) - SURVIVED",
-                inline=False
             )
             
             characters[character_id] = player_char
@@ -906,18 +846,6 @@ async def revenge_battle(ctx, dead_character_id: str = None, avenger_character_i
             )
             
             outcome_embed.add_field(
-                name="Battle Result",
-                value=f"Rolled: {battle_result['roll']} (50 or less to win)",
-                inline=False
-            )
-            
-            outcome_embed.add_field(
-                name="Death Roll",
-                value=f"Rolled **{death_roll}** (Death at {death_chance}% or less)",
-                inline=False
-            )
-            
-            outcome_embed.add_field(
                 name="Final Moments",
                 value=f"{avenger_char['name']} avenged their fallen homie but paid the ultimate price",
                 inline=False
@@ -945,18 +873,6 @@ async def revenge_battle(ctx, dead_character_id: str = None, avenger_character_i
                     description=f"**{avenger_char['name']}** has eliminated **{killer_name}**, avenging **{dead_member['name']}**!",
                     color=discord.Color.green()
                 )
-            
-            outcome_embed.add_field(
-                name="Battle Result",
-                value=f"Rolled: {battle_result['roll']} (50 or less to win)",
-                inline=False
-            )
-            
-            outcome_embed.add_field(
-                name="Survival Roll",
-                value=f"Rolled **{death_roll}** (Death at {death_chance}% or less) - SURVIVED",
-                inline=False
-            )
             
             outcome_embed.add_field(
                 name="Vengeance",
@@ -998,18 +914,6 @@ async def revenge_battle(ctx, dead_character_id: str = None, avenger_character_i
             )
             
             outcome_embed.add_field(
-                name="Battle Result",
-                value=f"Rolled: {battle_result['roll']} (50 or less to win)",
-                inline=False
-            )
-            
-            outcome_embed.add_field(
-                name="Death Roll",
-                value=f"Rolled **{death_roll}** (Death at {death_chance}% or less)",
-                inline=False
-            )
-            
-            outcome_embed.add_field(
                 name="RIP",
                 value=f"{avenger_char['name']} fell to the same killer that got {dead_member['name']}",
                 inline=False
@@ -1029,18 +933,6 @@ async def revenge_battle(ctx, dead_character_id: str = None, avenger_character_i
                 title="REVENGE FAILED - RETREAT",
                 description=f"**{avenger_char['name']}** was defeated by **{killer_name}** but managed to escape\n\n{dead_member['name']} remains unavenged...",
                 color=discord.Color.orange()
-            )
-            
-            outcome_embed.add_field(
-                name="Battle Result",
-                value=f"Rolled: {battle_result['roll']} (50 or less to win)",
-                inline=False
-            )
-            
-            outcome_embed.add_field(
-                name="Survival Roll",
-                value=f"Rolled **{death_roll}** (Death at {death_chance}% or less) - SURVIVED",
-                inline=False
             )
             
             characters[avenger_character_id] = avenger_char
