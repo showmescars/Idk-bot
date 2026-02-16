@@ -4,7 +4,7 @@ import json
 import os
 import random
 import asyncio
-from datetime import datetime
+from datetime import datetime, timedelta
 from dotenv import load_dotenv
 
 # Load environment variables
@@ -371,6 +371,32 @@ def calculate_crew_death_chance(player_won):
     else:
         return random.randint(15, 35)
 
+# Check if member is in jail
+def is_in_jail(member):
+    """Check if a gang member is currently in jail"""
+    if 'jail_until' not in member:
+        return False
+    
+    jail_until = datetime.strptime(member['jail_until'], '%Y-%m-%d %H:%M:%S')
+    now = datetime.now()
+    
+    return now < jail_until
+
+# Get remaining jail time
+def get_jail_time_remaining(member):
+    """Get the remaining jail time for a member"""
+    if 'jail_until' not in member:
+        return None
+    
+    jail_until = datetime.strptime(member['jail_until'], '%Y-%m-%d %H:%M:%S')
+    now = datetime.now()
+    
+    if now >= jail_until:
+        return None
+    
+    remaining = jail_until - now
+    return remaining
+
 # Simulate instant street battle with lore bonus
 def simulate_battle(player_name, player_power, enemy_name, enemy_power, lore_revealed=False):
     """Simulate an instant street battle"""
@@ -493,8 +519,6 @@ async def make_character(ctx):
         "username": str(ctx.author),
         "user_id": user_id,
         "power_level": power_level,
-        "wins": 0,
-        "losses": 0,
         "has_been_reborn": False,
         "gang_affiliation": gang_affiliation,
         "set_name": set_name,
@@ -536,7 +560,6 @@ async def make_character(ctx):
     embed.add_field(name="Gang Affiliation", value=f"{gang_affiliation}", inline=True)
     embed.add_field(name="Set", value=f"{set_name}", inline=True)
     embed.add_field(name="Rank", value=tier, inline=True)
-    embed.add_field(name="Record", value="0-0", inline=True)
     
     embed.add_field(
         name="Hidden Background",
@@ -677,7 +700,7 @@ async def reveal_lore(ctx, character_id: str = None):
             inline=False
         )
     
-    lore_embed.set_footer(text=f"Current Street Power: {member['power_level']} | Record: {member.get('wins', 0)}-{member.get('losses', 0)}")
+    lore_embed.set_footer(text=f"Current Street Power: {member['power_level']}")
     
     await ctx.send(embed=lore_embed)
 
@@ -707,8 +730,6 @@ async def show_members(ctx):
     
     for member in user_members:
         # Build member info
-        wins = member.get('wins', 0)
-        losses = member.get('losses', 0)
         has_been_reborn = member.get('has_been_reborn', False)
         is_merged = member.get('is_merged', False)
         
@@ -716,6 +737,10 @@ async def show_members(ctx):
         lore_revealed = False
         if 'lore' in member:
             lore_revealed = member['lore'].get('lore_revealed', False)
+        
+        # Check jail status
+        in_jail = is_in_jail(member)
+        jail_status = "🔒 LOCKED UP" if in_jail else "✅ FREE"
         
         # Determine tier
         power = member['power_level']
@@ -736,7 +761,6 @@ async def show_members(ctx):
         else:
             status = "Original"
         
-        rebirth_eligible = "No" if has_been_reborn else "Yes"
         lore_status = "Known" if lore_revealed else "Unknown"
         
         value_text = (
@@ -745,11 +769,17 @@ async def show_members(ctx):
             f"**Rank:** {tier}\n"
             f"**Gang:** {member.get('gang_affiliation', 'Unknown')}\n"
             f"**Set:** {member.get('set_name', 'Unknown')}\n"
-            f"**Record:** {wins}-{losses}\n"
             f"**Status:** {status}\n"
             f"**History:** {lore_status}\n"
-            f"**Can Revive:** {rebirth_eligible}"
+            f"**Jail:** {jail_status}"
         )
+        
+        if in_jail:
+            remaining = get_jail_time_remaining(member)
+            if remaining:
+                hours = int(remaining.total_seconds() // 3600)
+                minutes = int((remaining.total_seconds() % 3600) // 60)
+                value_text += f"\n**Time Left:** {hours}h {minutes}m"
         
         embed.add_field(
             name=f"{member['name']}",
@@ -775,15 +805,22 @@ async def crew_battle(ctx):
         await ctx.send("You don't have any gang members! Use `?make` to create one.")
         return
     
-    if len(user_members) < 2:
-        await ctx.send("You need at least 2 gang members to form a crew! Use `?make` to recruit more.")
+    # Filter out members in jail
+    available_members = [m for m in user_members if not is_in_jail(m)]
+    
+    if not available_members:
+        await ctx.send("All your gang members are locked up! Wait for them to get out of jail.")
+        return
+    
+    if len(available_members) < 2:
+        await ctx.send("You need at least 2 free gang members to form a crew! Use `?make` to recruit more or wait for members to get out of jail.")
         return
     
     # Calculate total crew power with lore bonuses
     player_crew_power = 0
     lore_bonus_count = 0
     
-    for member in user_members:
+    for member in available_members:
         base_power = member['power_level']
         if 'lore' in member and member['lore'].get('lore_revealed', False):
             # Apply lore bonus
@@ -810,12 +847,12 @@ async def crew_battle(ctx):
     
     # Player crew info
     player_crew_text = ""
-    for member in user_members:
+    for member in available_members:
         lore_indicator = " [STREET KNOWLEDGE]" if 'lore' in member and member['lore'].get('lore_revealed', False) else ""
         player_crew_text += f"**{member['name']}**{lore_indicator} - Power: {member['power_level']}\n"
     
     intro_embed.add_field(
-        name=f"YOUR CREW ({len(user_members)} members)",
+        name=f"YOUR CREW ({len(available_members)} members)",
         value=f"{player_crew_text}\n**Total Power: {player_crew_power}**",
         inline=False
     )
@@ -871,7 +908,7 @@ async def crew_battle(ctx):
     )
     
     # Crew size comparison
-    size_diff = len(user_members) - len(rival_crew)
+    size_diff = len(available_members) - len(rival_crew)
     if size_diff > 0:
         size_advantage = f"You outnumber them by {size_diff} members"
     elif size_diff < 0:
@@ -908,7 +945,7 @@ async def crew_battle(ctx):
     casualties = []
     survivors = []
     
-    for member in user_members:
+    for member in available_members:
         death_roll = random.randint(1, 100)
         member_dies = death_roll <= death_chance
         
@@ -985,13 +1022,8 @@ async def crew_battle(ctx):
     if survivors:
         survivor_text = ""
         for member in survivors:
-            if player_won:
-                member['wins'] = member.get('wins', 0) + 1
-            else:
-                member['losses'] = member.get('losses', 0) + 1
-            
             characters[member['character_id']] = member
-            survivor_text += f"{member['name']} (Power: {member['power_level']}) - Record: {member['wins']}-{member['losses']}\n"
+            survivor_text += f"{member['name']} (Power: {member['power_level']})\n"
         
         outcome_embed.add_field(
             name=f"SURVIVORS ({len(survivors)} members)",
@@ -1001,21 +1033,9 @@ async def crew_battle(ctx):
         
         save_characters(characters)
     
-    # Show revival info if applicable
-    revival_ids = []
-    for member in casualties:
-        if not member.get('has_been_reborn', False):
-            revival_ids.append(member['character_id'])
-    
-    if revival_ids:
-        revival_text = "Fallen crew members can be brought back:\n"
-        for char_id in revival_ids:
-            revival_text += f"`?revive {char_id}`\n"
-        outcome_embed.set_footer(text=revival_text)
-    
     await ctx.send(embed=outcome_embed)
 
-# Slide command - Battle against rival gang members with lore bonus
+# Slide command - Battle against rival gang members with lore bonus AND JAIL SYSTEM
 @bot.command(name='slide')
 async def slide_on_opps(ctx, character_id: str = None):
     """Slide on rival gang members. Usage: ?slide <character_id>"""
@@ -1034,6 +1054,15 @@ async def slide_on_opps(ctx, character_id: str = None):
     if player_char.get('user_id') != user_id:
         await ctx.send("You don't own this gang member!")
         return
+    
+    # Check if member is in jail
+    if is_in_jail(player_char):
+        remaining = get_jail_time_remaining(player_char)
+        if remaining:
+            hours = int(remaining.total_seconds() // 3600)
+            minutes = int((remaining.total_seconds() % 3600) // 60)
+            await ctx.send(f"**{player_char['name']}** is locked up! They'll be out in **{hours}h {minutes}m**.")
+            return
     
     # Check lore status
     lore_revealed = False
@@ -1108,7 +1137,7 @@ async def slide_on_opps(ctx, character_id: str = None):
     
     intro_embed.add_field(
         name=f"{player_char['name']} (YOU)",
-        value=f"Power: **{player_char['power_level']}**{lore_indicator}\nGang: {player_char.get('gang_affiliation', 'Unknown')}\nSet: {player_char.get('set_name', 'Unknown')}\nRecord: {player_char.get('wins', 0)}-{player_char.get('losses', 0)}",
+        value=f"Power: **{player_char['power_level']}**{lore_indicator}\nGang: {player_char.get('gang_affiliation', 'Unknown')}\nSet: {player_char.get('set_name', 'Unknown')}",
         inline=True
     )
     
@@ -1152,6 +1181,26 @@ async def slide_on_opps(ctx, character_id: str = None):
     death_roll = random.randint(1, 100)
     member_dies = death_roll <= death_chance
     
+    # JAIL SYSTEM - Roll for jail if member survives
+    jail_roll = random.randint(1, 100)
+    goes_to_jail = False
+    jail_hours = 0
+    
+    if not member_dies:
+        # Jail chance based on battle outcome
+        if player_won:
+            # 20% chance of jail after winning
+            jail_chance = 20
+        else:
+            # 40% chance of jail after losing
+            jail_chance = 40
+        
+        goes_to_jail = jail_roll <= jail_chance
+        
+        if goes_to_jail:
+            # Random jail time between 1-12 hours
+            jail_hours = random.randint(1, 12)
+    
     # Outcome embed
     if player_won:
         if member_dies:
@@ -1173,17 +1222,6 @@ async def slide_on_opps(ctx, character_id: str = None):
                 inline=False
             )
             
-            outcome_embed.add_field(
-                name="Final Record",
-                value=f"{player_char.get('wins', 0)}-{player_char.get('losses', 0)}",
-                inline=False
-            )
-            
-            if not player_char.get('has_been_reborn', False):
-                outcome_embed.set_footer(text=f"Use ?revive {character_id} to bring them back")
-            else:
-                outcome_embed.set_footer(text="This member already came back once and cannot be revived again")
-            
             dead_member = player_char.copy()
             dead_member['death_date'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
             dead_member['killed_by'] = f"{rival_name} ({rival_set}) - Fatal Wounds"
@@ -1194,11 +1232,18 @@ async def slide_on_opps(ctx, character_id: str = None):
             save_characters(characters)
             
         else:
-            outcome_embed = discord.Embed(
-                title="BODY CAUGHT",
-                description=f"**{player_char['name']}** has eliminated **{rival_name}** from {rival_set}",
-                color=discord.Color.green()
-            )
+            if goes_to_jail:
+                outcome_embed = discord.Embed(
+                    title="BODY CAUGHT - BUT LOCKED UP",
+                    description=f"**{player_char['name']}** eliminated **{rival_name}** from {rival_set} but got arrested!",
+                    color=discord.Color.orange()
+                )
+            else:
+                outcome_embed = discord.Embed(
+                    title="BODY CAUGHT",
+                    description=f"**{player_char['name']}** has eliminated **{rival_name}** from {rival_set}",
+                    color=discord.Color.green()
+                )
             
             outcome_embed.add_field(
                 name="Battle Odds",
@@ -1219,15 +1264,25 @@ async def slide_on_opps(ctx, character_id: str = None):
                 inline=False
             )
             
-            player_char['wins'] = player_char.get('wins', 0) + 1
+            if goes_to_jail:
+                # Set jail time
+                jail_until = datetime.now() + timedelta(hours=jail_hours)
+                player_char['jail_until'] = jail_until.strftime('%Y-%m-%d %H:%M:%S')
+                
+                outcome_embed.add_field(
+                    name="🔒 ARRESTED",
+                    value=f"Rolled **{jail_roll}** (Jail at {jail_chance}% or less)\n**Locked up for {jail_hours} hours!**",
+                    inline=False
+                )
+            else:
+                outcome_embed.add_field(
+                    name="✅ EVADED POLICE",
+                    value=f"Rolled **{jail_roll}** (Jail at {jail_chance}% or less) - Got away clean!",
+                    inline=False
+                )
+            
             characters[character_id] = player_char
             save_characters(characters)
-            
-            outcome_embed.add_field(
-                name="New Record",
-                value=f"{player_char['wins']}-{player_char.get('losses', 0)}",
-                inline=False
-            )
             
     else:
         if member_dies:
@@ -1250,21 +1305,10 @@ async def slide_on_opps(ctx, character_id: str = None):
             )
             
             outcome_embed.add_field(
-                name="Final Record",
-                value=f"{player_char.get('wins', 0)}-{player_char.get('losses', 0)}",
-                inline=False
-            )
-            
-            outcome_embed.add_field(
                 name="RIP",
                 value=f"{player_char['name']} was caught lacking in enemy territory",
                 inline=False
             )
-            
-            if not player_char.get('has_been_reborn', False):
-                outcome_embed.set_footer(text=f"Use ?revive {character_id} to bring them back")
-            else:
-                outcome_embed.set_footer(text="This member already came back once and cannot be revived again")
             
             dead_member = player_char.copy()
             dead_member['death_date'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
@@ -1276,11 +1320,18 @@ async def slide_on_opps(ctx, character_id: str = None):
             save_characters(characters)
             
         else:
-            outcome_embed = discord.Embed(
-                title="TOOK AN L BUT SURVIVED",
-                description=f"**{player_char['name']}** was defeated by **{rival_name}** but managed to escape",
-                color=discord.Color.orange()
-            )
+            if goes_to_jail:
+                outcome_embed = discord.Embed(
+                    title="TOOK AN L AND GOT LOCKED UP",
+                    description=f"**{player_char['name']}** was defeated by **{rival_name}** and arrested!",
+                    color=discord.Color.dark_red()
+                )
+            else:
+                outcome_embed = discord.Embed(
+                    title="TOOK AN L BUT SURVIVED",
+                    description=f"**{player_char['name']}** was defeated by **{rival_name}** but managed to escape",
+                    color=discord.Color.orange()
+                )
             
             outcome_embed.add_field(
                 name="Battle Odds",
@@ -1294,17 +1345,25 @@ async def slide_on_opps(ctx, character_id: str = None):
                 inline=False
             )
             
-            player_char['losses'] = player_char.get('losses', 0) + 1
+            if goes_to_jail:
+                # Set jail time
+                jail_until = datetime.now() + timedelta(hours=jail_hours)
+                player_char['jail_until'] = jail_until.strftime('%Y-%m-%d %H:%M:%S')
+                
+                outcome_embed.add_field(
+                    name="🔒 ARRESTED",
+                    value=f"Rolled **{jail_roll}** (Jail at {jail_chance}% or less)\n**Locked up for {jail_hours} hours!**",
+                    inline=False
+                )
+            else:
+                outcome_embed.add_field(
+                    name="✅ EVADED POLICE",
+                    value=f"Rolled **{jail_roll}** (Jail at {jail_chance}% or less) - Got away!",
+                    inline=False
+                )
+            
             characters[character_id] = player_char
             save_characters(characters)
-            
-            outcome_embed.add_field(
-                name="New Record",
-                value=f"{player_char.get('wins', 0)}-{player_char['losses']}",
-                inline=False
-            )
-            
-            outcome_embed.set_footer(text="Your member got away but took an L")
     
     await ctx.send(embed=outcome_embed)
 
@@ -1329,6 +1388,15 @@ async def revenge_battle(ctx, dead_character_id: str = None, avenger_character_i
     if avenger_char.get('user_id') != user_id:
         await ctx.send("You don't own this avenger!")
         return
+    
+    # Check if avenger is in jail
+    if is_in_jail(avenger_char):
+        remaining = get_jail_time_remaining(avenger_char)
+        if remaining:
+            hours = int(remaining.total_seconds() // 3600)
+            minutes = int((remaining.total_seconds() % 3600) // 60)
+            await ctx.send(f"**{avenger_char['name']}** is locked up! They'll be out in **{hours}h {minutes}m**.")
+            return
     
     # Find the dead member in graveyard
     current_graveyard = load_graveyard()
@@ -1435,7 +1503,7 @@ async def revenge_battle(ctx, dead_character_id: str = None, avenger_character_i
     
     intro_embed.add_field(
         name=f"{avenger_char['name']} (AVENGER)",
-        value=f"Power: **{avenger_char['power_level']}**{lore_indicator}\nGang: {avenger_char.get('gang_affiliation', 'Unknown')}\nRecord: {avenger_char.get('wins', 0)}-{avenger_char.get('losses', 0)}",
+        value=f"Power: **{avenger_char['power_level']}**{lore_indicator}\nGang: {avenger_char.get('gang_affiliation', 'Unknown')}",
         inline=True
     )
     
@@ -1485,6 +1553,22 @@ async def revenge_battle(ctx, dead_character_id: str = None, avenger_character_i
     death_roll = random.randint(1, 100)
     member_dies = death_roll <= death_chance
     
+    # JAIL SYSTEM - Roll for jail if member survives
+    jail_roll = random.randint(1, 100)
+    goes_to_jail = False
+    jail_hours = 0
+    
+    if not member_dies:
+        if player_won:
+            jail_chance = 20
+        else:
+            jail_chance = 40
+        
+        goes_to_jail = jail_roll <= jail_chance
+        
+        if goes_to_jail:
+            jail_hours = random.randint(1, 12)
+    
     # Outcome embed
     if player_won:
         if member_dies:
@@ -1519,17 +1603,6 @@ async def revenge_battle(ctx, dead_character_id: str = None, avenger_character_i
                 inline=False
             )
             
-            outcome_embed.add_field(
-                name="Final Record",
-                value=f"{avenger_char.get('wins', 0)}-{avenger_char.get('losses', 0)}",
-                inline=False
-            )
-            
-            if not avenger_char.get('has_been_reborn', False):
-                outcome_embed.set_footer(text=f"Use ?revive {avenger_character_id} to bring them back")
-            else:
-                outcome_embed.set_footer(text="This member already came back once and cannot be revived again")
-            
             dead_avenger = avenger_char.copy()
             dead_avenger['death_date'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
             dead_avenger['killed_by'] = f"{killer_name} (Revenge Mission - Fatal Wounds)"
@@ -1540,11 +1613,18 @@ async def revenge_battle(ctx, dead_character_id: str = None, avenger_character_i
             save_characters(characters)
             
         else:
-            outcome_embed = discord.Embed(
-                title="REVENGE COMPLETE",
-                description=f"**{avenger_char['name']}** has eliminated **{killer_name}**, avenging **{dead_member['name']}**!",
-                color=discord.Color.green()
-            )
+            if goes_to_jail:
+                outcome_embed = discord.Embed(
+                    title="REVENGE COMPLETE - BUT LOCKED UP",
+                    description=f"**{avenger_char['name']}** eliminated **{killer_name}**, avenging **{dead_member['name']}**, but got arrested!",
+                    color=discord.Color.orange()
+                )
+            else:
+                outcome_embed = discord.Embed(
+                    title="REVENGE COMPLETE",
+                    description=f"**{avenger_char['name']}** has eliminated **{killer_name}**, avenging **{dead_member['name']}**!",
+                    color=discord.Color.green()
+                )
             
             outcome_embed.add_field(
                 name="Battle Odds",
@@ -1571,15 +1651,24 @@ async def revenge_battle(ctx, dead_character_id: str = None, avenger_character_i
                 inline=False
             )
             
-            avenger_char['wins'] = avenger_char.get('wins', 0) + 1
+            if goes_to_jail:
+                jail_until = datetime.now() + timedelta(hours=jail_hours)
+                avenger_char['jail_until'] = jail_until.strftime('%Y-%m-%d %H:%M:%S')
+                
+                outcome_embed.add_field(
+                    name="🔒 ARRESTED",
+                    value=f"Rolled **{jail_roll}** (Jail at {jail_chance}% or less)\n**Locked up for {jail_hours} hours!**",
+                    inline=False
+                )
+            else:
+                outcome_embed.add_field(
+                    name="✅ EVADED POLICE",
+                    value=f"Rolled **{jail_roll}** (Jail at {jail_chance}% or less) - Got away clean!",
+                    inline=False
+                )
+            
             characters[avenger_character_id] = avenger_char
             save_characters(characters)
-            
-            outcome_embed.add_field(
-                name="New Record",
-                value=f"{avenger_char['wins']}-{avenger_char.get('losses', 0)}",
-                inline=False
-            )
             
     else:
         if member_dies:
@@ -1602,21 +1691,10 @@ async def revenge_battle(ctx, dead_character_id: str = None, avenger_character_i
             )
             
             outcome_embed.add_field(
-                name="Final Record",
-                value=f"{avenger_char.get('wins', 0)}-{avenger_char.get('losses', 0)}",
-                inline=False
-            )
-            
-            outcome_embed.add_field(
                 name="RIP",
                 value=f"{avenger_char['name']} fell to the same killer that got {dead_member['name']}",
                 inline=False
             )
-            
-            if not avenger_char.get('has_been_reborn', False):
-                outcome_embed.set_footer(text=f"Use ?revive {avenger_character_id} to bring them back")
-            else:
-                outcome_embed.set_footer(text="This member already came back once and cannot be revived again")
             
             dead_avenger = avenger_char.copy()
             dead_avenger['death_date'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
@@ -1628,11 +1706,18 @@ async def revenge_battle(ctx, dead_character_id: str = None, avenger_character_i
             save_characters(characters)
             
         else:
-            outcome_embed = discord.Embed(
-                title="REVENGE FAILED - RETREAT",
-                description=f"**{avenger_char['name']}** was defeated by **{killer_name}** but managed to escape\n\n{dead_member['name']} remains unavenged...",
-                color=discord.Color.orange()
-            )
+            if goes_to_jail:
+                outcome_embed = discord.Embed(
+                    title="REVENGE FAILED - LOCKED UP",
+                    description=f"**{avenger_char['name']}** was defeated by **{killer_name}** and arrested\n\n{dead_member['name']} remains unavenged...",
+                    color=discord.Color.dark_red()
+                )
+            else:
+                outcome_embed = discord.Embed(
+                    title="REVENGE FAILED - RETREAT",
+                    description=f"**{avenger_char['name']}** was defeated by **{killer_name}** but managed to escape\n\n{dead_member['name']} remains unavenged...",
+                    color=discord.Color.orange()
+                )
             
             outcome_embed.add_field(
                 name="Battle Odds",
@@ -1646,17 +1731,24 @@ async def revenge_battle(ctx, dead_character_id: str = None, avenger_character_i
                 inline=False
             )
             
-            avenger_char['losses'] = avenger_char.get('losses', 0) + 1
+            if goes_to_jail:
+                jail_until = datetime.now() + timedelta(hours=jail_hours)
+                avenger_char['jail_until'] = jail_until.strftime('%Y-%m-%d %H:%M:%S')
+                
+                outcome_embed.add_field(
+                    name="🔒 ARRESTED",
+                    value=f"Rolled **{jail_roll}** (Jail at {jail_chance}% or less)\n**Locked up for {jail_hours} hours!**",
+                    inline=False
+                )
+            else:
+                outcome_embed.add_field(
+                    name="✅ EVADED POLICE",
+                    value=f"Rolled **{jail_roll}** (Jail at {jail_chance}% or less) - Got away!",
+                    inline=False
+                )
+            
             characters[avenger_character_id] = avenger_char
             save_characters(characters)
-            
-            outcome_embed.add_field(
-                name="New Record",
-                value=f"{avenger_char.get('wins', 0)}-{avenger_char['losses']}",
-                inline=False
-            )
-            
-            outcome_embed.set_footer(text=f"{avenger_char['name']} got away but took an L")
     
     await ctx.send(embed=outcome_embed)
 
@@ -1694,6 +1786,23 @@ async def merge_members(ctx, member1_id: str = None, member2_id: str = None):
         await ctx.send(f"You don't own the member with ID `{member2_id}`!")
         return
     
+    # Check if either member is in jail
+    if is_in_jail(member1):
+        remaining = get_jail_time_remaining(member1)
+        if remaining:
+            hours = int(remaining.total_seconds() // 3600)
+            minutes = int((remaining.total_seconds() % 3600) // 60)
+            await ctx.send(f"**{member1['name']}** is locked up! They'll be out in **{hours}h {minutes}m**. Cannot merge members in jail.")
+            return
+    
+    if is_in_jail(member2):
+        remaining = get_jail_time_remaining(member2)
+        if remaining:
+            hours = int(remaining.total_seconds() // 3600)
+            minutes = int((remaining.total_seconds() % 3600) // 60)
+            await ctx.send(f"**{member2['name']}** is locked up! They'll be out in **{hours}h {minutes}m**. Cannot merge members in jail.")
+            return
+    
     ritual_embed = discord.Embed(
         title="BLOOD MERGE OPERATION",
         description=f"**{member1['name']}** and **{member2['name']}** begin the merge ritual...\n\nTwo become one...",
@@ -1702,13 +1811,13 @@ async def merge_members(ctx, member1_id: str = None, member2_id: str = None):
     
     ritual_embed.add_field(
         name=f"{member1['name']}",
-        value=f"Power: {member1['power_level']}\nGang: {member1.get('gang_affiliation', 'Unknown')}\nRecord: {member1.get('wins', 0)}-{member1.get('losses', 0)}",
+        value=f"Power: {member1['power_level']}\nGang: {member1.get('gang_affiliation', 'Unknown')}",
         inline=True
     )
     
     ritual_embed.add_field(
         name=f"{member2['name']}",
-        value=f"Power: {member2['power_level']}\nGang: {member2.get('gang_affiliation', 'Unknown')}\nRecord: {member2.get('wins', 0)}-{member2.get('losses', 0)}",
+        value=f"Power: {member2['power_level']}\nGang: {member2.get('gang_affiliation', 'Unknown')}",
         inline=True
     )
     
@@ -1734,9 +1843,6 @@ async def merge_members(ctx, member1_id: str = None, member2_id: str = None):
     else:
         actual_bonus = merge_bonus
     
-    total_wins = member1.get('wins', 0) + member2.get('wins', 0)
-    total_losses = 0
-    
     has_been_reborn = member1.get('has_been_reborn', False) or member2.get('has_been_reborn', False)
     
     # Use gang affiliation from stronger member
@@ -1756,8 +1862,6 @@ async def merge_members(ctx, member1_id: str = None, member2_id: str = None):
         "username": str(ctx.author),
         "user_id": user_id,
         "power_level": merged_power,
-        "wins": total_wins,
-        "losses": total_losses,
         "has_been_reborn": has_been_reborn,
         "is_merged": True,
         "parent1_name": member1['name'],
@@ -1842,12 +1946,6 @@ async def merge_members(ctx, member1_id: str = None, member2_id: str = None):
     )
     
     success_embed.add_field(
-        name="Combined Wins",
-        value=f"Total Wins: {total_wins}",
-        inline=True
-    )
-    
-    success_embed.add_field(
         name="Sacrificed",
         value=f"{member1['name']}\n{member2['name']}",
         inline=False
@@ -1859,183 +1957,7 @@ async def merge_members(ctx, member1_id: str = None, member2_id: str = None):
         inline=False
     )
     
-    if has_been_reborn:
-        success_embed.add_field(
-            name="WARNING",
-            value="This merged member inherited revival status and CANNOT be revived if killed",
-            inline=False
-        )
-    else:
-        success_embed.add_field(
-            name="Revival Status",
-            value="This merged member can be revived once if killed",
-            inline=False
-        )
-    
     success_embed.set_footer(text="A more powerful soldier has been created")
-    
-    await ctx.send(embed=success_embed)
-
-# Revive command - Bring a dead gang member back with more power (ONE TIME ONLY)
-@bot.command(name='revive')
-async def revive_member(ctx, character_id: str = None):
-    """Revive a fallen gang member with increased power (ONE TIME ONLY). Usage: ?revive <character_id>"""
-    
-    if character_id is None:
-        await ctx.send("Usage: `?revive <character_id>`\nExample: `?revive 123456`")
-        return
-    
-    user_id = str(ctx.author.id)
-    
-    current_graveyard = load_graveyard()
-    
-    dead_member = None
-    graveyard_index = None
-    
-    for idx, member in enumerate(current_graveyard):
-        if member.get('character_id') == character_id:
-            dead_member = member
-            graveyard_index = idx
-            break
-    
-    if dead_member is None:
-        await ctx.send(f"No dead member with ID `{character_id}` found in the graveyard!")
-        return
-    
-    if dead_member.get('user_id') != user_id:
-        await ctx.send("You don't own this member!")
-        return
-    
-    if dead_member.get('has_been_reborn', False):
-        await ctx.send(f"**{dead_member['name']}** already came back once and cannot be revived again!\n\nEach member can only be revived ONE time. Use `?make` to create a new member.")
-        return
-    
-    ritual_embed = discord.Embed(
-        title="REVIVAL OPERATION",
-        description=f"Street doctors work to bring back **{dead_member['name']}** from the dead...",
-        color=discord.Color.dark_purple()
-    )
-    
-    ritual_embed.add_field(
-        name="Former Power",
-        value=f"{dead_member['power_level']}",
-        inline=True
-    )
-    
-    ritual_embed.add_field(
-        name="Previous Record",
-        value=f"{dead_member.get('wins', 0)}-{dead_member.get('losses', 0)}",
-        inline=True
-    )
-    
-    ritual_embed.set_footer(text="The operation begins...")
-    
-    await ctx.send(embed=ritual_embed)
-    await asyncio.sleep(3)
-    
-    base_boost = random.randint(200, 500)
-    percentage_boost = int(dead_member['power_level'] * 0.15)
-    total_boost = base_boost + percentage_boost
-    
-    new_power = dead_member['power_level'] + total_boost
-    
-    if new_power > 2000:
-        new_power = 2000
-        total_boost = 2000 - dead_member['power_level']
-    
-    new_character_id = generate_unique_id()
-    
-    revived_data = {
-        "character_id": new_character_id,
-        "name": dead_member['name'],
-        "username": dead_member.get('username'),
-        "user_id": user_id,
-        "power_level": new_power,
-        "wins": dead_member.get('wins', 0),
-        "losses": dead_member.get('losses', 0),
-        "has_been_reborn": True,
-        "is_merged": dead_member.get('is_merged', False),
-        "gang_affiliation": dead_member.get('gang_affiliation', 'Crips'),
-        "set_name": dead_member.get('set_name', 'Unknown Set'),
-        "lore": dead_member.get('lore', {}),
-        "original_id": character_id,
-        "created_at": datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
-        "revived_at": datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-    }
-    
-    if dead_member.get('is_merged', False):
-        revived_data['parent1_name'] = dead_member.get('parent1_name')
-        revived_data['parent2_name'] = dead_member.get('parent2_name')
-        revived_data['parent1_id'] = dead_member.get('parent1_id')
-        revived_data['parent2_id'] = dead_member.get('parent2_id')
-    
-    characters[new_character_id] = revived_data
-    save_characters(characters)
-    
-    current_graveyard.pop(graveyard_index)
-    save_graveyard(current_graveyard)
-    
-    if new_power <= 400:
-        tier = "Young Hustler"
-        tier_color = discord.Color.dark_grey()
-    elif new_power <= 1000:
-        tier = "Seasoned Banger"
-        tier_color = discord.Color.blue()
-    elif new_power <= 1600:
-        tier = "OG"
-        tier_color = discord.Color.purple()
-    else:
-        tier = "Shot Caller"
-        tier_color = discord.Color.gold()
-    
-    # Get gang color
-    gang_color = LA_GANGS.get(revived_data['gang_affiliation'], {}).get('color', discord.Color.blue())
-    
-    success_embed = discord.Embed(
-        title="REVIVAL SUCCESSFUL",
-        description=f"**{dead_member['name']}** is back on the streets, stronger than ever!",
-        color=gang_color
-    )
-    
-    success_embed.add_field(
-        name="New ID",
-        value=f"`{new_character_id}`",
-        inline=False
-    )
-    
-    success_embed.add_field(
-        name="Power Increase",
-        value=f"{dead_member['power_level']} → **{new_power}** (+{total_boost})",
-        inline=False
-    )
-    
-    success_embed.add_field(
-        name="New Rank",
-        value=tier,
-        inline=True
-    )
-    
-    success_embed.add_field(
-        name="Retained Record",
-        value=f"{dead_member.get('wins', 0)}-{dead_member.get('losses', 0)}",
-        inline=True
-    )
-    
-    # Check if lore was revealed
-    if 'lore' in dead_member and dead_member['lore'].get('lore_revealed', False):
-        success_embed.add_field(
-            name="Street Knowledge Preserved",
-            value="Street history retained - combat bonus still active!",
-            inline=False
-        )
-    
-    success_embed.add_field(
-        name="WARNING",
-        value="This member has used their ONE revival. If they die again, they cannot be brought back.",
-        inline=False
-    )
-    
-    success_embed.set_footer(text="Your member is back in the game")
     
     await ctx.send(embed=success_embed)
 
