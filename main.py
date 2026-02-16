@@ -72,7 +72,7 @@ LA_GANGS = {
             "King Kobras", "Primera Flats", "Avenues", "Big Hazard", "Highland Park 13",
             "Clanton 14", "Barrio Van Nuys", "Vineland Boys", "Langdon Street", "Diamond Street"
         ],
-        "color": discord.Color.from_rgb(0, 128, 255),  # Blue
+        "color": discord.Color.from_rgb(0, 128, 255),
         "territory": ["East LA", "South LA", "Boyle Heights", "Highland Park", "Downtown LA"]
     },
     "Norteños": {
@@ -215,19 +215,17 @@ def generate_gang_lore(member_name, power_level, gang_affiliation, set_name):
     goal = random.choice(GOALS)
     weakness = random.choice(WEAKNESSES)
     
-    # Generate age and experience based on power
-    if power_level <= 400:
-        age = random.randint(16, 22)
-        experience = "young hustler trying to earn stripes"
-    elif power_level <= 1000:
-        age = random.randint(23, 30)
-        experience = "seasoned banger with respect on the streets"
-    elif power_level <= 1600:
-        age = random.randint(31, 45)
-        experience = "OG with years of experience"
-    else:
-        age = random.randint(46, 65)
-        experience = "legendary shot-caller"
+    # Generate random age
+    age = random.randint(16, 65)
+    
+    # Random experience level
+    experience_levels = [
+        "young hustler trying to earn stripes",
+        "seasoned banger with respect on the streets",
+        "OG with years of experience",
+        "legendary shot-caller"
+    ]
+    experience = random.choice(experience_levels)
     
     # Generate body count
     bodies = random.randint(0, 15)
@@ -312,34 +310,9 @@ def generate_unique_id():
             return new_id
 
 # Generate completely random street power (10-2000)
-def generate_street_power():
-    """Generate completely random street power from 10 to 2000"""
-    
-    roll = random.randint(1, 100)
-    
-    if roll <= 50:
-        return random.randint(10, 800)
-    elif roll <= 75:
-        return random.randint(801, 1400)
-    elif roll <= 90:
-        return random.randint(1401, 1800)
-    else:
-        return random.randint(1801, 2000)
-
-# Generate completely random gang member power (10-2000)
-def generate_random_member_power():
-    """Generate completely random power for new gang members"""
-    
-    roll = random.randint(1, 100)
-    
-    if roll <= 45:
-        return random.randint(10, 400)
-    elif roll <= 75:
-        return random.randint(401, 1000)
-    elif roll <= 90:
-        return random.randint(1001, 1600)
-    else:
-        return random.randint(1601, 2000)
+def generate_random_power():
+    """Generate completely random power from 10 to 2000"""
+    return random.randint(10, 2000)
 
 # Calculate death chance based on power difference and outcome
 def calculate_death_chance(player_power, enemy_power, player_won):
@@ -405,7 +378,7 @@ def simulate_battle(player_name, player_power, enemy_name, enemy_power, lore_rev
     effective_player_power = player_power
     if lore_revealed:
         # Street knowledge gives tactical advantage
-        lore_bonus_multiplier = random.uniform(1.05, 1.15)  # 5-15% power boost
+        lore_bonus_multiplier = random.uniform(1.05, 1.15)
         effective_player_power = int(player_power * lore_bonus_multiplier)
     
     # Calculate win probability based on power
@@ -457,7 +430,7 @@ def generate_rival_crew():
         first_name = random.choice(FIRST_NAMES)
         last_name = random.choice(LAST_NAMES)
         member_name = f"{first_name} '{last_name[:3].upper()}' {last_name}"
-        member_power = generate_street_power()
+        member_power = generate_random_power()
         
         rival_crew.append({
             "name": member_name,
@@ -494,7 +467,6 @@ async def make_character(ctx):
     # Generate random gang member name
     first_name = random.choice(FIRST_NAMES)
     last_name = random.choice(LAST_NAMES)
-    # Add street nickname
     nickname = last_name[:3].upper()
     character_name = f"{first_name} '{nickname}' {last_name}"
     
@@ -502,7 +474,7 @@ async def make_character(ctx):
     character_id = generate_unique_id()
     
     # Generate COMPLETELY RANDOM power level (10 to 2000)
-    power_level = generate_random_member_power()
+    power_level = generate_random_power()
     
     # Randomly assign gang affiliation
     gang_affiliation = random.choice(list(LA_GANGS.keys()))
@@ -519,7 +491,6 @@ async def make_character(ctx):
         "username": str(ctx.author),
         "user_id": user_id,
         "power_level": power_level,
-        "has_been_reborn": False,
         "gang_affiliation": gang_affiliation,
         "set_name": set_name,
         "lore": lore_data,
@@ -529,20 +500,6 @@ async def make_character(ctx):
     # Save gang member
     characters[character_id] = character_data
     save_characters(characters)
-    
-    # Determine power tier for description
-    if power_level <= 400:
-        tier = "Young Hustler"
-        tier_color = discord.Color.dark_grey()
-    elif power_level <= 1000:
-        tier = "Seasoned Banger"
-        tier_color = discord.Color.blue()
-    elif power_level <= 1600:
-        tier = "OG"
-        tier_color = discord.Color.purple()
-    else:
-        tier = "Shot Caller"
-        tier_color = discord.Color.gold()
     
     # Get gang color
     gang_color = LA_GANGS[gang_affiliation]['color']
@@ -559,7 +516,6 @@ async def make_character(ctx):
     embed.add_field(name="Street Power", value=f"{power_level}", inline=False)
     embed.add_field(name="Gang Affiliation", value=f"{gang_affiliation}", inline=True)
     embed.add_field(name="Set", value=f"{set_name}", inline=True)
-    embed.add_field(name="Rank", value=tier, inline=True)
     
     embed.add_field(
         name="Hidden Background",
@@ -729,10 +685,6 @@ async def show_members(ctx):
     )
     
     for member in user_members:
-        # Build member info
-        has_been_reborn = member.get('has_been_reborn', False)
-        is_merged = member.get('is_merged', False)
-        
         # Check lore status
         lore_revealed = False
         if 'lore' in member:
@@ -740,38 +692,17 @@ async def show_members(ctx):
         
         # Check jail status
         in_jail = is_in_jail(member)
-        jail_status = "🔒 LOCKED UP" if in_jail else "✅ FREE"
-        
-        # Determine tier
-        power = member['power_level']
-        if power <= 400:
-            tier = "Young Hustler"
-        elif power <= 1000:
-            tier = "Seasoned Banger"
-        elif power <= 1600:
-            tier = "OG"
-        else:
-            tier = "Shot Caller"
-        
-        # Status indicators
-        if is_merged:
-            status = "MERGED"
-        elif has_been_reborn:
-            status = "CAME BACK"
-        else:
-            status = "Original"
+        jail_status = "LOCKED UP" if in_jail else "FREE"
         
         lore_status = "Known" if lore_revealed else "Unknown"
         
         value_text = (
             f"**ID:** `{member['character_id']}`\n"
             f"**Power:** {member['power_level']}\n"
-            f"**Rank:** {tier}\n"
             f"**Gang:** {member.get('gang_affiliation', 'Unknown')}\n"
             f"**Set:** {member.get('set_name', 'Unknown')}\n"
-            f"**Status:** {status}\n"
             f"**History:** {lore_status}\n"
-            f"**Jail:** {jail_status}"
+            f"**Status:** {jail_status}"
         )
         
         if in_jail:
@@ -933,7 +864,7 @@ async def crew_battle(ctx):
         player_crew_power,
         f"{rival_set}",
         rival_crew_power,
-        lore_revealed=True  # Crew has advantage if any member has it
+        lore_revealed=True
     )
     
     player_won = battle_result['player_won']
@@ -1070,7 +1001,7 @@ async def slide_on_opps(ctx, character_id: str = None):
         lore_revealed = player_char['lore'].get('lore_revealed', False)
     
     # Generate COMPLETELY RANDOM rival (10-2000)
-    rival_power = generate_street_power()
+    rival_power = generate_random_power()
     
     rival_first_name = random.choice(FIRST_NAMES)
     rival_last_name = random.choice(LAST_NAMES)
@@ -1112,16 +1043,6 @@ async def slide_on_opps(ctx, character_id: str = None):
         threat_level = "EASY TARGET"
         threat_color = discord.Color.dark_green()
     
-    # Determine rival tier
-    if rival_power <= 400:
-        rival_tier = "Young Hustler"
-    elif rival_power <= 1000:
-        rival_tier = "Seasoned Banger"
-    elif rival_power <= 1600:
-        rival_tier = "OG"
-    else:
-        rival_tier = "Shot Caller"
-    
     # Get gang colors
     player_gang_color = LA_GANGS.get(player_char.get('gang_affiliation', 'Crips'), {}).get('color', discord.Color.blue())
     rival_gang_color = LA_GANGS.get(rival_gang, {}).get('color', discord.Color.red())
@@ -1143,7 +1064,7 @@ async def slide_on_opps(ctx, character_id: str = None):
     
     intro_embed.add_field(
         name=f"{rival_name} (OPP)",
-        value=f"Power: **{rival_power}**\nGang: {rival_gang}\nSet: {rival_set}\nRank: {rival_tier}",
+        value=f"Power: **{rival_power}**\nGang: {rival_gang}\nSet: {rival_set}",
         inline=True
     )
     
@@ -1189,16 +1110,13 @@ async def slide_on_opps(ctx, character_id: str = None):
     if not member_dies:
         # Jail chance based on battle outcome
         if player_won:
-            # 20% chance of jail after winning
             jail_chance = 20
         else:
-            # 40% chance of jail after losing
             jail_chance = 40
         
         goes_to_jail = jail_roll <= jail_chance
         
         if goes_to_jail:
-            # Random jail time between 1-12 hours
             jail_hours = random.randint(1, 12)
     
     # Outcome embed
@@ -1265,18 +1183,17 @@ async def slide_on_opps(ctx, character_id: str = None):
             )
             
             if goes_to_jail:
-                # Set jail time
                 jail_until = datetime.now() + timedelta(hours=jail_hours)
                 player_char['jail_until'] = jail_until.strftime('%Y-%m-%d %H:%M:%S')
                 
                 outcome_embed.add_field(
-                    name="🔒 ARRESTED",
+                    name="ARRESTED",
                     value=f"Rolled **{jail_roll}** (Jail at {jail_chance}% or less)\n**Locked up for {jail_hours} hours!**",
                     inline=False
                 )
             else:
                 outcome_embed.add_field(
-                    name="✅ EVADED POLICE",
+                    name="EVADED POLICE",
                     value=f"Rolled **{jail_roll}** (Jail at {jail_chance}% or less) - Got away clean!",
                     inline=False
                 )
@@ -1346,18 +1263,17 @@ async def slide_on_opps(ctx, character_id: str = None):
             )
             
             if goes_to_jail:
-                # Set jail time
                 jail_until = datetime.now() + timedelta(hours=jail_hours)
                 player_char['jail_until'] = jail_until.strftime('%Y-%m-%d %H:%M:%S')
                 
                 outcome_embed.add_field(
-                    name="🔒 ARRESTED",
+                    name="ARRESTED",
                     value=f"Rolled **{jail_roll}** (Jail at {jail_chance}% or less)\n**Locked up for {jail_hours} hours!**",
                     inline=False
                 )
             else:
                 outcome_embed.add_field(
-                    name="✅ EVADED POLICE",
+                    name="EVADED POLICE",
                     value=f"Rolled **{jail_roll}** (Jail at {jail_chance}% or less) - Got away!",
                     inline=False
                 )
@@ -1415,15 +1331,11 @@ async def revenge_battle(ctx, dead_character_id: str = None, avenger_character_i
         await ctx.send("The dead member doesn't belong to you!")
         return
     
-    # Check if the member was killed by a rival (not crew war or merge)
+    # Check if the member was killed by a rival (not crew war)
     killer_name = dead_member.get('killed_by', 'Unknown')
     
     if "Crew War" in killer_name:
         await ctx.send(f"**{dead_member['name']}** was killed in a crew war, not by a specific rival. Revenge is not available for crew war deaths.")
-        return
-    
-    if "Merge Operation" in killer_name or "Blood Merge" in killer_name:
-        await ctx.send(f"**{dead_member['name']}** was sacrificed in a merge operation. Revenge is not available for merges.")
         return
     
     if "(Fatal Wounds)" in killer_name or "- Fatal Wounds" in killer_name:
@@ -1434,7 +1346,7 @@ async def revenge_battle(ctx, dead_character_id: str = None, avenger_character_i
             killer_name = killer_name.split("(")[0].strip()
     
     # Recreate the rival with the same name but new random power
-    rival_power = generate_street_power()
+    rival_power = generate_random_power()
     
     # Try to extract rival gang/set from killer name
     rival_gang = "Unknown Gang"
@@ -1482,16 +1394,6 @@ async def revenge_battle(ctx, dead_character_id: str = None, avenger_character_i
         threat_level = "EASY TARGET"
         threat_color = discord.Color.dark_green()
     
-    # Determine rival tier
-    if rival_power <= 400:
-        rival_tier = "Young Hustler"
-    elif rival_power <= 1000:
-        rival_tier = "Seasoned Banger"
-    elif rival_power <= 1600:
-        rival_tier = "OG"
-    else:
-        rival_tier = "Shot Caller"
-    
     # Revenge intro embed
     intro_embed = discord.Embed(
         title="REVENGE MISSION",
@@ -1509,7 +1411,7 @@ async def revenge_battle(ctx, dead_character_id: str = None, avenger_character_i
     
     intro_embed.add_field(
         name=f"{killer_name} (KILLER)",
-        value=f"Power: **{rival_power}**\nGang: {rival_gang}\nSet: {rival_set}\nRank: {rival_tier}",
+        value=f"Power: **{rival_power}**\nGang: {rival_gang}\nSet: {rival_set}",
         inline=True
     )
     
@@ -1656,13 +1558,13 @@ async def revenge_battle(ctx, dead_character_id: str = None, avenger_character_i
                 avenger_char['jail_until'] = jail_until.strftime('%Y-%m-%d %H:%M:%S')
                 
                 outcome_embed.add_field(
-                    name="🔒 ARRESTED",
+                    name="ARRESTED",
                     value=f"Rolled **{jail_roll}** (Jail at {jail_chance}% or less)\n**Locked up for {jail_hours} hours!**",
                     inline=False
                 )
             else:
                 outcome_embed.add_field(
-                    name="✅ EVADED POLICE",
+                    name="EVADED POLICE",
                     value=f"Rolled **{jail_roll}** (Jail at {jail_chance}% or less) - Got away clean!",
                     inline=False
                 )
@@ -1736,13 +1638,13 @@ async def revenge_battle(ctx, dead_character_id: str = None, avenger_character_i
                 avenger_char['jail_until'] = jail_until.strftime('%Y-%m-%d %H:%M:%S')
                 
                 outcome_embed.add_field(
-                    name="🔒 ARRESTED",
+                    name="ARRESTED",
                     value=f"Rolled **{jail_roll}** (Jail at {jail_chance}% or less)\n**Locked up for {jail_hours} hours!**",
                     inline=False
                 )
             else:
                 outcome_embed.add_field(
-                    name="✅ EVADED POLICE",
+                    name="EVADED POLICE",
                     value=f"Rolled **{jail_roll}** (Jail at {jail_chance}% or less) - Got away!",
                     inline=False
                 )
@@ -1751,215 +1653,6 @@ async def revenge_battle(ctx, dead_character_id: str = None, avenger_character_i
             save_characters(characters)
     
     await ctx.send(embed=outcome_embed)
-
-# Merge command - Combine two gang members to create a more powerful member
-@bot.command(name='merge')
-async def merge_members(ctx, member1_id: str = None, member2_id: str = None):
-    """Merge two gang members to create a more powerful member. Usage: ?merge <id1> <id2>"""
-    
-    if member1_id is None or member2_id is None:
-        await ctx.send("Usage: `?merge <member1_id> <member2_id>`\nExample: `?merge 123456 789012`\n\nBoth members will be merged to create a more powerful gang member!")
-        return
-    
-    if member1_id == member2_id:
-        await ctx.send("You cannot merge a member with themselves!")
-        return
-    
-    user_id = str(ctx.author.id)
-    
-    if member1_id not in characters:
-        await ctx.send(f"Gang member ID `{member1_id}` not found!")
-        return
-    
-    if member2_id not in characters:
-        await ctx.send(f"Gang member ID `{member2_id}` not found!")
-        return
-    
-    member1 = characters[member1_id]
-    member2 = characters[member2_id]
-    
-    if member1.get('user_id') != user_id:
-        await ctx.send(f"You don't own the member with ID `{member1_id}`!")
-        return
-    
-    if member2.get('user_id') != user_id:
-        await ctx.send(f"You don't own the member with ID `{member2_id}`!")
-        return
-    
-    # Check if either member is in jail
-    if is_in_jail(member1):
-        remaining = get_jail_time_remaining(member1)
-        if remaining:
-            hours = int(remaining.total_seconds() // 3600)
-            minutes = int((remaining.total_seconds() % 3600) // 60)
-            await ctx.send(f"**{member1['name']}** is locked up! They'll be out in **{hours}h {minutes}m**. Cannot merge members in jail.")
-            return
-    
-    if is_in_jail(member2):
-        remaining = get_jail_time_remaining(member2)
-        if remaining:
-            hours = int(remaining.total_seconds() // 3600)
-            minutes = int((remaining.total_seconds() % 3600) // 60)
-            await ctx.send(f"**{member2['name']}** is locked up! They'll be out in **{hours}h {minutes}m**. Cannot merge members in jail.")
-            return
-    
-    ritual_embed = discord.Embed(
-        title="BLOOD MERGE OPERATION",
-        description=f"**{member1['name']}** and **{member2['name']}** begin the merge ritual...\n\nTwo become one...",
-        color=discord.Color.dark_purple()
-    )
-    
-    ritual_embed.add_field(
-        name=f"{member1['name']}",
-        value=f"Power: {member1['power_level']}\nGang: {member1.get('gang_affiliation', 'Unknown')}",
-        inline=True
-    )
-    
-    ritual_embed.add_field(
-        name=f"{member2['name']}",
-        value=f"Power: {member2['power_level']}\nGang: {member2.get('gang_affiliation', 'Unknown')}",
-        inline=True
-    )
-    
-    ritual_embed.set_footer(text="Both members will be sacrificed...")
-    
-    await ctx.send(embed=ritual_embed)
-    await asyncio.sleep(4)
-    
-    first_name = random.choice(FIRST_NAMES)
-    last_name = random.choice(LAST_NAMES)
-    nickname = last_name[:3].upper()
-    merged_name = f"{first_name} '{nickname}' {last_name}"
-    
-    merged_id = generate_unique_id()
-    
-    combined_power = member1['power_level'] + member2['power_level']
-    merge_bonus = random.randint(200, 600)
-    merged_power = combined_power + merge_bonus
-    
-    if merged_power > 2000:
-        merged_power = 2000
-        actual_bonus = 2000 - combined_power
-    else:
-        actual_bonus = merge_bonus
-    
-    has_been_reborn = member1.get('has_been_reborn', False) or member2.get('has_been_reborn', False)
-    
-    # Use gang affiliation from stronger member
-    if member1['power_level'] > member2['power_level']:
-        merged_gang = member1.get('gang_affiliation', 'Crips')
-        merged_set = member1.get('set_name', 'Unknown Set')
-    else:
-        merged_gang = member2.get('gang_affiliation', 'Crips')
-        merged_set = member2.get('set_name', 'Unknown Set')
-    
-    # Generate merged member lore
-    merged_lore = generate_gang_lore(merged_name, merged_power, merged_gang, merged_set)
-    
-    merged_data = {
-        "character_id": merged_id,
-        "name": merged_name,
-        "username": str(ctx.author),
-        "user_id": user_id,
-        "power_level": merged_power,
-        "has_been_reborn": has_been_reborn,
-        "is_merged": True,
-        "parent1_name": member1['name'],
-        "parent2_name": member2['name'],
-        "parent1_id": member1_id,
-        "parent2_id": member2_id,
-        "gang_affiliation": merged_gang,
-        "set_name": merged_set,
-        "lore": merged_lore,
-        "created_at": datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-    }
-    
-    dead_member1 = member1.copy()
-    dead_member1['death_date'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-    dead_member1['killed_by'] = "Blood Merge Operation"
-    
-    dead_member2 = member2.copy()
-    dead_member2['death_date'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-    dead_member2['killed_by'] = "Blood Merge Operation"
-    
-    current_graveyard = load_graveyard()
-    current_graveyard.append(dead_member1)
-    current_graveyard.append(dead_member2)
-    save_graveyard(current_graveyard)
-    
-    del characters[member1_id]
-    del characters[member2_id]
-    
-    characters[merged_id] = merged_data
-    save_characters(characters)
-    
-    if merged_power <= 400:
-        tier = "Young Hustler"
-        tier_color = discord.Color.dark_grey()
-    elif merged_power <= 1000:
-        tier = "Seasoned Banger"
-        tier_color = discord.Color.blue()
-    elif merged_power <= 1600:
-        tier = "OG"
-        tier_color = discord.Color.purple()
-    else:
-        tier = "Shot Caller"
-        tier_color = discord.Color.gold()
-    
-    # Get gang color
-    gang_color = LA_GANGS.get(merged_gang, {}).get('color', discord.Color.blue())
-    
-    success_embed = discord.Embed(
-        title="MERGED GANG MEMBER CREATED",
-        description=f"The merge is complete! **{merged_name}** emerges as a more powerful member!",
-        color=gang_color
-    )
-    
-    success_embed.add_field(
-        name="Merged Name",
-        value=merged_name,
-        inline=False
-    )
-    
-    success_embed.add_field(
-        name="New ID",
-        value=f"`{merged_id}`",
-        inline=False
-    )
-    
-    success_embed.add_field(
-        name="Power Fusion",
-        value=f"{member1['power_level']} + {member2['power_level']} + {actual_bonus} (merge bonus) = **{merged_power}**",
-        inline=False
-    )
-    
-    success_embed.add_field(
-        name="Gang Affiliation",
-        value=f"{merged_gang} - {merged_set}",
-        inline=False
-    )
-    
-    success_embed.add_field(
-        name="Rank",
-        value=tier,
-        inline=True
-    )
-    
-    success_embed.add_field(
-        name="Sacrificed",
-        value=f"{member1['name']}\n{member2['name']}",
-        inline=False
-    )
-    
-    success_embed.add_field(
-        name="New History",
-        value=f"Use `?lore {merged_id}` to discover the merged member's street story",
-        inline=False
-    )
-    
-    success_embed.set_footer(text="A more powerful soldier has been created")
-    
-    await ctx.send(embed=success_embed)
 
 # Run the bot
 if __name__ == "__main__":
