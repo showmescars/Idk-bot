@@ -63,6 +63,25 @@ SKILLS = {
     "Dark Pact": {"offensive": 9, "defensive": 6}
 }
 
+# Human combat skills
+HUMAN_SKILLS = {
+    "Silver Bullets": {"offensive": 9, "defensive": 5},
+    "Holy Water": {"offensive": 8, "defensive": 6},
+    "Wooden Stakes": {"offensive": 10, "defensive": 4},
+    "Garlic Barrier": {"offensive": 4, "defensive": 9},
+    "UV Light": {"offensive": 8, "defensive": 7},
+    "Crossbow Mastery": {"offensive": 9, "defensive": 5},
+    "Blessed Blades": {"offensive": 8, "defensive": 6},
+    "Faith Shield": {"offensive": 5, "defensive": 10},
+    "Hunter Reflexes": {"offensive": 7, "defensive": 8},
+    "Vampire Lore": {"offensive": 6, "defensive": 7},
+    "Tactical Combat": {"offensive": 8, "defensive": 7},
+    "Sacred Rituals": {"offensive": 7, "defensive": 8},
+    "Sunlight Grenades": {"offensive": 10, "defensive": 4},
+    "Blood Ward": {"offensive": 5, "defensive": 9},
+    "Quick Draw": {"offensive": 8, "defensive": 6}
+}
+
 # Vampire name pools
 FIRST_NAMES = [
     "Dracula", "Vladislav", "Carmilla", "Lestat", "Akasha", "Armand", "Blade", "Selene",
@@ -104,17 +123,17 @@ HUMAN_LAST_NAMES = [
 transfer_requests = {}
 
 # Battle simulation function
-def simulate_battle(attacker_name, attacker_power, attacker_skills, defender_name, defender_power, defender_skills):
-    """Simulate a detailed battle between two vampires"""
+def simulate_battle(attacker_name, attacker_power, attacker_skills, defender_name, defender_power, defender_skills, skill_dict=SKILLS):
+    """Simulate a detailed battle between two characters"""
     
     battle_log = []
     
     # Calculate offensive and defensive ratings
-    attacker_offense = sum(SKILLS[skill]["offensive"] for skill in attacker_skills) / len(attacker_skills)
-    attacker_defense = sum(SKILLS[skill]["defensive"] for skill in attacker_skills) / len(attacker_skills)
+    attacker_offense = sum(skill_dict.get(skill, SKILLS.get(skill, {"offensive": 5}))["offensive"] for skill in attacker_skills) / len(attacker_skills)
+    attacker_defense = sum(skill_dict.get(skill, SKILLS.get(skill, {"defensive": 5}))["defensive"] for skill in attacker_skills) / len(attacker_skills)
     
-    defender_offense = sum(SKILLS[skill]["offensive"] for skill in defender_skills) / len(defender_skills)
-    defender_defense = sum(SKILLS[skill]["defensive"] for skill in defender_skills) / len(defender_skills)
+    defender_offense = sum(skill_dict.get(skill, SKILLS.get(skill, {"offensive": 5}))["offensive"] for skill in defender_skills) / len(defender_skills)
+    defender_defense = sum(skill_dict.get(skill, SKILLS.get(skill, {"defensive": 5}))["defensive"] for skill in defender_skills) / len(defender_skills)
     
     # Simulate 3 rounds of combat
     attacker_hp = 100 + (attacker_power * 0.5)
@@ -124,7 +143,7 @@ def simulate_battle(attacker_name, attacker_power, attacker_skills, defender_nam
     while round_num <= 3 and attacker_hp > 0 and defender_hp > 0:
         # Attacker's turn
         atk_skill = random.choice(attacker_skills)
-        atk_skill_power = SKILLS[atk_skill]["offensive"]
+        atk_skill_power = skill_dict.get(atk_skill, SKILLS.get(atk_skill, {"offensive": 5}))["offensive"]
         
         # Calculate damage
         base_damage = (attacker_power * 0.3) + (atk_skill_power * 2) + random.randint(5, 15)
@@ -147,7 +166,7 @@ def simulate_battle(attacker_name, attacker_power, attacker_skills, defender_nam
         
         # Defender's counter
         def_skill = random.choice(defender_skills)
-        def_skill_power = SKILLS[def_skill]["offensive"]
+        def_skill_power = skill_dict.get(def_skill, SKILLS.get(def_skill, {"offensive": 5}))["offensive"]
         
         # Calculate counter damage
         base_damage = (defender_power * 0.3) + (def_skill_power * 2) + random.randint(5, 15)
@@ -199,6 +218,25 @@ def get_vampire_rank(power_level):
         return "Blood God"
     else:  # 801-1000
         return "Primordial"
+
+# Function to get human rank based on power level
+def get_human_rank(power_level):
+    if power_level <= 50:
+        return "Novice Hunter"
+    elif power_level <= 100:
+        return "Hunter"
+    elif power_level <= 200:
+        return "Veteran Hunter"
+    elif power_level <= 350:
+        return "Master Hunter"
+    elif power_level <= 500:
+        return "Legendary Hunter"
+    elif power_level <= 650:
+        return "Slayer"
+    elif power_level <= 800:
+        return "Grand Slayer"
+    else:  # 801-1000
+        return "Ultimate Slayer"
 
 # Function to get opponent power range based on player rank
 def get_opponent_power_range(player_power):
@@ -333,6 +371,7 @@ async def make_character(ctx):
         "skills": selected_skills,
         "wins": 0,
         "losses": 0,
+        "race": "vampire",
         "created_at": datetime.now().strftime('%Y-%m-%d %H:%M:%S')
     }
     
@@ -363,37 +402,46 @@ async def make_character(ctx):
     
     await ctx.send(embed=embed)
 
-# Show command - Shows a vampire by ID
+# Show command - Shows a character by ID
 @bot.command(name='show')
 async def show_character(ctx, character_id: str = None):
-    """Show a vampire by ID. Usage: ?show <character_id>"""
+    """Show a character by ID. Usage: ?show <character_id>"""
     
     if character_id is None:
         await ctx.send("Usage: `?show <character_id>`\nExample: `?show 123456`")
         return
     
-    # Check if vampire exists
+    # Check if character exists
     if character_id not in characters:
-        await ctx.send(f"Vampire ID `{character_id}` not found!")
+        await ctx.send(f"Character ID `{character_id}` not found!")
         return
     
     char = characters[character_id]
+    race = char.get('race', 'vampire')
     
-    # Display vampire
+    # Display character
+    if race == "vampire":
+        color = discord.Color.dark_red()
+        rank = get_vampire_rank(char['power_level'])
+        power_label = "Blood Power"
+        abilities_label = "Vampiric Abilities"
+    else:  # human
+        color = discord.Color.blue()
+        rank = get_human_rank(char['power_level'])
+        power_label = "Combat Power"
+        abilities_label = "Hunter Skills"
+    
     embed = discord.Embed(
         title=char['name'],
-        description=f"Owner: {char.get('username', 'Unknown')}\nID: `{char['character_id']}`\nRace: Vampire",
-        color=discord.Color.dark_red()
+        description=f"Owner: {char.get('username', 'Unknown')}\nID: `{char['character_id']}`\nRace: {race.capitalize()}",
+        color=color
     )
     
-    embed.add_field(name="Blood Power", value=f"{char['power_level']}", inline=False)
-    
-    # Add rank
-    rank = get_vampire_rank(char['power_level'])
+    embed.add_field(name=power_label, value=f"{char['power_level']}", inline=False)
     embed.add_field(name="Rank", value=f"{rank}", inline=False)
     
     skills_text = "\n".join([f"- {skill}" for skill in char['skills']])
-    embed.add_field(name="Vampiric Abilities", value=skills_text, inline=False)
+    embed.add_field(name=abilities_label, value=skills_text, inline=False)
     
     # Show record
     wins = char.get('wins', 0)
@@ -402,208 +450,193 @@ async def show_character(ctx, character_id: str = None):
     
     await ctx.send(embed=embed)
 
-# My Collection command - Shows all user's vampires in one comprehensive list
+# My Collection command - Shows all user's characters in one comprehensive list
 @bot.command(name='mycollection')
 async def my_collection(ctx):
-    """View your complete vampire collection with detailed stats"""
+    """View your complete character collection with detailed stats"""
     
     user_id = str(ctx.author.id)
     
-    # Find all vampires owned by user (including shared hybrids)
-    user_vampires = [char for char in characters.values() if char.get('user_id') == user_id or char.get('shared_user_id') == user_id]
+    # Find all characters owned by user
+    user_characters = [char for char in characters.values() if char.get('user_id') == user_id or char.get('shared_user_id') == user_id]
     
-    if not user_vampires:
-        await ctx.send("You don't have any vampires yet! Use `?make` to create one.")
+    if not user_characters:
+        await ctx.send("You don't have any characters yet! Use `?make` to create one.")
         return
     
     # Sort by power level (highest first)
-    user_vampires.sort(key=lambda x: x['power_level'], reverse=True)
+    user_characters.sort(key=lambda x: x['power_level'], reverse=True)
     
     # Calculate collection statistics
-    total_vampires = len(user_vampires)
-    total_power = sum(v['power_level'] for v in user_vampires)
-    avg_power = total_power // total_vampires
-    total_wins = sum(v.get('wins', 0) for v in user_vampires)
-    total_losses = sum(v.get('losses', 0) for v in user_vampires)
+    total_characters = len(user_characters)
+    total_power = sum(v['power_level'] for v in user_characters)
+    avg_power = total_power // total_characters
+    total_wins = sum(v.get('wins', 0) for v in user_characters)
+    total_losses = sum(v.get('losses', 0) for v in user_characters)
     
-    # Count by rank
-    rank_counts = {}
-    for vamp in user_vampires:
-        rank = get_vampire_rank(vamp['power_level'])
-        rank_counts[rank] = rank_counts.get(rank, 0) + 1
+    # Count by race
+    vampires = [c for c in user_characters if c.get('race', 'vampire') == 'vampire']
+    humans = [c for c in user_characters if c.get('race', 'vampire') == 'human']
     
     # Main collection embed
     main_embed = discord.Embed(
-        title=f"🧛 {ctx.author.name}'s Vampire Collection",
-        description=f"**Total Vampires:** {total_vampires}\n**Total Power:** {total_power}\n**Average Power:** {avg_power}\n**Overall Record:** {total_wins}-{total_losses}",
+        title=f"🧛 {ctx.author.name}'s Character Collection",
+        description=f"**Total Characters:** {total_characters}\n**Vampires:** {len(vampires)} | **Humans:** {len(humans)}\n**Total Power:** {total_power}\n**Average Power:** {avg_power}\n**Overall Record:** {total_wins}-{total_losses}",
         color=discord.Color.dark_purple()
     )
     
-    # Add rank distribution
-    rank_text = ""
-    for rank in ["Primordial", "Blood God", "Progenitor", "Ancient", "Elder", "Nightlord", "Stalker", "Fledgling"]:
-        count = rank_counts.get(rank, 0)
-        if count > 0:
-            rank_text += f"{rank}: {count}\n"
-    
-    if rank_text:
-        main_embed.add_field(name="Rank Distribution", value=rank_text, inline=False)
-    
     await ctx.send(embed=main_embed)
     
-    # Send vampire list in batches (10 per embed)
-    for i in range(0, len(user_vampires), 10):
-        batch = user_vampires[i:i+10]
+    # Send character list in batches (10 per embed)
+    for i in range(0, len(user_characters), 10):
+        batch = user_characters[i:i+10]
         
         list_embed = discord.Embed(
-            title=f"Vampire Collection (Page {i//10 + 1})",
+            title=f"Character Collection (Page {i//10 + 1})",
             color=discord.Color.dark_red()
         )
         
-        for vamp in batch:
-            rank = get_vampire_rank(vamp['power_level'])
-            wins = vamp.get('wins', 0)
-            losses = vamp.get('losses', 0)
+        for char in batch:
+            race = char.get('race', 'vampire')
+            if race == 'vampire':
+                rank = get_vampire_rank(char['power_level'])
+                race_icon = "🧛"
+            else:
+                rank = get_human_rank(char['power_level'])
+                race_icon = "🗡️"
+            
+            wins = char.get('wins', 0)
+            losses = char.get('losses', 0)
             
             # Check if hybrid
-            hybrid_tag = " [HYBRID]" if vamp.get('is_hybrid', False) else ""
+            hybrid_tag = " [HYBRID]" if char.get('is_hybrid', False) else ""
             
             # Build value text
             value_text = (
-                f"**ID:** `{vamp['character_id']}`\n"
+                f"**ID:** `{char['character_id']}`\n"
+                f"**Race:** {race_icon} {race.capitalize()}\n"
                 f"**Rank:** {rank}\n"
-                f"**Power:** {vamp['power_level']}\n"
-                f"**Abilities:** {len(vamp['skills'])}\n"
+                f"**Power:** {char['power_level']}\n"
+                f"**Abilities:** {len(char['skills'])}\n"
                 f"**Record:** {wins}-{losses}"
             )
             
             list_embed.add_field(
-                name=f"{vamp['name']}{hybrid_tag}",
+                name=f"{char['name']}{hybrid_tag}",
                 value=value_text,
                 inline=True
             )
         
         # Add footer with total pages
-        total_pages = (len(user_vampires) + 9) // 10
+        total_pages = (len(user_characters) + 9) // 10
         list_embed.set_footer(text=f"Page {i//10 + 1} of {total_pages} | Use ?show <id> for detailed view")
         
         await ctx.send(embed=list_embed)
 
-# List command - Lists all vampires owned by user (kept for backwards compatibility)
+# List command - Lists all characters owned by user (kept for backwards compatibility)
 @bot.command(name='list')
-async def list_vampires(ctx):
-    """List all your vampires (compact view)"""
+async def list_characters(ctx):
+    """List all your characters (compact view)"""
     
     user_id = str(ctx.author.id)
     
-    # Find all vampires owned by user
-    user_vampires = [char for char in characters.values() if char.get('user_id') == user_id or char.get('shared_user_id') == user_id]
+    # Find all characters owned by user
+    user_characters = [char for char in characters.values() if char.get('user_id') == user_id or char.get('shared_user_id') == user_id]
     
-    if not user_vampires:
-        await ctx.send("You don't have any vampires yet! Use `?make` to create one.")
+    if not user_characters:
+        await ctx.send("You don't have any characters yet! Use `?make` to create one.")
         return
     
     # Sort by power level
-    user_vampires.sort(key=lambda x: x['power_level'], reverse=True)
+    user_characters.sort(key=lambda x: x['power_level'], reverse=True)
     
     embed = discord.Embed(
-        title=f"{ctx.author.name}'s Vampires",
-        description=f"Total: {len(user_vampires)} vampires | Use `?mycollection` for detailed view",
+        title=f"{ctx.author.name}'s Characters",
+        description=f"Total: {len(user_characters)} characters | Use `?mycollection` for detailed view",
         color=discord.Color.dark_purple()
     )
     
-    # Show first 10 vampires
-    for vamp in user_vampires[:10]:
-        rank = get_vampire_rank(vamp['power_level'])
-        wins = vamp.get('wins', 0)
-        losses = vamp.get('losses', 0)
-        hybrid_tag = " [HYBRID]" if vamp.get('is_hybrid', False) else ""
+    # Show first 10 characters
+    for char in user_characters[:10]:
+        race = char.get('race', 'vampire')
+        if race == 'vampire':
+            rank = get_vampire_rank(char['power_level'])
+            race_icon = "🧛"
+        else:
+            rank = get_human_rank(char['power_level'])
+            race_icon = "🗡️"
+        
+        wins = char.get('wins', 0)
+        losses = char.get('losses', 0)
+        hybrid_tag = " [HYBRID]" if char.get('is_hybrid', False) else ""
         
         embed.add_field(
-            name=f"{vamp['name']}{hybrid_tag}",
-            value=f"ID: `{vamp['character_id']}` | {rank} | Power: {vamp['power_level']} | {wins}-{losses}",
+            name=f"{char['name']}{hybrid_tag}",
+            value=f"{race_icon} ID: `{char['character_id']}` | {rank} | Power: {char['power_level']} | {wins}-{losses}",
             inline=False
         )
     
-    if len(user_vampires) > 10:
-        embed.set_footer(text=f"Showing 10 of {len(user_vampires)} vampires")
+    if len(user_characters) > 10:
+        embed.set_footer(text=f"Showing 10 of {len(user_characters)} characters")
     
     await ctx.send(embed=embed)
 
-# Rank command - Show vampire rank tiers
+# Rank command - Show rank tiers
 @bot.command(name='rank')
-async def vampire_ranks(ctx):
-    """Display vampire rank tiers and power requirements"""
+async def show_ranks(ctx):
+    """Display rank tiers for vampires and humans"""
     
     rank_embed = discord.Embed(
-        title="VAMPIRE RANK TIERS",
-        description="As vampires grow in power, they ascend through ancient ranks",
+        title="RANK TIERS",
+        description="Power rankings for vampires and vampire hunters",
         color=discord.Color.dark_gold()
     )
     
     rank_embed.add_field(
-        name="Fledgling",
-        value="Power: 0-50\nNewly turned vampires, still learning their abilities",
-        inline=False
+        name="🧛 VAMPIRE RANKS",
+        value=(
+            "**Fledgling** (0-50)\n"
+            "**Stalker** (51-100)\n"
+            "**Nightlord** (101-200)\n"
+            "**Elder** (201-350)\n"
+            "**Ancient** (351-500)\n"
+            "**Progenitor** (501-650)\n"
+            "**Blood God** (651-800)\n"
+            "**Primordial** (801-1000)"
+        ),
+        inline=True
     )
     
     rank_embed.add_field(
-        name="Stalker",
-        value="Power: 51-100\nExperienced hunters of the night",
-        inline=False
-    )
-    
-    rank_embed.add_field(
-        name="Nightlord",
-        value="Power: 101-200\nMasters of darkness and blood",
-        inline=False
-    )
-    
-    rank_embed.add_field(
-        name="Elder",
-        value="Power: 201-350\nCenturies-old vampires of immense power",
-        inline=False
-    )
-    
-    rank_embed.add_field(
-        name="Ancient",
-        value="Power: 351-500\nMillennia-old beings of legendary strength",
-        inline=False
-    )
-    
-    rank_embed.add_field(
-        name="Progenitor",
-        value="Power: 501-650\nThe first of their bloodline, wielding primeval might",
-        inline=False
-    )
-    
-    rank_embed.add_field(
-        name="Blood God",
-        value="Power: 651-800\nDeified vampires worshipped across realms",
-        inline=False
-    )
-    
-    rank_embed.add_field(
-        name="Primordial",
-        value="Power: 801-1000\nThe original vampires, older than recorded history",
-        inline=False
+        name="🗡️ HUNTER RANKS",
+        value=(
+            "**Novice Hunter** (0-50)\n"
+            "**Hunter** (51-100)\n"
+            "**Veteran Hunter** (101-200)\n"
+            "**Master Hunter** (201-350)\n"
+            "**Legendary Hunter** (351-500)\n"
+            "**Slayer** (501-650)\n"
+            "**Grand Slayer** (651-800)\n"
+            "**Ultimate Slayer** (801-1000)"
+        ),
+        inline=True
     )
     
     await ctx.send(embed=rank_embed)
 
-# Train command - Train your vampire to become more powerful
+# Train command - Train your character to become more powerful
 @bot.command(name='train')
-async def train_vampire(ctx, character_id: str = None):
-    """Train your vampire to increase their power! Usage: ?train <character_id>"""
+async def train_character(ctx, character_id: str = None):
+    """Train your character to increase their power! Usage: ?train <character_id>"""
     
     # Check if character ID was provided
     if character_id is None:
-        await ctx.send("Usage: `?train <character_id>`\nExample: `?train 123456`\n\nUse `?list` to see your vampire IDs.")
+        await ctx.send("Usage: `?train <character_id>`\nExample: `?train 123456`\n\nUse `?list` to see your character IDs.")
         return
     
-    # Check if vampire exists
+    # Check if character exists
     if character_id not in characters:
-        await ctx.send(f"Vampire ID `{character_id}` not found!")
+        await ctx.send(f"Character ID `{character_id}` not found!")
         return
     
     player_char = characters[character_id]
@@ -611,13 +644,15 @@ async def train_vampire(ctx, character_id: str = None):
     
     # Verify ownership
     if player_char.get('user_id') != user_id and player_char.get('shared_user_id') != user_id:
-        await ctx.send("You don't own this vampire!")
+        await ctx.send("You don't own this character!")
         return
+    
+    race = player_char.get('race', 'vampire')
     
     # Training embed
     training_embed = discord.Embed(
         title="TRAINING SESSION",
-        description=f"{player_char['name']} begins intense training in the shadows...",
+        description=f"{player_char['name']} begins intense training...",
         color=discord.Color.blue()
     )
     
@@ -636,8 +671,15 @@ async def train_vampire(ctx, character_id: str = None):
         new_power = 1000
         power_gain = 1000 - old_power
     
-    old_rank = get_vampire_rank(old_power)
-    new_rank = get_vampire_rank(new_power)
+    if race == 'vampire':
+        old_rank = get_vampire_rank(old_power)
+        new_rank = get_vampire_rank(new_power)
+        skill_pool = SKILLS
+    else:
+        old_rank = get_human_rank(old_power)
+        new_rank = get_human_rank(new_power)
+        skill_pool = HUMAN_SKILLS
+    
     ranked_up = old_rank != new_rank
     
     player_char['power_level'] = new_power
@@ -647,24 +689,14 @@ async def train_vampire(ctx, character_id: str = None):
     new_skill = None
     
     if random.randint(1, 100) <= 20 and len(player_char['skills']) < 15:
-        # Get skills the vampire doesn't have yet
-        available_skills = [skill for skill in SKILLS.keys() if skill not in player_char['skills']]
+        # Get skills the character doesn't have yet
+        available_skills = [skill for skill in skill_pool.keys() if skill not in player_char['skills']]
         if available_skills:
             new_skill = random.choice(available_skills)
             player_char['skills'].append(new_skill)
             learned_new_skill = True
     
-    # If hybrid, update shared vampire
-    if player_char.get('is_hybrid', False):
-        shared_user_id = player_char.get('shared_user_id')
-        if shared_user_id:
-            # Find the shared vampire by character_id
-            for char_id, char in characters.items():
-                if char.get('character_id') == player_char['character_id'] and char_id != character_id:
-                    characters[char_id]['power_level'] = new_power
-                    characters[char_id]['skills'] = player_char['skills']
-    
-    # Save updated vampire
+    # Save updated character
     characters[character_id] = player_char
     save_characters(characters)
     
@@ -703,19 +735,19 @@ async def train_vampire(ctx, character_id: str = None):
     
     await ctx.send(embed=result_embed)
 
-# Hunt command - Go hunting for blood
+# Hunt command - Go hunting for blood (vampires only)
 @bot.command(name='hunt')
 async def hunt_vampire(ctx, character_id: str = None):
-    """Go hunting for blood! Usage: ?hunt <character_id>"""
+    """Go hunting for blood! Usage: ?hunt <character_id> (Vampires only)"""
     
     # Check if character ID was provided
     if character_id is None:
-        await ctx.send("Usage: `?hunt <character_id>`\nExample: `?hunt 123456`\n\nUse `?list` to see your vampire IDs.")
+        await ctx.send("Usage: `?hunt <character_id>`\nExample: `?hunt 123456`\n\nUse `?list` to see your character IDs.")
         return
     
-    # Check if vampire exists
+    # Check if character exists
     if character_id not in characters:
-        await ctx.send(f"Vampire ID `{character_id}` not found!")
+        await ctx.send(f"Character ID `{character_id}` not found!")
         return
     
     player_char = characters[character_id]
@@ -723,7 +755,12 @@ async def hunt_vampire(ctx, character_id: str = None):
     
     # Verify ownership
     if player_char.get('user_id') != user_id and player_char.get('shared_user_id') != user_id:
-        await ctx.send("You don't own this vampire!")
+        await ctx.send("You don't own this character!")
+        return
+    
+    # Check if vampire
+    if player_char.get('race', 'vampire') != 'vampire':
+        await ctx.send("Only vampires can hunt for blood! Humans use `?train` instead.")
         return
     
     # Hunting embed
@@ -760,14 +797,6 @@ async def hunt_vampire(ctx, character_id: str = None):
                 player_char['skills'].append(new_skill)
                 learned_skill = True
         
-        # If hybrid, update shared vampire
-        if player_char.get('is_hybrid', False):
-            for char_id, char in characters.items():
-                if char.get('character_id') == player_char['character_id'] and char_id != character_id:
-                    characters[char_id]['power_level'] = new_power
-                    if learned_skill:
-                        characters[char_id]['skills'] = player_char['skills']
-        
         characters[character_id] = player_char
         save_characters(characters)
         
@@ -798,12 +827,6 @@ async def hunt_vampire(ctx, character_id: str = None):
         new_power = min(old_power + power_gain, 1000)
         player_char['power_level'] = new_power
         
-        # If hybrid, update shared vampire
-        if player_char.get('is_hybrid', False):
-            for char_id, char in characters.items():
-                if char.get('character_id') == player_char['character_id'] and char_id != character_id:
-                    characters[char_id]['power_level'] = new_power
-        
         characters[character_id] = player_char
         save_characters(characters)
         
@@ -826,12 +849,6 @@ async def hunt_vampire(ctx, character_id: str = None):
         power_loss = random.randint(5, 15)
         new_power = max(old_power - power_loss, 10)
         player_char['power_level'] = new_power
-        
-        # If hybrid, update shared vampire
-        if player_char.get('is_hybrid', False):
-            for char_id, char in characters.items():
-                if char.get('character_id') == player_char['character_id'] and char_id != character_id:
-                    characters[char_id]['power_level'] = new_power
         
         characters[character_id] = player_char
         save_characters(characters)
@@ -856,18 +873,18 @@ async def hunt_vampire(ctx, character_id: str = None):
         
         await ctx.send(embed=result_embed)
 
-# Blood command - Transfer vampire essence into a human host body
+# Blood command - Transfer vampire essence into a human host body (LIFE OR DEATH) - Creates human character on failure
 @bot.command(name='blood')
 async def blood_transfer(ctx, character_id: str = None):
-    """Your vampire finds a human and transfers their blood essence into the host body, gaining power! Usage: ?blood <character_id>"""
+    """Your vampire transfers their essence into a human body - SUCCESS grants power, FAILURE means you become that human! Usage: ?blood <character_id>"""
     
     if character_id is None:
-        await ctx.send("Usage: `?blood <character_id>`\nExample: `?blood 123456`\n\nYour vampire will find a random human and attempt to transfer their essence into the host body!")
+        await ctx.send("Usage: `?blood <character_id>`\nExample: `?blood 123456`\n\n⚠️ **WARNING:** If this ritual fails, your vampire will DIE and you'll become the HUMAN HOST - fighting vampires instead!")
         return
     
-    # Check if vampire exists
+    # Check if character exists
     if character_id not in characters:
-        await ctx.send(f"Vampire ID `{character_id}` not found!")
+        await ctx.send(f"Character ID `{character_id}` not found!")
         return
     
     attacker_char = characters[character_id]
@@ -875,7 +892,12 @@ async def blood_transfer(ctx, character_id: str = None):
     
     # Verify ownership
     if attacker_char.get('user_id') != user_id and attacker_char.get('shared_user_id') != user_id:
-        await ctx.send("You don't own this vampire!")
+        await ctx.send("You don't own this character!")
+        return
+    
+    # Check if vampire
+    if attacker_char.get('race', 'vampire') != 'vampire':
+        await ctx.send("Only vampires can use the blood transfer ritual!")
         return
     
     # Generate random human victim
@@ -886,7 +908,7 @@ async def blood_transfer(ctx, character_id: str = None):
     # Blood transfer ritual embed
     ritual_embed = discord.Embed(
         title="BLOOD TRANSFER RITUAL",
-        description=f"{attacker_char['name']} stalks through the night and finds {human_name}...\n\nThe essence transfer begins!",
+        description=f"{attacker_char['name']} stalks through the night and finds {human_name}...\n\n⚠️ The forbidden ritual begins!\n\n**Success:** Gain power as vampire\n**Failure:** Become {human_name}, a human vampire hunter!",
         color=discord.Color.dark_red()
     )
     
@@ -909,15 +931,15 @@ async def blood_transfer(ctx, character_id: str = None):
     
     # Calculate success chance based on vampire power
     # Higher power = higher success rate
-    base_chance = 60
+    base_chance = 50
     
     # Adjust based on power level (every 100 power adds 5%)
     adjustment = (attacker_char['power_level'] / 100) * 5
     
     success_chance = base_chance + adjustment
     
-    # Cap between 60% and 95%
-    success_chance = max(60, min(95, success_chance))
+    # Cap between 50% and 90%
+    success_chance = max(50, min(90, success_chance))
     
     # Roll for success
     roll = random.randint(1, 100)
@@ -927,7 +949,7 @@ async def blood_transfer(ctx, character_id: str = None):
         # SUCCESS - Transfer essence into human body
         
         # Power boost from successful transfer
-        power_bonus = random.randint(20, 60)
+        power_bonus = random.randint(30, 80)
         new_power = min(attacker_char['power_level'] + power_bonus, 1000)
         
         # Keep vampire's old name (essence remains the same)
@@ -936,8 +958,8 @@ async def blood_transfer(ctx, character_id: str = None):
         # Keep all existing skills
         all_skills = attacker_char['skills'].copy()
         
-        # Small chance to gain 1 new skill from the transfer (25% chance)
-        if random.randint(1, 100) <= 25 and len(all_skills) < 15:
+        # 40% chance to gain 1 new skill from the transfer
+        if random.randint(1, 100) <= 40 and len(all_skills) < 15:
             available_skills = [skill for skill in SKILLS.keys() if skill not in all_skills]
             if available_skills:
                 new_skill = random.choice(available_skills)
@@ -956,6 +978,7 @@ async def blood_transfer(ctx, character_id: str = None):
             "skills": all_skills,
             "wins": total_wins,
             "losses": attacker_char.get('losses', 0),
+            "race": "vampire",
             "created_at": attacker_char.get('created_at', datetime.now().strftime('%Y-%m-%d %H:%M:%S')),
             "blood_transfer_count": attacker_char.get('blood_transfer_count', 0) + 1
         }
@@ -970,7 +993,7 @@ async def blood_transfer(ctx, character_id: str = None):
         
         # Success embed
         success_embed = discord.Embed(
-            title="BLOOD TRANSFER SUCCESSFUL",
+            title="✅ BLOOD TRANSFER SUCCESSFUL",
             description=f"The ritual is complete! {attacker_char['name']}'s essence has taken over {human_name}'s body!",
             color=discord.Color.gold()
         )
@@ -1015,19 +1038,32 @@ async def blood_transfer(ctx, character_id: str = None):
         await ctx.send(embed=success_embed)
         
     else:
-        # FAILURE - Vampire loses power from failed ritual
+        # FAILURE - VAMPIRE DIES, HUMAN TAKES OVER
         
-        power_loss = random.randint(10, 30)
-        new_power = max(attacker_char['power_level'] - power_loss, 10)
+        # Generate human hunter stats
+        human_power = random.randint(30, 80)  # Start as a capable hunter
+        human_num_skills = random.randint(3, 5)
+        human_skills = random.sample(list(HUMAN_SKILLS.keys()), human_num_skills)
         
-        attacker_char['power_level'] = new_power
-        characters[character_id] = attacker_char
-        save_characters(characters)
+        # Create new human character with same character_id
+        human_character = {
+            "character_id": attacker_char['character_id'],
+            "name": human_name,
+            "username": str(ctx.author),
+            "user_id": user_id,
+            "power_level": human_power,
+            "skills": human_skills,
+            "wins": 0,
+            "losses": 0,
+            "race": "human",
+            "created_at": datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+            "origin": f"Resisted vampire {attacker_char['name']}"
+        }
         
         failure_embed = discord.Embed(
-            title="BLOOD TRANSFER FAILED",
-            description=f"The ritual backfired! {human_name} resisted the transfer!",
-            color=discord.Color.dark_red()
+            title="💀 RITUAL FAILED - YOU ARE NOW HUMAN",
+            description=f"The ritual catastrophically backfired! {attacker_char['name']} has been DESTROYED!\n\n{human_name} resisted the possession and killed the vampire!",
+            color=discord.Color.blue()
         )
         
         failure_embed.add_field(
@@ -1037,12 +1073,35 @@ async def blood_transfer(ctx, character_id: str = None):
         )
         
         failure_embed.add_field(
-            name="Result",
-            value=f"{attacker_char['name']} has been weakened by the failed ritual...\n\nPower: {attacker_char['power_level'] + power_loss} → {new_power} (-{power_loss})",
+            name="Vampire's Final Record",
+            value=f"{attacker_char.get('wins', 0)}-{attacker_char.get('losses', 0)}",
+            inline=False
+        )
+        
+        failure_embed.add_field(
+            name="🗡️ YOU ARE NOW A HUMAN VAMPIRE HUNTER",
+            value=f"**Name:** {human_name}\n**ID:** `{attacker_char['character_id']}`\n**Race:** Human\n**Power:** {human_power}\n**Rank:** {get_human_rank(human_power)}\n**Skills:** {len(human_skills)} hunter abilities",
+            inline=False
+        )
+        
+        failure_embed.add_field(
+            name="Your New Purpose",
+            value=f"You now hunt vampires to avenge your near-death experience. Use `?show {attacker_char['character_id']}` to see your hunter stats!",
             inline=False
         )
         
         await ctx.send(embed=failure_embed)
+        
+        # Add vampire to graveyard
+        dead_vampire = attacker_char.copy()
+        dead_vampire['death_date'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        dead_vampire['killed_by'] = f"Failed Blood Transfer Ritual (Resisted by {human_name})"
+        graveyard.append(dead_vampire)
+        save_graveyard(graveyard)
+        
+        # Replace vampire with human
+        characters[character_id] = human_character
+        save_characters(characters)
 
 # Transfer command - Blood transfer ritual between two vampires
 @bot.command(name='transfer')
@@ -1053,13 +1112,13 @@ async def blood_transfer_hybrid(ctx, character_id_1: str = None, character_id_2:
         await ctx.send("Usage: `?transfer <your_vampire_id> <target_vampire_id>`\nExample: `?transfer 123456 789012`\n\nBoth vampires will be sacrificed to create a powerful hybrid!")
         return
     
-    # Check if both vampires exist
+    # Check if both characters exist
     if character_id_1 not in characters:
-        await ctx.send(f"Vampire ID `{character_id_1}` not found!")
+        await ctx.send(f"Character ID `{character_id_1}` not found!")
         return
     
     if character_id_2 not in characters:
-        await ctx.send(f"Vampire ID `{character_id_2}` not found!")
+        await ctx.send(f"Character ID `{character_id_2}` not found!")
         return
     
     initiator_char = characters[character_id_1]
@@ -1067,9 +1126,14 @@ async def blood_transfer_hybrid(ctx, character_id_1: str = None, character_id_2:
     
     user_id = str(ctx.author.id)
     
-    # Verify ownership of first vampire
+    # Verify ownership of first character
     if initiator_char.get('user_id') != user_id and initiator_char.get('shared_user_id') != user_id:
-        await ctx.send("You don't own the first vampire!")
+        await ctx.send("You don't own the first character!")
+        return
+    
+    # Both must be vampires
+    if initiator_char.get('race', 'vampire') != 'vampire' or target_char.get('race', 'vampire') != 'vampire':
+        await ctx.send("Both characters must be vampires for the transfer ritual!")
         return
     
     # Both vampires must have different owners
@@ -1148,6 +1212,7 @@ async def blood_transfer_hybrid(ctx, character_id_1: str = None, character_id_2:
             "skills": all_skills,
             "wins": total_wins,
             "losses": 0,
+            "race": "vampire",
             "created_at": datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
             "is_hybrid": True
         }
@@ -1235,19 +1300,19 @@ async def blood_transfer_hybrid(ctx, character_id_1: str = None, character_id_2:
         
         await ctx.send(embed=request_embed)
 
-# Fight command - Fight rank-appropriate vampire opponents with death chance
+# Fight command - Fight rank-appropriate opponents with death chance
 @bot.command(name='fight')
 async def fight_character(ctx, character_id: str = None):
-    """Fight a vampire opponent matched to your rank! Usage: ?fight <character_id>"""
+    """Fight an opponent matched to your rank! Usage: ?fight <character_id>"""
     
     # Check if character ID was provided
     if character_id is None:
-        await ctx.send("Usage: `?fight <character_id>`\nExample: `?fight 123456`\n\nUse `?list` to see your vampire IDs.")
+        await ctx.send("Usage: `?fight <character_id>`\nExample: `?fight 123456`\n\nUse `?list` to see your character IDs.")
         return
     
-    # Check if vampire exists
+    # Check if character exists
     if character_id not in characters:
-        await ctx.send(f"Vampire ID `{character_id}` not found!")
+        await ctx.send(f"Character ID `{character_id}` not found!")
         return
     
     player_char = characters[character_id]
@@ -1255,15 +1320,31 @@ async def fight_character(ctx, character_id: str = None):
     
     # Verify ownership
     if player_char.get('user_id') != user_id and player_char.get('shared_user_id') != user_id:
-        await ctx.send("You don't own this vampire!")
+        await ctx.send("You don't own this character!")
         return
     
-    # Generate rank-appropriate AI vampire opponent
+    race = player_char.get('race', 'vampire')
+    
+    # Generate rank-appropriate AI opponent (opposite race)
     min_power, max_power = get_opponent_power_range(player_char['power_level'])
     
-    ai_first_name = random.choice(FIRST_NAMES)
-    ai_last_name = random.choice(LAST_NAMES)
-    ai_name = f"{ai_first_name} {ai_last_name}"
+    if race == 'vampire':
+        # Vampire fights human hunters
+        ai_first_name = random.choice(HUMAN_FIRST_NAMES)
+        ai_last_name = random.choice(HUMAN_LAST_NAMES)
+        ai_name = f"{ai_first_name} {ai_last_name}"
+        ai_race = "human"
+        skill_pool = HUMAN_SKILLS
+        player_color = discord.Color.dark_red()
+    else:
+        # Human fights vampires
+        ai_first_name = random.choice(FIRST_NAMES)
+        ai_last_name = random.choice(LAST_NAMES)
+        ai_name = f"{ai_first_name} {ai_last_name}"
+        ai_race = "vampire"
+        skill_pool = SKILLS
+        player_color = discord.Color.blue()
+    
     ai_power_level = random.randint(min_power, max_power)
     
     # Higher rank opponents get more skills
@@ -1284,27 +1365,30 @@ async def fight_character(ctx, character_id: str = None):
     else:  # 801-1000
         ai_num_skills = random.randint(12, 15)
     
-    ai_skills = random.sample(list(SKILLS.keys()), min(ai_num_skills, len(SKILLS)))
+    ai_skills = random.sample(list(skill_pool.keys()), min(ai_num_skills, len(skill_pool)))
     
     # Calculate death chance
     death_chance = calculate_death_chance(player_char['power_level'], ai_power_level)
     
     # Battle intro embed
     battle_embed = discord.Embed(
-        title="BLOOD BATTLE",
-        description="Two vampires clash in the darkness!",
-        color=discord.Color.purple()
+        title="⚔️ BATTLE",
+        description=f"A {race} faces off against a {ai_race}!",
+        color=player_color
     )
     
+    player_rank = get_vampire_rank(player_char['power_level']) if race == 'vampire' else get_human_rank(player_char['power_level'])
+    ai_rank = get_vampire_rank(ai_power_level) if ai_race == 'vampire' else get_human_rank(ai_power_level)
+    
     battle_embed.add_field(
-        name=f"{player_char['name']} (YOU)",
-        value=f"Blood Power: {player_char['power_level']}\nRank: {get_vampire_rank(player_char['power_level'])}\nAbilities: {len(player_char['skills'])}",
+        name=f"{'🧛' if race == 'vampire' else '🗡️'} {player_char['name']} (YOU)",
+        value=f"Power: {player_char['power_level']}\nRank: {player_rank}\nAbilities: {len(player_char['skills'])}",
         inline=True
     )
     
     battle_embed.add_field(
-        name=f"{ai_name} (ENEMY)",
-        value=f"Blood Power: {ai_power_level}\nRank: {get_vampire_rank(ai_power_level)}\nAbilities: {len(ai_skills)}",
+        name=f"{'🧛' if ai_race == 'vampire' else '🗡️'} {ai_name} (ENEMY)",
+        value=f"Power: {ai_power_level}\nRank: {ai_rank}\nAbilities: {len(ai_skills)}",
         inline=True
     )
     
@@ -1319,9 +1403,20 @@ async def fight_character(ctx, character_id: str = None):
     # Simulate the battle
     await asyncio.sleep(2)
     
+    # Determine which skill dictionary to use
+    if race == 'vampire':
+        player_skill_dict = SKILLS
+        ai_skill_dict = HUMAN_SKILLS
+    else:
+        player_skill_dict = HUMAN_SKILLS
+        ai_skill_dict = SKILLS
+    
+    # Create combined skill dictionary for battle simulation
+    combined_skills = {**player_skill_dict, **ai_skill_dict}
+    
     battle_result = simulate_battle(
         player_char['name'], player_char['power_level'], player_char['skills'],
-        ai_name, ai_power_level, ai_skills
+        ai_name, ai_power_level, ai_skills, combined_skills
     )
     
     # Determine if player won
@@ -1334,18 +1429,12 @@ async def fight_character(ctx, character_id: str = None):
             player_char['wins'] = 0
         player_char['wins'] += 1
         
-        # If hybrid, update shared vampire
-        if player_char.get('is_hybrid', False):
-            for char_id, char in characters.items():
-                if char.get('character_id') == player_char['character_id'] and char_id != character_id:
-                    characters[char_id]['wins'] = player_char['wins']
-        
         characters[character_id] = player_char
         save_characters(characters)
         
         result_embed = discord.Embed(
-            title="VICTORY",
-            description=f"{player_char['name']} has drained {ai_name} of their blood!",
+            title="🎉 VICTORY",
+            description=f"{player_char['name']} has defeated {ai_name}!",
             color=discord.Color.green()
         )
         
@@ -1364,14 +1453,14 @@ async def fight_character(ctx, character_id: str = None):
     else:
         # Player lost - Roll for death
         death_roll = random.randint(1, 100)
-        vampire_dies = death_roll <= death_chance
+        character_dies = death_roll <= death_chance
         
-        if vampire_dies:
-            # Vampire dies permanently
+        if character_dies:
+            # Character dies permanently
             result_embed = discord.Embed(
-                title="PERMANENT DEATH",
+                title="💀 PERMANENT DEATH",
                 description=f"{player_char['name']} has been destroyed by {ai_name}!",
-                color=discord.Color.dark_red()
+                color=discord.Color.black()
             )
             
             # Show final record before deletion
@@ -1387,33 +1476,27 @@ async def fight_character(ctx, character_id: str = None):
             
             result_embed.add_field(
                 name="Battle Summary",
-                value=f"{player_char['name']} has been staked through the heart and turned to ash...\n\nYour vampire has been destroyed. Use `?make` to create a new one.",
+                value=f"{player_char['name']} has been killed...\n\nYour character is gone forever. Use `?make` to create a new vampire.",
                 inline=False
             )
             
             await ctx.send(embed=result_embed)
             
             # Add to graveyard before deleting
-            dead_vampire = player_char.copy()
-            dead_vampire['death_date'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-            dead_vampire['killed_by'] = ai_name
-            graveyard.append(dead_vampire)
+            dead_character = player_char.copy()
+            dead_character['death_date'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+            dead_character['killed_by'] = ai_name
+            graveyard.append(dead_character)
             save_graveyard(graveyard)
             
-            # If hybrid, delete shared vampire
-            if player_char.get('is_hybrid', False):
-                for char_id in list(characters.keys()):
-                    if characters[char_id].get('character_id') == player_char['character_id'] and char_id != character_id:
-                        del characters[char_id]
-            
-            # Delete the vampire
+            # Delete the character
             del characters[character_id]
             save_characters(characters)
             
         else:
-            # Vampire survives!
+            # Character survives!
             result_embed = discord.Embed(
-                title="DEFEAT - BUT ALIVE",
+                title="😰 DEFEAT - BUT ALIVE",
                 description=f"{player_char['name']} was defeated by {ai_name} but survived!",
                 color=discord.Color.orange()
             )
@@ -1426,7 +1509,7 @@ async def fight_character(ctx, character_id: str = None):
             
             result_embed.add_field(
                 name="Battle Summary",
-                value=f"{player_char['name']} was defeated but managed to escape with their unlife intact!\n\nYou can fight again!",
+                value=f"{player_char['name']} was defeated but managed to escape!\n\nYou can fight again!",
                 inline=False
             )
             
@@ -1434,12 +1517,6 @@ async def fight_character(ctx, character_id: str = None):
             if 'losses' not in player_char:
                 player_char['losses'] = 0
             player_char['losses'] += 1
-            
-            # If hybrid, update shared vampire
-            if player_char.get('is_hybrid', False):
-                for char_id, char in characters.items():
-                    if char.get('character_id') == player_char['character_id'] and char_id != character_id:
-                        characters[char_id]['losses'] = player_char['losses']
             
             characters[character_id] = player_char
             save_characters(characters)
@@ -1454,77 +1531,95 @@ async def fight_character(ctx, character_id: str = None):
 # Stats command - Shows world statistics
 @bot.command(name='stats')
 async def world_stats(ctx):
-    """View world statistics of all vampires alive and dead"""
+    """View world statistics of all characters alive and dead"""
     
     # Load current data
-    alive_vampires = load_characters()
-    dead_vampires = load_graveyard()
+    alive_characters = load_characters()
+    dead_characters = load_graveyard()
     
     # Calculate stats
-    total_alive = len(alive_vampires)
-    total_dead = len(dead_vampires)
-    total_vampires = total_alive + total_dead
+    total_alive = len(alive_characters)
+    total_dead = len(dead_characters)
+    total_characters = total_alive + total_dead
+    
+    # Count by race
+    alive_vampires = sum(1 for c in alive_characters.values() if c.get('race', 'vampire') == 'vampire')
+    alive_humans = sum(1 for c in alive_characters.values() if c.get('race', 'vampire') == 'human')
     
     # Calculate total wins and losses
-    total_wins = sum(char.get('wins', 0) for char in alive_vampires.values())
-    total_losses = sum(char.get('losses', 0) for char in alive_vampires.values())
+    total_wins = sum(char.get('wins', 0) for char in alive_characters.values())
+    total_losses = sum(char.get('losses', 0) for char in alive_characters.values())
     
     # Main stats embed
     stats_embed = discord.Embed(
-        title="VAMPIRE WORLD STATISTICS",
-        description="Global vampire data across all realms",
+        title="🌍 WORLD STATISTICS",
+        description="Global character data across all realms",
         color=discord.Color.dark_purple()
     )
     
-    stats_embed.add_field(name="Total Vampires Created", value=f"{total_vampires}", inline=True)
-    stats_embed.add_field(name="Vampires Alive", value=f"{total_alive}", inline=True)
-    stats_embed.add_field(name="Vampires Destroyed", value=f"{total_dead}", inline=True)
-    stats_embed.add_field(name="Total Victories", value=f"{total_wins}", inline=True)
-    stats_embed.add_field(name="Total Defeats", value=f"{total_losses}", inline=True)
+    stats_embed.add_field(name="Total Characters Created", value=f"{total_characters}", inline=True)
+    stats_embed.add_field(name="Characters Alive", value=f"{total_alive}", inline=True)
+    stats_embed.add_field(name="Characters Destroyed", value=f"{total_dead}", inline=True)
+    stats_embed.add_field(name="🧛 Living Vampires", value=f"{alive_vampires}", inline=True)
+    stats_embed.add_field(name="🗡️ Living Hunters", value=f"{alive_humans}", inline=True)
     stats_embed.add_field(name="Total Battles", value=f"{total_wins + total_losses}", inline=True)
     
     await ctx.send(embed=stats_embed)
     
-    # Combined embed with top living and recently fallen
+    # Combined embed with top living
     combined_embed = discord.Embed(
-        title="VAMPIRE RANKINGS",
+        title="🏆 CHARACTER RANKINGS",
         color=discord.Color.blurple()
     )
     
-    # Top 5 alive vampires (deduplicated)
-    if alive_vampires:
+    # Top 5 alive characters (deduplicated)
+    if alive_characters:
         seen_ids = set()
-        unique_vampires = []
+        unique_characters = []
         
-        for vamp in alive_vampires.values():
-            char_id = vamp.get('character_id')
+        for char in alive_characters.values():
+            char_id = char.get('character_id')
             if char_id not in seen_ids:
                 seen_ids.add(char_id)
-                unique_vampires.append(vamp)
+                unique_characters.append(char)
         
-        alive_list = sorted(unique_vampires, key=lambda x: x.get('wins', 0), reverse=True)[:5]
+        alive_list = sorted(unique_characters, key=lambda x: x.get('wins', 0), reverse=True)[:5]
         
-        alive_text = "**TOP LIVING VAMPIRES**\nThe strongest vampires still walking the earth\n\n"
-        for idx, vamp in enumerate(alive_list, 1):
-            wins = vamp.get('wins', 0)
-            losses = vamp.get('losses', 0)
-            rank = get_vampire_rank(vamp['power_level'])
-            hybrid_tag = " [HYBRID]" if vamp.get('is_hybrid', False) else ""
-            alive_text += f"{idx}. **{vamp['name']}{hybrid_tag}**\nID: `{vamp['character_id']}` | {rank} | Power: {vamp['power_level']} | Record: {wins}-{losses}\n\n"
+        alive_text = "**TOP LIVING CHARACTERS**\nThe strongest fighters in the world\n\n"
+        for idx, char in enumerate(alive_list, 1):
+            wins = char.get('wins', 0)
+            losses = char.get('losses', 0)
+            race = char.get('race', 'vampire')
+            if race == 'vampire':
+                rank = get_vampire_rank(char['power_level'])
+                icon = "🧛"
+            else:
+                rank = get_human_rank(char['power_level'])
+                icon = "🗡️"
+            
+            hybrid_tag = " [HYBRID]" if char.get('is_hybrid', False) else ""
+            alive_text += f"{idx}. {icon} **{char['name']}{hybrid_tag}**\nID: `{char['character_id']}` | {rank} | Power: {char['power_level']} | Record: {wins}-{losses}\n\n"
         
         combined_embed.add_field(name="\u200b", value=alive_text, inline=False)
     
-    # Last 5 fallen vampires
-    if dead_vampires:
-        recent_dead = dead_vampires[-5:]
+    # Last 5 fallen characters
+    if dead_characters:
+        recent_dead = dead_characters[-5:]
         recent_dead.reverse()
         
-        dead_text = "**RECENTLY FALLEN VAMPIRES**\nThose who met their end in battle\n\n"
-        for vamp in recent_dead:
-            wins = vamp.get('wins', 0)
-            losses = vamp.get('losses', 0)
-            rank = get_vampire_rank(vamp['power_level'])
-            dead_text += f"**{vamp['name']}**\nID: `{vamp['character_id']}` | {rank} | Power: {vamp['power_level']} | Record: {wins}-{losses}\nKilled by: {vamp.get('killed_by', 'Unknown')}\n\n"
+        dead_text = "**RECENTLY FALLEN**\nThose who met their end\n\n"
+        for char in recent_dead:
+            wins = char.get('wins', 0)
+            losses = char.get('losses', 0)
+            race = char.get('race', 'vampire')
+            if race == 'vampire':
+                rank = get_vampire_rank(char['power_level'])
+                icon = "🧛"
+            else:
+                rank = get_human_rank(char['power_level'])
+                icon = "🗡️"
+            
+            dead_text += f"{icon} **{char['name']}**\nID: `{char['character_id']}` | {rank} | Power: {char['power_level']} | Record: {wins}-{losses}\nKilled by: {char.get('killed_by', 'Unknown')}\n\n"
         
         combined_embed.add_field(name="\u200b", value=dead_text, inline=False)
     
