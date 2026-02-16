@@ -62,14 +62,11 @@ def obfuscate_roblox(code: str) -> str:
             code = re.sub(rf'\b{re.escape(original)}\b', obf, code)
 
         # Step 4: Chunk large code for better performance
-        # Split into chunks if code is very large (> 50KB)
         max_chunk_size = 50000
         
         if len(code) > max_chunk_size:
-            # Use chunked approach
             result = create_chunked_obfuscation(code, max_chunk_size)
         else:
-            # Use standard approach
             result = create_standard_obfuscation(code)
         
         return result
@@ -141,25 +138,13 @@ def create_chunked_obfuscation(code: str, chunk_size: int) -> str:
 
 
 # ──────────────────────────────────────────────
-#  GLOBAL CHECK - block DMs (OPTIONAL)
-# ──────────────────────────────────────────────
-
-# Commented out to allow DMs - uncomment if you want to block DMs
-# @bot.check
-# async def globally_block_dms(ctx):
-#     if ctx.guild is None:
-#         await ctx.send("Commands can only be used in servers, not DMs.")
-#         return False
-#     return True
-
-# ──────────────────────────────────────────────
 #  EVENTS
 # ──────────────────────────────────────────────
 
 @bot.event
 async def on_ready():
     print('=' * 50)
-    print(f'Bot is online and ready!')
+    print(f'✅ Bot is online and ready!')
     print(f'Logged in as: {bot.user.name}')
     print(f'Bot ID: {bot.user.id}')
     print(f'Discord.py version: {discord.__version__}')
@@ -171,8 +156,9 @@ async def on_ready():
         await bot.change_presence(
             activity=discord.Game(name="?obfhelp | Peter Griffin Obf")
         )
+        print("✅ Bot status set successfully")
     except Exception as e:
-        print(f"Could not set presence: {e}")
+        print(f"⚠️ Could not set presence: {e}")
 
 @bot.event
 async def on_command_error(ctx, error):
@@ -193,10 +179,10 @@ async def on_command_error(ctx, error):
             if len(error_msg) > 200:
                 error_msg = error_msg[:200] + "..."
             await ctx.send(f"⚠️ An error occurred: {error_msg}")
-            print(f"Error in command '{ctx.command}': {error}")
+            print(f"❌ Error in command '{ctx.command}': {error}")
             traceback.print_exception(type(error), error, error.__traceback__)
     except Exception as e:
-        print(f"Error in error handler: {e}")
+        print(f"❌ Error in error handler: {e}")
         traceback.print_exc()
 
 # ──────────────────────────────────────────────
@@ -205,9 +191,7 @@ async def on_command_error(ctx, error):
 
 @bot.command(name='obf')
 async def obf(ctx, *, code: str = None):
-    """
-    Main obfuscation command - handles both file and inline text
-    """
+    """Main obfuscation command - handles both file and inline text"""
     try:
         # -- FILE MODE --
         if ctx.message.attachments:
@@ -221,17 +205,17 @@ async def obf(ctx, *, code: str = None):
                 )
                 return
 
-            # Check file size (Discord limit is 8MB for free, 50MB for boosted)
+            # Check file size
             if attachment.size > 8_000_000:
                 await ctx.send("❌ File is too large! Maximum size is 8MB.")
                 return
 
             try:
-                processing_msg = await ctx.send("⏳ Processing your file... This may take a moment for large files.")
+                processing_msg = await ctx.send("⏳ Processing your file...")
                 file_bytes = await attachment.read()
                 source_code = file_bytes.decode('utf-8')
             except UnicodeDecodeError:
-                await ctx.send("❌ Could not decode file. Please ensure it's a valid text file with UTF-8 encoding.")
+                await ctx.send("❌ Could not decode file. Please ensure it's UTF-8 encoded.")
                 return
             except Exception as e:
                 await ctx.send(f"❌ Could not read file: {e}")
@@ -243,7 +227,6 @@ async def obf(ctx, *, code: str = None):
 
         # -- INLINE TEXT MODE --
         elif code is not None:
-            # Remove code block markers if present
             source_code = re.sub(r'^```[a-zA-Z]*\n?', '', code)
             source_code = re.sub(r'```$', '', source_code).strip()
             input_filename = 'obfuscated'
