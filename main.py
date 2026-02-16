@@ -97,6 +97,20 @@ STORE_TYPES = {
     "Electronics Store": {"min": 1500, "max": 4000, "risk": "high"}
 }
 
+# Work jobs and their payouts
+WORK_JOBS = {
+    "McDonald's": {"min": 50, "max": 120, "description": "Flipping burgers at the local Mickey D's"},
+    "Walmart": {"min": 60, "max": 140, "description": "Stocking shelves and dealing with customers"},
+    "Car Wash": {"min": 70, "max": 150, "description": "Washing cars in the hood"},
+    "Pizza Delivery": {"min": 80, "max": 180, "description": "Delivering pizzas around the city"},
+    "Uber Driver": {"min": 90, "max": 200, "description": "Driving people around LA"},
+    "Construction": {"min": 100, "max": 250, "description": "Working construction downtown"},
+    "Warehouse": {"min": 110, "max": 220, "description": "Loading and unloading at the warehouse"},
+    "Security Guard": {"min": 95, "max": 190, "description": "Working security at a local business"},
+    "Mechanic": {"min": 120, "max": 280, "description": "Fixing cars at the local shop"},
+    "Food Truck": {"min": 85, "max": 175, "description": "Serving food from a food truck"}
+}
+
 # Load characters
 def load_characters():
     if os.path.exists(CHARACTERS_FILE):
@@ -364,7 +378,7 @@ async def show_members(ctx):
             inline=True
         )
     
-    embed.set_footer(text="Commands: ?slide <id> | ?rob <id> | ?list <id>")
+    embed.set_footer(text="Commands: ?slide <id> | ?rob <id> | ?work <id> | ?list <id>")
     
     await ctx.send(embed=embed)
 
@@ -460,6 +474,122 @@ async def list_kills(ctx, character_id: str = None):
     embed.set_footer(text="Bodies caught in the streets")
     
     await ctx.send(embed=embed)
+
+# Work command - Work legitimate jobs for money
+@bot.command(name='work')
+@commands.cooldown(1, 10, commands.BucketType.user)
+async def work_job(ctx, character_id: str = None):
+    """Work a legitimate job to earn money. Usage: ?work <character_id>"""
+    
+    # Reset cooldown for admins
+    if is_admin(ctx):
+        ctx.command.reset_cooldown(ctx)
+    
+    if character_id is None:
+        await ctx.send("Usage: `?work <character_id>`\nExample: `?work 123456`")
+        return
+    
+    if character_id not in characters:
+        await ctx.send(f"Gang member ID `{character_id}` not found!")
+        return
+    
+    player_char = characters[character_id]
+    user_id = str(ctx.author.id)
+    
+    if player_char.get('user_id') != user_id:
+        await ctx.send("You don't own this gang member!")
+        return
+    
+    # Check if member is in jail
+    if is_in_jail(player_char):
+        remaining = get_jail_time_remaining(player_char)
+        if remaining:
+            minutes = int(remaining.total_seconds() // 60)
+            seconds = int(remaining.total_seconds() % 60)
+            await ctx.send(f"{player_char['name']} is currently locked up and will be released in {minutes}m {seconds}s")
+            return
+    
+    # Pick a random job
+    job_name = random.choice(list(WORK_JOBS.keys()))
+    job_info = WORK_JOBS[job_name]
+    
+    # Intro embed
+    intro_embed = discord.Embed(
+        title="CLOCKING IN",
+        description=f"{player_char['name']} is heading to work",
+        color=discord.Color.green()
+    )
+    
+    intro_embed.add_field(
+        name="Job",
+        value=f"{job_name}\n{job_info['description']}",
+        inline=False
+    )
+    
+    intro_embed.add_field(
+        name="Member",
+        value=f"{player_char['name']}\nCurrent Money: ${player_char.get('money', 0):,}",
+        inline=False
+    )
+    
+    intro_embed.set_footer(text="Putting in work...")
+    
+    await ctx.send(embed=intro_embed)
+    await asyncio.sleep(2)
+    
+    # Calculate earnings
+    earnings = random.randint(job_info['min'], job_info['max'])
+    
+    # Add money to character
+    player_char['money'] = player_char.get('money', 0) + earnings
+    
+    # Work outcomes (flavor text)
+    work_outcomes = [
+        f"{player_char['name']} put in a solid shift and earned their pay",
+        f"{player_char['name']} grinded through the day and got paid",
+        f"{player_char['name']} clocked in, did the work, and clocked out",
+        f"{player_char['name']} handled business and collected the check",
+        f"{player_char['name']} stayed focused and earned that bread",
+        f"{player_char['name']} kept it professional and got the bag"
+    ]
+    
+    outcome_embed = discord.Embed(
+        title="SHIFT COMPLETE",
+        description=random.choice(work_outcomes),
+        color=discord.Color.green()
+    )
+    
+    outcome_embed.add_field(
+        name="Job Completed",
+        value=job_name,
+        inline=True
+    )
+    
+    outcome_embed.add_field(
+        name="Earnings",
+        value=f"${earnings:,}",
+        inline=True
+    )
+    
+    outcome_embed.add_field(
+        name="\u200b",
+        value="\u200b",
+        inline=False
+    )
+    
+    outcome_embed.add_field(
+        name="Updated Balance",
+        value=f"${player_char['money']:,}",
+        inline=False
+    )
+    
+    outcome_embed.set_footer(text="Honest work pays off")
+    
+    # Save character data
+    characters[character_id] = player_char
+    save_characters(characters)
+    
+    await ctx.send(embed=outcome_embed)
 
 # Rob command - Rob local stores for money
 @bot.command(name='rob')
