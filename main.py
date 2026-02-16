@@ -85,6 +85,18 @@ LA_GANGS = {
     }
 }
 
+# Store types and their potential payouts
+STORE_TYPES = {
+    "Gas Station": {"min": 200, "max": 800, "risk": "low"},
+    "Liquor Store": {"min": 300, "max": 1000, "risk": "low"},
+    "Convenience Store": {"min": 250, "max": 900, "risk": "low"},
+    "Jewelry Store": {"min": 2000, "max": 5000, "risk": "high"},
+    "Bank": {"min": 5000, "max": 15000, "risk": "extreme"},
+    "Check Cashing": {"min": 1000, "max": 3000, "risk": "medium"},
+    "Pharmacy": {"min": 800, "max": 2500, "risk": "medium"},
+    "Electronics Store": {"min": 1500, "max": 4000, "risk": "high"}
+}
+
 # Load characters
 def load_characters():
     if os.path.exists(CHARACTERS_FILE):
@@ -256,6 +268,7 @@ async def make_character(ctx):
         "gang_affiliation": gang_affiliation,
         "set_name": set_name,
         "kills": 0,
+        "money": 0,
         "kill_list": [],
         "created_at": datetime.now().strftime('%Y-%m-%d %H:%M:%S')
     }
@@ -338,9 +351,11 @@ async def show_members(ctx):
         jail_status = "LOCKED UP" if in_jail else "FREE"
         
         kills = member.get('kills', 0)
+        money = member.get('money', 0)
         
         member_info = f"ID: `{member['character_id']}`\n"
         member_info += f"Bodies: {kills}\n"
+        member_info += f"Money: ${money:,}\n"
         member_info += f"Gang: {member.get('gang_affiliation', 'Unknown')}\n"
         member_info += f"Set: {member.get('set_name', 'Unknown')}\n"
         member_info += f"Status: {jail_status}"
@@ -358,7 +373,7 @@ async def show_members(ctx):
             inline=True
         )
     
-    embed.set_footer(text="Commands: ?crew | ?slide <id> [id2] [id3]... | ?list <id>")
+    embed.set_footer(text="Commands: ?crew | ?slide <id> | ?rob <id> | ?list <id>")
     
     await ctx.send(embed=embed)
 
@@ -449,6 +464,224 @@ async def list_kills(ctx, character_id: str = None):
     embed.set_footer(text="Bodies caught in the streets")
     
     await ctx.send(embed=embed)
+
+# Rob command - Rob local stores for money
+@bot.command(name='rob')
+async def rob_store(ctx, character_id: str = None):
+    """Rob a local store for money. Usage: ?rob <character_id>"""
+    
+    if character_id is None:
+        await ctx.send("Usage: `?rob <character_id>`\nExample: `?rob 123456`")
+        return
+    
+    if character_id not in characters:
+        await ctx.send(f"Gang member ID `{character_id}` not found!")
+        return
+    
+    player_char = characters[character_id]
+    user_id = str(ctx.author.id)
+    
+    if player_char.get('user_id') != user_id:
+        await ctx.send("You don't own this gang member!")
+        return
+    
+    # Check if member is in jail
+    if is_in_jail(player_char):
+        remaining = get_jail_time_remaining(player_char)
+        if remaining:
+            minutes = int(remaining.total_seconds() // 60)
+            seconds = int(remaining.total_seconds() % 60)
+            await ctx.send(f"{player_char['name']} is currently locked up and will be released in {minutes}m {seconds}s")
+            return
+    
+    # Pick a random store type
+    store_type = random.choice(list(STORE_TYPES.keys()))
+    store_info = STORE_TYPES[store_type]
+    
+    # Generate random store name
+    store_name = f"{random.choice(['Main St', 'Broadway', 'Central Ave', 'Sunset Blvd', 'Crenshaw', 'Vermont Ave'])} {store_type}"
+    
+    # Intro embed
+    intro_embed = discord.Embed(
+        title="ROBBERY IN PROGRESS",
+        description=f"{player_char['name']} is attempting to rob {store_name}",
+        color=discord.Color.gold()
+    )
+    
+    intro_embed.add_field(
+        name="Target",
+        value=f"{store_name}\nRisk Level: {store_info['risk'].upper()}",
+        inline=True
+    )
+    
+    intro_embed.add_field(
+        name="Member",
+        value=f"{player_char['name']}\nMoney: ${player_char.get('money', 0):,}",
+        inline=True
+    )
+    
+    intro_embed.set_footer(text="The heist is underway...")
+    
+    await ctx.send(embed=intro_embed)
+    await asyncio.sleep(3)
+    
+    # Determine success of robbery (70% success rate)
+    robbery_roll = random.randint(1, 100)
+    robbery_success = robbery_roll <= 70
+    
+    # Calculate money stolen if successful
+    money_stolen = 0
+    if robbery_success:
+        money_stolen = random.randint(store_info['min'], store_info['max'])
+    
+    # Police response system
+    caught_by_police = False
+    jail_time = 0
+    witnesses_present = False
+    
+    if robbery_success:
+        # Base police chance depends on store risk
+        if store_info['risk'] == "low":
+            police_chance = 20
+        elif store_info['risk'] == "medium":
+            police_chance = 35
+        elif store_info['risk'] == "high":
+            police_chance = 50
+        else:  # extreme
+            police_chance = 70
+        
+        police_roll = random.randint(1, 100)
+        caught_by_police = police_roll <= police_chance
+        
+        if caught_by_police:
+            # Check for witnesses (30% chance)
+            witness_roll = random.randint(1, 100)
+            witnesses_present = witness_roll <= 30
+            
+            if witnesses_present:
+                # 20-30 minutes with witnesses
+                jail_time = random.randint(20, 30)
+            else:
+                # 5-10 minutes without witnesses
+                jail_time = random.randint(5, 10)
+    
+    # Outcome embed
+    if robbery_success:
+        if caught_by_police:
+            outcome_embed = discord.Embed(
+                title="ROBBERY SUCCESSFUL - BUT ARRESTED",
+                description=f"{player_char['name']} successfully robbed {store_name} but was caught by police",
+                color=discord.Color.orange()
+            )
+            
+            outcome_embed.add_field(
+                name="Money Stolen",
+                value=f"${money_stolen:,}",
+                inline=True
+            )
+            
+            outcome_embed.add_field(
+                name="Police Response",
+                value="CAUGHT",
+                inline=True
+            )
+            
+            outcome_embed.add_field(
+                name="\u200b",
+                value="\u200b",
+                inline=False
+            )
+            
+            if witnesses_present:
+                outcome_embed.add_field(
+                    name="WITNESSES PRESENT",
+                    value=f"Multiple witnesses at the scene identified {player_char['name']}\nSentence increased due to evidence",
+                    inline=False
+                )
+            
+            outcome_embed.add_field(
+                name="ARREST STATUS",
+                value=f"Sentenced to {jail_time} minutes in county jail\nMoney confiscated by police",
+                inline=False
+            )
+            
+            # Set jail time
+            jail_until = datetime.now() + timedelta(minutes=jail_time)
+            player_char['jail_until'] = jail_until.strftime('%Y-%m-%d %H:%M:%S')
+            
+            # Don't add money since it was confiscated
+            
+        else:
+            outcome_embed = discord.Embed(
+                title="ROBBERY SUCCESSFUL",
+                description=f"{player_char['name']} successfully robbed {store_name} and escaped",
+                color=discord.Color.green()
+            )
+            
+            outcome_embed.add_field(
+                name="Money Stolen",
+                value=f"${money_stolen:,}",
+                inline=True
+            )
+            
+            outcome_embed.add_field(
+                name="Police Response",
+                value="ESCAPED",
+                inline=True
+            )
+            
+            outcome_embed.add_field(
+                name="\u200b",
+                value="\u200b",
+                inline=False
+            )
+            
+            # Add money to character
+            player_char['money'] = player_char.get('money', 0) + money_stolen
+            
+            outcome_embed.add_field(
+                name="CLEAN GETAWAY",
+                value=f"{player_char['name']} successfully evaded police and made it back to the hood",
+                inline=False
+            )
+            
+            outcome_embed.add_field(
+                name="Updated Balance",
+                value=f"${player_char['money']:,}",
+                inline=False
+            )
+    else:
+        outcome_embed = discord.Embed(
+            title="ROBBERY FAILED",
+            description=f"{player_char['name']} failed to rob {store_name}",
+            color=discord.Color.red()
+        )
+        
+        outcome_embed.add_field(
+            name="Result",
+            value="The robbery went wrong and the target was alerted before anything could be taken",
+            inline=False
+        )
+        
+        outcome_embed.add_field(
+            name="Money Stolen",
+            value="$0",
+            inline=True
+        )
+        
+        outcome_embed.add_field(
+            name="Status",
+            value="Fled the scene empty-handed",
+            inline=True
+        )
+    
+    outcome_embed.set_footer(text="Crime doesn't always pay")
+    
+    # Save character data
+    characters[character_id] = player_char
+    save_characters(characters)
+    
+    await ctx.send(embed=outcome_embed)
 
 # Crew command - Group battle
 @bot.command(name='crew')
@@ -775,7 +1008,7 @@ async def slide_on_opps(ctx, *character_ids):
                 
                 outcome_embed.add_field(
                     name="Final Stats",
-                    value=f"Body Count: {player_char.get('kills', 0)}\nStatus: DECEASED",
+                    value=f"Body Count: {player_char.get('kills', 0)}\nMoney: ${player_char.get('money', 0):,}\nStatus: DECEASED",
                     inline=False
                 )
                 
@@ -804,7 +1037,7 @@ async def slide_on_opps(ctx, *character_ids):
                 
                 outcome_embed.add_field(
                     name="Updated Stats",
-                    value=f"Total Bodies: {player_char['kills']}",
+                    value=f"Total Bodies: {player_char['kills']}\nMoney: ${player_char.get('money', 0):,}",
                     inline=False
                 )
                 
@@ -844,7 +1077,7 @@ async def slide_on_opps(ctx, *character_ids):
                 
                 outcome_embed.add_field(
                     name="Final Stats",
-                    value=f"Body Count: {player_char.get('kills', 0)}\nStatus: DECEASED",
+                    value=f"Body Count: {player_char.get('kills', 0)}\nMoney: ${player_char.get('money', 0):,}\nStatus: DECEASED",
                     inline=False
                 )
                 
@@ -872,7 +1105,7 @@ async def slide_on_opps(ctx, *character_ids):
                 
                 outcome_embed.add_field(
                     name="Current Stats",
-                    value=f"Body Count: {player_char.get('kills', 0)}\nStatus: ALIVE",
+                    value=f"Body Count: {player_char.get('kills', 0)}\nMoney: ${player_char.get('money', 0):,}\nStatus: ALIVE",
                     inline=False
                 )
                 
@@ -1057,7 +1290,7 @@ async def revenge_battle(ctx, dead_character_id: str = None, avenger_character_i
             
             outcome_embed.add_field(
                 name="Final Stats",
-                value=f"Body Count: {avenger_char.get('kills', 0)}\nStatus: DECEASED",
+                value=f"Body Count: {avenger_char.get('kills', 0)}\nMoney: ${avenger_char.get('money', 0):,}\nStatus: DECEASED",
                 inline=False
             )
             
@@ -1092,7 +1325,7 @@ async def revenge_battle(ctx, dead_character_id: str = None, avenger_character_i
             
             outcome_embed.add_field(
                 name="Updated Stats",
-                value=f"Total Bodies: {avenger_char['kills']}",
+                value=f"Total Bodies: {avenger_char['kills']}\nMoney: ${avenger_char.get('money', 0):,}",
                 inline=False
             )
             
@@ -1131,7 +1364,7 @@ async def revenge_battle(ctx, dead_character_id: str = None, avenger_character_i
             
             outcome_embed.add_field(
                 name="Final Stats",
-                value=f"Body Count: {avenger_char.get('kills', 0)}\nStatus: DECEASED",
+                value=f"Body Count: {avenger_char.get('kills', 0)}\nMoney: ${avenger_char.get('money', 0):,}\nStatus: DECEASED",
                 inline=False
             )
             
@@ -1159,7 +1392,7 @@ async def revenge_battle(ctx, dead_character_id: str = None, avenger_character_i
             
             outcome_embed.add_field(
                 name="Current Stats",
-                value=f"Body Count: {avenger_char.get('kills', 0)}\nStatus: ALIVE",
+                value=f"Body Count: {avenger_char.get('kills', 0)}\nMoney: ${avenger_char.get('money', 0):,}\nStatus: ALIVE",
                 inline=False
             )
             
