@@ -245,16 +245,23 @@ async def show_vampires(ctx):
         wins = vamp.get('wins', 0)
         losses = vamp.get('losses', 0)
         has_been_reborn = vamp.get('has_been_reborn', False)
+        is_hybrid = vamp.get('is_hybrid', False)
         
         # Status indicators
-        rebirth_status = "REBORN" if has_been_reborn else "Original"
+        if is_hybrid:
+            status = "HYBRID"
+        elif has_been_reborn:
+            status = "REBORN"
+        else:
+            status = "Original"
+        
         rebirth_eligible = "No" if has_been_reborn else "Yes"
         
         value_text = (
             f"**ID:** `{vamp['character_id']}`\n"
             f"**Power:** {vamp['power_level']}\n"
             f"**Record:** {wins}-{losses}\n"
-            f"**Status:** {rebirth_status}\n"
+            f"**Status:** {status}\n"
             f"**Rebirth Eligible:** {rebirth_eligible}"
         )
         
@@ -264,9 +271,201 @@ async def show_vampires(ctx):
             inline=True
         )
     
-    embed.set_footer(text="Use ?fight <id> to battle | Use ?rebirth <id> to resurrect fallen vampires")
+    embed.set_footer(text="Use ?fight <id> to battle | Use ?transfer <id1> <id2> to fuse vampires")
     
     await ctx.send(embed=embed)
+
+# Transfer command - Sacrifice two vampires to create a hybrid
+@bot.command(name='transfer')
+async def transfer_vampires(ctx, vampire1_id: str = None, vampire2_id: str = None):
+    """Sacrifice two of your vampires to create a powerful hybrid. Usage: ?transfer <id1> <id2>"""
+    
+    # Check if both IDs were provided
+    if vampire1_id is None or vampire2_id is None:
+        await ctx.send("Usage: `?transfer <vampire1_id> <vampire2_id>`\nExample: `?transfer 123456 789012`\n\nBoth vampires will be sacrificed to create a powerful hybrid!")
+        return
+    
+    # Check if trying to transfer same vampire
+    if vampire1_id == vampire2_id:
+        await ctx.send("You cannot transfer a vampire with itself!")
+        return
+    
+    user_id = str(ctx.author.id)
+    
+    # Check if both vampires exist
+    if vampire1_id not in characters:
+        await ctx.send(f"Vampire ID `{vampire1_id}` not found!")
+        return
+    
+    if vampire2_id not in characters:
+        await ctx.send(f"Vampire ID `{vampire2_id}` not found!")
+        return
+    
+    vampire1 = characters[vampire1_id]
+    vampire2 = characters[vampire2_id]
+    
+    # Verify ownership of both vampires
+    if vampire1.get('user_id') != user_id:
+        await ctx.send(f"You don't own the vampire with ID `{vampire1_id}`!")
+        return
+    
+    if vampire2.get('user_id') != user_id:
+        await ctx.send(f"You don't own the vampire with ID `{vampire2_id}`!")
+        return
+    
+    # Transfer ritual intro
+    ritual_embed = discord.Embed(
+        title="BLOOD TRANSFER RITUAL",
+        description=f"**{vampire1['name']}** and **{vampire2['name']}** begin the forbidden ritual...\n\nTheir blood mingles in darkness...",
+        color=discord.Color.dark_purple()
+    )
+    
+    ritual_embed.add_field(
+        name=f"{vampire1['name']}",
+        value=f"Power: {vampire1['power_level']}\nRecord: {vampire1.get('wins', 0)}-{vampire1.get('losses', 0)}",
+        inline=True
+    )
+    
+    ritual_embed.add_field(
+        name=f"{vampire2['name']}",
+        value=f"Power: {vampire2['power_level']}\nRecord: {vampire2.get('wins', 0)}-{vampire2.get('losses', 0)}",
+        inline=True
+    )
+    
+    ritual_embed.set_footer(text="Both vampires will be sacrificed...")
+    
+    await ctx.send(embed=ritual_embed)
+    await asyncio.sleep(4)
+    
+    # Generate new hybrid vampire
+    first_name = random.choice(FIRST_NAMES)
+    last_name = random.choice(LAST_NAMES)
+    hybrid_name = f"{first_name} {last_name}"
+    
+    # Generate new ID for hybrid
+    hybrid_id = generate_unique_id()
+    
+    # Calculate hybrid power
+    # Combine both powers + bonus (30-60)
+    combined_power = vampire1['power_level'] + vampire2['power_level']
+    ritual_bonus = random.randint(30, 60)
+    hybrid_power = combined_power + ritual_bonus
+    
+    # Cap at 100
+    if hybrid_power > 100:
+        hybrid_power = 100
+        actual_bonus = 100 - combined_power
+    else:
+        actual_bonus = ritual_bonus
+    
+    # Combine wins (keep total victories)
+    total_wins = vampire1.get('wins', 0) + vampire2.get('wins', 0)
+    
+    # Hybrid starts with 0 losses (fresh start)
+    total_losses = 0
+    
+    # Check if either vampire was reborn
+    has_been_reborn = vampire1.get('has_been_reborn', False) or vampire2.get('has_been_reborn', False)
+    
+    # Create hybrid vampire
+    hybrid_data = {
+        "character_id": hybrid_id,
+        "name": hybrid_name,
+        "username": str(ctx.author),
+        "user_id": user_id,
+        "power_level": hybrid_power,
+        "wins": total_wins,
+        "losses": total_losses,
+        "has_been_reborn": has_been_reborn,
+        "is_hybrid": True,
+        "parent1_name": vampire1['name'],
+        "parent2_name": vampire2['name'],
+        "parent1_id": vampire1_id,
+        "parent2_id": vampire2_id,
+        "created_at": datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    }
+    
+    # Add sacrificed vampires to graveyard
+    dead_vamp1 = vampire1.copy()
+    dead_vamp1['death_date'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    dead_vamp1['killed_by'] = "Blood Transfer Ritual"
+    
+    dead_vamp2 = vampire2.copy()
+    dead_vamp2['death_date'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    dead_vamp2['killed_by'] = "Blood Transfer Ritual"
+    
+    current_graveyard = load_graveyard()
+    current_graveyard.append(dead_vamp1)
+    current_graveyard.append(dead_vamp2)
+    save_graveyard(current_graveyard)
+    
+    # Delete old vampires
+    del characters[vampire1_id]
+    del characters[vampire2_id]
+    
+    # Save hybrid vampire
+    characters[hybrid_id] = hybrid_data
+    save_characters(characters)
+    
+    # Success embed
+    success_embed = discord.Embed(
+        title="HYBRID VAMPIRE BORN",
+        description=f"The ritual is complete! **{hybrid_name}** emerges from the crimson flames!",
+        color=discord.Color.gold()
+    )
+    
+    success_embed.add_field(
+        name="Hybrid Name",
+        value=hybrid_name,
+        inline=False
+    )
+    
+    success_embed.add_field(
+        name="New ID",
+        value=f"`{hybrid_id}`",
+        inline=False
+    )
+    
+    success_embed.add_field(
+        name="Power Fusion",
+        value=f"{vampire1['power_level']} + {vampire2['power_level']} + {actual_bonus} (ritual bonus) = **{hybrid_power}**",
+        inline=False
+    )
+    
+    success_embed.add_field(
+        name="Combined Victories",
+        value=f"Total Wins: {total_wins}",
+        inline=True
+    )
+    
+    success_embed.add_field(
+        name="Fresh Start",
+        value=f"Losses: {total_losses}",
+        inline=True
+    )
+    
+    success_embed.add_field(
+        name="Sacrificed",
+        value=f"{vampire1['name']}\n{vampire2['name']}",
+        inline=False
+    )
+    
+    if has_been_reborn:
+        success_embed.add_field(
+            name="WARNING",
+            value="This hybrid inherited rebirth status and CANNOT be reborn if killed",
+            inline=False
+        )
+    else:
+        success_embed.add_field(
+            name="Rebirth Status",
+            value="This hybrid can be reborn once if killed",
+            inline=False
+        )
+    
+    success_embed.set_footer(text="A new apex predator has been created")
+    
+    await ctx.send(embed=success_embed)
 
 # Fight command - Battle against AI vampires
 @bot.command(name='fight')
@@ -611,10 +810,18 @@ async def rebirth_vampire(ctx, character_id: str = None):
         "wins": dead_vampire.get('wins', 0),
         "losses": dead_vampire.get('losses', 0),
         "has_been_reborn": True,
+        "is_hybrid": dead_vampire.get('is_hybrid', False),
         "original_id": character_id,
         "created_at": datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
         "reborn_at": datetime.now().strftime('%Y-%m-%d %H:%M:%S')
     }
+    
+    # Preserve hybrid parent info if applicable
+    if dead_vampire.get('is_hybrid', False):
+        reborn_data['parent1_name'] = dead_vampire.get('parent1_name')
+        reborn_data['parent2_name'] = dead_vampire.get('parent2_name')
+        reborn_data['parent1_id'] = dead_vampire.get('parent1_id')
+        reborn_data['parent2_id'] = dead_vampire.get('parent2_id')
     
     # Save reborn vampire
     characters[new_character_id] = reborn_data
