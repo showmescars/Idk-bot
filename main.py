@@ -1222,6 +1222,340 @@ async def fight_character(ctx, character_id: str = None):
     
     await ctx.send(embed=outcome_embed)
 
+# Revenge command - Battle the AI vampire that killed your vampire
+@bot.command(name='revenge')
+async def revenge_battle(ctx, dead_character_id: str = None, avenger_character_id: str = None):
+    """Take revenge on the AI that killed your vampire. Usage: ?revenge <dead_vampire_id> <avenger_vampire_id>"""
+    
+    if dead_character_id is None or avenger_character_id is None:
+        await ctx.send("Usage: `?revenge <dead_vampire_id> <avenger_vampire_id>`\nExample: `?revenge 123456 789012`\n\nUse the ID of your dead vampire and the ID of the vampire you want to use for revenge!")
+        return
+    
+    user_id = str(ctx.author.id)
+    
+    # Check if avenger vampire exists and is owned by user
+    if avenger_character_id not in characters:
+        await ctx.send(f"Avenger vampire ID `{avenger_character_id}` not found!")
+        return
+    
+    avenger_char = characters[avenger_character_id]
+    
+    if avenger_char.get('user_id') != user_id:
+        await ctx.send("You don't own this avenger vampire!")
+        return
+    
+    # Find the dead vampire in graveyard
+    current_graveyard = load_graveyard()
+    
+    dead_vampire = None
+    for vamp in current_graveyard:
+        if vamp.get('character_id') == dead_character_id:
+            dead_vampire = vamp
+            break
+    
+    if dead_vampire is None:
+        await ctx.send(f"No dead vampire with ID `{dead_character_id}` found in the graveyard!")
+        return
+    
+    if dead_vampire.get('user_id') != user_id:
+        await ctx.send("The dead vampire doesn't belong to you!")
+        return
+    
+    # Check if the vampire was killed by an AI (not gang war or ritual)
+    killer_name = dead_vampire.get('killed_by', 'Unknown')
+    
+    if killer_name == "Gang War":
+        await ctx.send(f"**{dead_vampire['name']}** was killed in a gang war, not by a specific AI vampire. Revenge is not available for gang war deaths.")
+        return
+    
+    if killer_name == "Blood Transfer Ritual":
+        await ctx.send(f"**{dead_vampire['name']}** was sacrificed in a blood transfer ritual. Revenge is not available for ritual sacrifices.")
+        return
+    
+    if "(Fatal Wounds)" in killer_name:
+        # Extract the actual killer name
+        killer_name = killer_name.replace(" (Fatal Wounds)", "").strip()
+    
+    # Recreate the AI opponent with the same name but new random power
+    ai_power = generate_ai_power()
+    
+    # Check lore status of avenger
+    lore_revealed = False
+    if 'lore' in avenger_char:
+        lore_revealed = avenger_char['lore'].get('lore_revealed', False)
+    
+    # Determine power difference for threat level
+    effective_power = avenger_char['power_level']
+    if lore_revealed:
+        effective_power = int(avenger_char['power_level'] * random.uniform(1.05, 1.15))
+    
+    power_diff = ai_power - effective_power
+    
+    if power_diff > 600:
+        threat_level = "EXTREMELY DANGEROUS OPPONENT"
+        threat_color = discord.Color.dark_red()
+    elif power_diff > 300:
+        threat_level = "DANGEROUS OPPONENT"
+        threat_color = discord.Color.red()
+    elif power_diff > 100:
+        threat_level = "TOUGH CHALLENGER"
+        threat_color = discord.Color.orange()
+    elif power_diff > -100:
+        threat_level = "EVEN MATCH"
+        threat_color = discord.Color.gold()
+    elif power_diff > -300:
+        threat_level = "FAVORABLE MATCHUP"
+        threat_color = discord.Color.green()
+    else:
+        threat_level = "EASY TARGET"
+        threat_color = discord.Color.dark_green()
+    
+    # Determine AI tier
+    if ai_power <= 400:
+        ai_tier = "Fledgling"
+    elif ai_power <= 1000:
+        ai_tier = "Experienced"
+    elif ai_power <= 1600:
+        ai_tier = "Ancient"
+    else:
+        ai_tier = "Primordial"
+    
+    # Revenge intro embed
+    intro_embed = discord.Embed(
+        title="REVENGE BATTLE",
+        description=f"**{avenger_char['name']}** seeks vengeance for the death of **{dead_vampire['name']}**\n\nThe killer, **{killer_name}**, emerges from the shadows...\n\n{threat_level}",
+        color=threat_color
+    )
+    
+    lore_indicator = " [LORE BONUS]" if lore_revealed else ""
+    
+    intro_embed.add_field(
+        name=f"{avenger_char['name']} (AVENGER)",
+        value=f"Power: **{avenger_char['power_level']}**{lore_indicator}\nRecord: {avenger_char.get('wins', 0)}-{avenger_char.get('losses', 0)}",
+        inline=True
+    )
+    
+    intro_embed.add_field(
+        name=f"{killer_name} (KILLER)",
+        value=f"Power: **{ai_power}**\nTier: {ai_tier}",
+        inline=True
+    )
+    
+    intro_embed.add_field(
+        name="Fallen Comrade",
+        value=f"{dead_vampire['name']} (Power: {dead_vampire['power_level']})\nKilled on: {dead_vampire.get('death_date', 'Unknown')}",
+        inline=False
+    )
+    
+    if lore_revealed:
+        intro_embed.add_field(
+            name="Strategic Advantage",
+            value="Knowledge of your vampire's lore grants combat bonus!",
+            inline=False
+        )
+    
+    intro_embed.set_footer(text="The battle for revenge begins...")
+    
+    await ctx.send(embed=intro_embed)
+    await asyncio.sleep(3)
+    
+    # Simulate the revenge battle with lore bonus
+    battle_result = simulate_battle(
+        avenger_char['name'], 
+        avenger_char['power_level'],
+        killer_name,
+        ai_power,
+        lore_revealed=lore_revealed
+    )
+    
+    player_won = battle_result['player_won']
+    
+    # Calculate death chance
+    death_chance = calculate_death_chance(
+        avenger_char['power_level'],
+        ai_power,
+        player_won
+    )
+    
+    # Roll for death
+    death_roll = random.randint(1, 100)
+    vampire_dies = death_roll <= death_chance
+    
+    # Outcome embed
+    if player_won:
+        if vampire_dies:
+            outcome_embed = discord.Embed(
+                title="REVENGE ACHIEVED - BUT AT A COST",
+                description=f"**{avenger_char['name']}** destroyed **{killer_name}**, avenging **{dead_vampire['name']}**, but succumbed to fatal wounds",
+                color=discord.Color.dark_red()
+            )
+            
+            outcome_embed.add_field(
+                name="Battle Odds",
+                value=f"Win Probability: {battle_result['win_probability']}%\nRolled: {battle_result['roll']}",
+                inline=False
+            )
+            
+            if battle_result.get('lore_bonus_applied'):
+                outcome_embed.add_field(
+                    name="Lore Bonus Applied",
+                    value=f"Effective Power: {battle_result['effective_power']} (boosted from {avenger_char['power_level']})",
+                    inline=False
+                )
+            
+            outcome_embed.add_field(
+                name="Death Roll",
+                value=f"Rolled **{death_roll}** (Death at {death_chance}% or less)",
+                inline=False
+            )
+            
+            outcome_embed.add_field(
+                name="Final Moments",
+                value=f"{avenger_char['name']} fulfilled their vendetta but paid the ultimate price",
+                inline=False
+            )
+            
+            outcome_embed.add_field(
+                name="Final Record",
+                value=f"{avenger_char.get('wins', 0)}-{avenger_char.get('losses', 0)}",
+                inline=False
+            )
+            
+            if not avenger_char.get('has_been_reborn', False):
+                outcome_embed.set_footer(text=f"Use ?rebirth {avenger_character_id} to bring them back")
+            else:
+                outcome_embed.set_footer(text="This vampire has already been reborn once and cannot be resurrected again")
+            
+            dead_avenger = avenger_char.copy()
+            dead_avenger['death_date'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+            dead_avenger['killed_by'] = f"{killer_name} (Revenge Mission - Fatal Wounds)"
+            graveyard.append(dead_avenger)
+            save_graveyard(graveyard)
+            
+            del characters[avenger_character_id]
+            save_characters(characters)
+            
+        else:
+            outcome_embed = discord.Embed(
+                title="REVENGE COMPLETE",
+                description=f"**{avenger_char['name']}** has destroyed **{killer_name}**, avenging **{dead_vampire['name']}**!",
+                color=discord.Color.green()
+            )
+            
+            outcome_embed.add_field(
+                name="Battle Odds",
+                value=f"Win Probability: {battle_result['win_probability']}%\nRolled: {battle_result['roll']}",
+                inline=False
+            )
+            
+            if battle_result.get('lore_bonus_applied'):
+                outcome_embed.add_field(
+                    name="Lore Bonus Applied",
+                    value=f"Effective Power: {battle_result['effective_power']} (boosted from {avenger_char['power_level']})",
+                    inline=False
+                )
+            
+            outcome_embed.add_field(
+                name="Survival Roll",
+                value=f"Rolled **{death_roll}** (Death at {death_chance}% or less) - SURVIVED",
+                inline=False
+            )
+            
+            outcome_embed.add_field(
+                name="Vengeance",
+                value=f"{dead_vampire['name']} has been avenged! {killer_name} has been destroyed!",
+                inline=False
+            )
+            
+            avenger_char['wins'] = avenger_char.get('wins', 0) + 1
+            characters[avenger_character_id] = avenger_char
+            save_characters(characters)
+            
+            outcome_embed.add_field(
+                name="New Record",
+                value=f"{avenger_char['wins']}-{avenger_char.get('losses', 0)}",
+                inline=False
+            )
+            
+    else:
+        if vampire_dies:
+            outcome_embed = discord.Embed(
+                title="REVENGE FAILED - PERMANENT DEATH",
+                description=f"**{avenger_char['name']}** has been destroyed by **{killer_name}**\n\n{dead_vampire['name']} remains unavenged...",
+                color=discord.Color.dark_red()
+            )
+            
+            outcome_embed.add_field(
+                name="Battle Odds",
+                value=f"Win Probability: {battle_result['win_probability']}%\nRolled: {battle_result['roll']}",
+                inline=False
+            )
+            
+            outcome_embed.add_field(
+                name="Death Roll",
+                value=f"Rolled **{death_roll}** (Death at {death_chance}% or less)",
+                inline=False
+            )
+            
+            outcome_embed.add_field(
+                name="Final Record",
+                value=f"{avenger_char.get('wins', 0)}-{avenger_char.get('losses', 0)}",
+                inline=False
+            )
+            
+            outcome_embed.add_field(
+                name="The End",
+                value=f"{avenger_char['name']} fell to the same killer that destroyed {dead_vampire['name']}",
+                inline=False
+            )
+            
+            if not avenger_char.get('has_been_reborn', False):
+                outcome_embed.set_footer(text=f"Use ?rebirth {avenger_character_id} to bring them back")
+            else:
+                outcome_embed.set_footer(text="This vampire has already been reborn once and cannot be resurrected again")
+            
+            dead_avenger = avenger_char.copy()
+            dead_avenger['death_date'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+            dead_avenger['killed_by'] = f"{killer_name} (Failed Revenge Mission)"
+            graveyard.append(dead_avenger)
+            save_graveyard(graveyard)
+            
+            del characters[avenger_character_id]
+            save_characters(characters)
+            
+        else:
+            outcome_embed = discord.Embed(
+                title="REVENGE FAILED - RETREAT",
+                description=f"**{avenger_char['name']}** was defeated by **{killer_name}** but managed to escape\n\n{dead_vampire['name']} remains unavenged...",
+                color=discord.Color.orange()
+            )
+            
+            outcome_embed.add_field(
+                name="Battle Odds",
+                value=f"Win Probability: {battle_result['win_probability']}%\nRolled: {battle_result['roll']}",
+                inline=False
+            )
+            
+            outcome_embed.add_field(
+                name="Survival Roll",
+                value=f"Rolled **{death_roll}** (Death at {death_chance}% or less) - SURVIVED",
+                inline=False
+            )
+            
+            avenger_char['losses'] = avenger_char.get('losses', 0) + 1
+            characters[avenger_character_id] = avenger_char
+            save_characters(characters)
+            
+            outcome_embed.add_field(
+                name="New Record",
+                value=f"{avenger_char.get('wins', 0)}-{avenger_char['losses']}",
+                inline=False
+            )
+            
+            outcome_embed.set_footer(text=f"{avenger_char['name']} fled into the shadows, wounded and defeated")
+    
+    await ctx.send(embed=outcome_embed)
+
 # Transfer command - Sacrifice two vampires to create a hybrid
 @bot.command(name='transfer')
 async def transfer_vampires(ctx, vampire1_id: str = None, vampire2_id: str = None):
