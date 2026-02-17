@@ -107,6 +107,10 @@ def get_alive_members(gang):
     return [m for m in gang.get('members', []) if m['alive']]
 
 
+def get_gang_bodies(gang):
+    return sum(m.get('kills', 0) for m in gang.get('members', []))
+
+
 def mark_gang_dead(code):
     if code in gangs:
         gangs[code]['alive'] = False
@@ -189,7 +193,6 @@ async def handle_gang(message, args):
         "owner_name": message.author.name,
         "code": code,
         "alive": True,
-        "kills": 0,
         "fights_won": 0,
         "fights_lost": 0,
         "members": members,
@@ -239,7 +242,11 @@ async def handle_show(message, args):
             total = fights_won + fights_lost
             win_rate = f"{int((fights_won / total) * 100)}%" if total > 0 else "N/A"
             alive_members = get_alive_members(g)
-            member_list = ", ".join([f"{m['name']} ({m.get('kills', 0)} kills)" for m in alive_members]) if alive_members else "None left"
+            total_bodies = get_gang_bodies(g)
+            member_list = ", ".join([
+                f"{m['name']} ({m.get('kills', 0)} bodies)"
+                for m in alive_members
+            ]) if alive_members else "None left"
 
             embed.add_field(
                 name=g['name'],
@@ -249,7 +256,7 @@ async def handle_show(message, args):
                     f"Shot Caller: {g.get('leader', 'Unknown')}\n"
                     f"Members Alive: {len(alive_members)}\n"
                     f"Street Cred: {g['rep']}\n"
-                    f"Bodies: {g.get('kills', 0)}\n"
+                    f"Total Bodies: {total_bodies}\n"
                     f"Record: {fights_won}W - {fights_lost}L\n"
                     f"Win Rate: {win_rate}\n"
                     f"Crew: {member_list}"
@@ -310,7 +317,7 @@ async def handle_mission(message, args):
         gain = random.randint(*event['value'])
         new_rep = rep + gain
         gang['rep'] = new_rep
-        embed.add_field(name="Street Cred", value=f"{rep} → **{new_rep}** (+{gain})", inline=False)
+        embed.add_field(name="Street Cred", value=f"{rep} -> **{new_rep}** (+{gain})", inline=False)
         embed.add_field(name="Member", value=featured_member['name'], inline=True)
         embed.set_footer(text="Rep rising on the streets...")
 
@@ -322,9 +329,9 @@ async def handle_mission(message, args):
 
         if random.randint(1, 100) <= 15 and len(alive_members) > 1:
             featured_member['alive'] = False
-            embed.add_field(name="⚠️ Member Lost", value=f"{featured_member['name']} didn't make it out.", inline=False)
+            embed.add_field(name="Member Lost", value=f"{featured_member['name']} didn't make it out.", inline=False)
 
-        embed.add_field(name="Street Cred", value=f"{rep} → **{new_rep}** (-{actual_loss})", inline=False)
+        embed.add_field(name="Street Cred", value=f"{rep} -> **{new_rep}** (-{actual_loss})", inline=False)
         embed.set_footer(text="Taking an L on the streets...")
 
     elif event['type'] == 'death':
@@ -332,9 +339,10 @@ async def handle_mission(message, args):
             m['alive'] = False
         mark_gang_dead(code)
         member_names = ", ".join([m['name'] for m in gang['members']])
+        total_bodies = get_gang_bodies(gang)
         embed.add_field(name="Final Street Cred", value=str(rep), inline=False)
         embed.add_field(name="Final Record", value=f"{gang.get('fights_won', 0)}W - {gang.get('fights_lost', 0)}L", inline=True)
-        embed.add_field(name="Bodies", value=str(gang.get('kills', 0)), inline=True)
+        embed.add_field(name="Total Bodies", value=str(total_bodies), inline=True)
         embed.add_field(name="Crew That Fell", value=member_names, inline=False)
         embed.set_footer(text="Crew is done. Type gang to start over.")
 
@@ -344,7 +352,6 @@ async def handle_mission(message, args):
         embed.set_footer(text="Nothing popped off tonight.")
 
     elif event['type'] == 'recruit':
-        # Pick a new name not already in the gang
         existing_names = {m['name'] for m in gang['members']}
         available = [n for n in STREET_NAMES if n not in existing_names]
         if available:
@@ -393,7 +400,7 @@ async def handle_beef(message, args):
         await message.channel.send(f"**{gang['name']}** has no members left to beef.")
         return
 
-    # Pick 1 to 3 members to roll out depending on crew size
+    # Pick 1 to 3 members to roll out
     max_rollers = min(3, len(alive_members))
     roll_count = random.randint(1, max_rollers)
     rolling_members = random.sample(alive_members, roll_count)
@@ -427,26 +434,27 @@ async def handle_beef(message, args):
     roll = random.randint(1, 100)
     player_won = roll <= win_chance
 
-    result_embed = None
     outcome_lines = []
+    result_embed = discord.Embed(color=discord.Color.dark_grey())
 
     if player_won:
         rep_gain = random.randint(20, int(max(1, enemy_rep * 0.4)))
         new_rep = player_rep + rep_gain
         gang['rep'] = new_rep
-        gang['kills'] = gang.get('kills', 0) + 1
         gang['fights_won'] = gang.get('fights_won', 0) + 1
 
-        # Each rolling member gets a kill tracked
+        # Each rolling member gets a kill
         for m in rolling_members:
             m['kills'] = m.get('kills', 0) + 1
-            outcome_lines.append(f"🔫 **{m['name']}** caught a body")
+            outcome_lines.append(f"**{m['name']}** caught a body")
 
-        # Small chance one of your members still gets hit even in a win
+        # Small chance one member gets hit even on a win
         if random.randint(1, 100) <= 20 and len(alive_members) > roll_count:
             casualty = random.choice(rolling_members)
             casualty['alive'] = False
-            outcome_lines.append(f"💀 **{casualty['name']}** got hit and didn't make it back")
+            outcome_lines.append(f"**{casualty['name']}** got hit and didn't make it back")
+
+        total_bodies = get_gang_bodies(gang)
 
         death_roll = random.randint(1, 100)
         if death_roll <= 8:
@@ -454,13 +462,13 @@ async def handle_beef(message, args):
                 m['alive'] = False
             mark_gang_dead(code)
             result_embed = discord.Embed(
-                title="Won — But the Retaliation Was Too Much",
+                title="Won - But the Retaliation Was Too Much",
                 description=f"**{gang['name']}** smoked **{enemy_names}** but the blowback that followed wiped the whole crew out.",
                 color=discord.Color.dark_red()
             )
             result_embed.add_field(name="What Went Down", value="\n".join(outcome_lines) if outcome_lines else "No details.", inline=False)
             result_embed.add_field(name="Final Street Cred", value=str(player_rep), inline=True)
-            result_embed.add_field(name="Final Bodies", value=str(gang['kills']), inline=True)
+            result_embed.add_field(name="Total Bodies", value=str(total_bodies), inline=True)
             result_embed.set_footer(text="Type gang to start over.")
         else:
             result_embed = discord.Embed(
@@ -471,8 +479,8 @@ async def handle_beef(message, args):
             result_embed.add_field(name="What Went Down", value="\n".join(outcome_lines) if outcome_lines else "Clean sweep.", inline=False)
             result_embed.add_field(name="Opp Cred", value=str(enemy_rep), inline=True)
             result_embed.add_field(name="Cred Gained", value=f"+{rep_gain}", inline=True)
-            result_embed.add_field(name="New Street Cred", value=f"{player_rep} → **{new_rep}**", inline=False)
-            result_embed.add_field(name="Gang Bodies", value=str(gang['kills']), inline=True)
+            result_embed.add_field(name="New Street Cred", value=f"{player_rep} -> **{new_rep}**", inline=False)
+            result_embed.add_field(name="Total Bodies", value=str(total_bodies), inline=True)
             result_embed.add_field(name="Members Alive", value=str(len(get_alive_members(gang))), inline=True)
             result_embed.set_footer(text="Hold that block.")
 
@@ -481,13 +489,15 @@ async def handle_beef(message, args):
         death_chance = max(20, min(60, death_chance))
         death_roll = random.randint(1, 100)
 
-        # On a loss, rolling members can get killed or survive
+        # On a loss rolling members can get killed
         for m in rolling_members:
             if random.randint(1, 100) <= 40:
                 m['alive'] = False
-                outcome_lines.append(f"💀 **{m['name']}** got bodied")
+                outcome_lines.append(f"**{m['name']}** got bodied")
             else:
-                outcome_lines.append(f"🩸 **{m['name']}** took a hit but made it out")
+                outcome_lines.append(f"**{m['name']}** took a hit but made it out")
+
+        total_bodies = get_gang_bodies(gang)
 
         if death_roll <= death_chance:
             gang['fights_lost'] = gang.get('fights_lost', 0) + 1
@@ -495,14 +505,14 @@ async def handle_beef(message, args):
                 m['alive'] = False
             mark_gang_dead(code)
             result_embed = discord.Embed(
-                title="Lost the Beef — Crew Disbanded",
+                title="Lost the Beef - Crew Disbanded",
                 description=f"**{gang['name']}** got wiped out by **{enemy_names}** of **{enemy_gang_info['name']}**. Nothing left.",
                 color=discord.Color.dark_red()
             )
             result_embed.add_field(name="What Went Down", value="\n".join(outcome_lines) if outcome_lines else "No survivors.", inline=False)
             result_embed.add_field(name="Opp Cred", value=str(enemy_rep), inline=True)
             result_embed.add_field(name="Your Cred", value=str(player_rep), inline=True)
-            result_embed.add_field(name="Final Bodies", value=str(gang.get('kills', 0)), inline=True)
+            result_embed.add_field(name="Total Bodies", value=str(total_bodies), inline=True)
             result_embed.set_footer(text="Type gang to start over.")
         else:
             rep_loss = random.randint(20, int(max(1, player_rep * 0.25)))
@@ -510,21 +520,19 @@ async def handle_beef(message, args):
             gang['rep'] = new_rep
             gang['fights_lost'] = gang.get('fights_lost', 0) + 1
             result_embed = discord.Embed(
-                title="Lost the Beef — Still Standing",
+                title="Lost the Beef - Still Standing",
                 description=f"**{gang['name']}** took an L against **{enemy_names}** of **{enemy_gang_info['name']}** but lived to fight another day.",
                 color=discord.Color.orange()
             )
             result_embed.add_field(name="What Went Down", value="\n".join(outcome_lines) if outcome_lines else "Barely made it.", inline=False)
             result_embed.add_field(name="Opp Cred", value=str(enemy_rep), inline=True)
             result_embed.add_field(name="Cred Lost", value=f"-{player_rep - new_rep}", inline=True)
-            result_embed.add_field(name="New Street Cred", value=f"{player_rep} → **{new_rep}**", inline=False)
+            result_embed.add_field(name="New Street Cred", value=f"{player_rep} -> **{new_rep}**", inline=False)
+            result_embed.add_field(name="Total Bodies", value=str(total_bodies), inline=True)
             result_embed.add_field(name="Members Alive", value=str(len(get_alive_members(gang))), inline=True)
             result_embed.set_footer(text="Regroup and come back.")
 
-    if result_embed:
-        await message.channel.send(embed=result_embed)
-    else:
-        await message.channel.send("Something went wrong with the beef. Try again.")
+    await message.channel.send(embed=result_embed)
 
 
 COMMANDS = {
