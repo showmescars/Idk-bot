@@ -4,138 +4,256 @@ import json
 import os
 import random
 import asyncio
-from datetime import datetime, timedelta
+from datetime import datetime
 from dotenv import load_dotenv
 
-# Load environment variables
 load_dotenv()
 
-# Bot setup
 intents = discord.Intents.default()
 intents.message_content = True
 bot = commands.Bot(command_prefix='?', intents=intents)
 
-# Files
 CHARACTERS_FILE = 'characters.json'
 GRAVEYARD_FILE = 'graveyard.json'
 
-# LA Gang Member Names (First Names)
 FIRST_NAMES = [
-    "Tyrone", "DeAndre", "Marcus", "Jamal", "Darius", "Andre", "Carlos", "Miguel",
-    "Jose", "Luis", "Diego", "Ramon", "Francisco", "Juan", "Antonio", "Jesus",
-    "Roberto", "Fernando", "Manuel", "Cesar", "Rico", "Hector", "Pablo", "Oscar",
-    "Raymond", "Antoine", "Lamar", "Terrell", "Kevin", "Brandon", "Isaiah", "Elijah",
-    "Xavier", "Dominic", "Vincent", "Anthony", "Michael", "Christopher", "Daniel", "David",
-    "Jonathan", "Steven", "Richard", "Eric", "Angel", "Victor", "Marco", "Sergio",
-    "Eduardo", "Armando", "Raul", "Jorge", "Alejandro", "Mario", "Pedro", "Alberto"
+    "Dracula", "Vladislav", "Carmilla", "Lestat", "Akasha", "Armand", "Blade", "Selene",
+    "Viktor", "Marcus", "Lucian", "Sonja", "Aro", "Caius", "Demetri", "Jane",
+    "Alec", "Elijah", "Klaus", "Rebekah", "Kol", "Finn", "Alaric", "Damon",
+    "Stefan", "Katherine", "Silas", "Qetsiyah", "Amara", "Niklaus", "Mikael", "Esther",
+    "Freya", "Dahlia", "Lucien", "Tristan", "Aurora", "Rayna", "Julian", "Lily",
+    "Valerie", "Nora", "Mary", "Beau", "Oscar", "Malcolm", "Sage", "Maddox",
+    "Atticus", "Greta", "Antoinette", "Cassandra", "Ezra", "Morgana", "Dorian"
 ]
 
-# LA Gang Surnames
 LAST_NAMES = [
-    "Williams", "Johnson", "Brown", "Jackson", "Davis", "Rodriguez", "Martinez", "Garcia",
-    "Hernandez", "Lopez", "Gonzalez", "Perez", "Sanchez", "Ramirez", "Torres", "Rivera",
-    "Flores", "Gomez", "Diaz", "Cruz", "Reyes", "Morales", "Jimenez", "Ortiz",
-    "Washington", "Thompson", "Harris", "Robinson", "Walker", "Green", "White", "Lewis",
-    "King", "Wright", "Hill", "Scott", "Adams", "Baker", "Nelson", "Mitchell",
-    "Carter", "Roberts", "Turner", "Phillips", "Campbell", "Parker", "Evans", "Edwards",
-    "Collins", "Stewart", "Morris", "Rogers", "Reed", "Cook", "Morgan", "Bell"
+    "Tepes", "Drăculești", "Karnstein", "De Lioncourt", "Enkil", "Romanus", "Corvinus", "Nightshade",
+    "Von Doom", "Bloodworth", "Blackthorn", "Darkmore", "Volturi", "Mikaelson", "Salvatore", "Pierce",
+    "Bennett", "Forbes", "Lockwood", "Donovan", "Gilbert", "Fell", "Whitmore", "St. John",
+    "Ashford", "Bloodmoon", "Crimson", "Ravencroft", "Shadowend", "Duskbane", "Nocturne", "Grave",
+    "Morningstar", "Hellsing", "Alucard", "Belmont", "Castlevania", "Blackwood", "Von Carstein", "Draken",
+    "Mourning", "Eclipse", "Eventide", "Twilight", "Sanguine", "Hemlock", "Mortis", "Grimwood",
+    "Nightfall", "Darkholm"
 ]
 
-# Real LA Gang Affiliations
-LA_GANGS = {
-    "Crips": {
-        "sets": [
-            "Rollin 60s Crips", "Eight Tray Gangster Crips", "Grape Street Watts Crips",
-            "Hoover Criminals", "Rollin 30s Harlem Crips", "Rollin 40s Crips",
-            "Rollin 90s Crips", "Rollin 100s Crips", "Kitchen Crips", "Avalon Gangster Crips",
-            "East Coast Crips", "Raymond Avenue Crips", "Westside Crips", "Main Street Crips",
-            "PJ Watts Crips", "Fudge Town Mafia Crips", "Neighborhood Crips", "Long Beach Crips"
-        ],
-        "color": discord.Color.blue(),
-        "territory": ["South Central", "Compton", "Long Beach", "Inglewood", "Watts"]
-    },
-    "Bloods": {
-        "sets": [
-            "Bounty Hunter Bloods", "Crenshaw Mafia Gangsters", "Black P Stones",
-            "Fruit Town Pirus", "Inglewood Family Bloods", "Van Ness Gangster Brims",
-            "Centinela Park Family", "Denver Lane Bloods", "Tree Top Pirus", "Campanella Park Pirus",
-            "Athens Park Bloods", "Skyline Pirus", "Mad Swan Bloods", "9 Deuce Bishops",
-            "Hacienda Village Bloods", "Lime Hood Pirus", "Queen Street Bloods", "Harvard Park Brims"
-        ],
-        "color": discord.Color.red(),
-        "territory": ["Compton", "South LA", "Inglewood", "Pasadena", "West Athens"]
-    },
-    "Sureños": {
-        "sets": [
-            "18th Street Gang", "Mara Salvatrucha (MS-13)", "Florencia 13", "Eastside 13",
-            "38th Street Gang", "White Fence", "Varrio Nuevo Estrada", "Harpys 13",
-            "King Kobras", "Primera Flats", "Avenues", "Big Hazard", "Highland Park 13",
-            "Clanton 14", "Barrio Van Nuys", "Vineland Boys", "Langdon Street", "Diamond Street"
-        ],
-        "color": discord.Color.from_rgb(0, 128, 255),
-        "territory": ["East LA", "South LA", "Boyle Heights", "Highland Park", "Downtown LA"]
-    },
-    "Norteños": {
-        "sets": [
-            "Varrio North Side", "Pacoima 13", "Varrio Nuevo", "Varrio Panorama",
-            "Blythe Street", "Vineland Boyz", "North Side Kings", "Barrio Mojados"
-        ],
-        "color": discord.Color.red(),
-        "territory": ["San Fernando Valley", "Pacoima", "Panorama City", "North Hollywood"]
+ORIGINS = [
+    "turned during the Black Plague in 14th century Europe",
+    "awakened in ancient Egypt as a royal blood drinker",
+    "created by a vampire council in medieval Transylvania",
+    "born from a forbidden ritual in Victorian London",
+    "transformed during the French Revolution's Reign of Terror",
+    "emerged from the shadows of feudal Japan",
+    "cursed by dark magic in the Scottish Highlands",
+    "created in the catacombs beneath Rome",
+    "turned during the American Civil War",
+    "awakened in a Mayan temple centuries ago",
+    "transformed in the Russian Empire during the Romanov dynasty",
+    "born from blood magic in ancient Babylon",
+    "turned by a vampire lord in Renaissance Italy",
+    "created during the Spanish Inquisition",
+    "awakened in the Byzantine Empire",
+    "transformed in the Australian outback by an aboriginal vampire",
+    "turned during the Viking Age in Scandinavia",
+    "created in a Chinese monastery by an ancient master",
+    "born from a blood pact in New Orleans",
+    "awakened during the Salem witch trials"
+]
+
+PERSONALITIES = [
+    "ruthless and calculating, showing no mercy to enemies",
+    "noble and honorable, following an ancient code of conduct",
+    "chaotic and unpredictable, thriving in madness",
+    "cunning and strategic, always three steps ahead",
+    "melancholic and haunted by centuries of existence",
+    "savage and feral, barely controlling their bloodlust",
+    "elegant and refined, preferring diplomacy over violence",
+    "vengeful and obsessed with past wrongs",
+    "philosophical and contemplative about immortality",
+    "sadistic and cruel, enjoying the suffering of others",
+    "protective and loyal to those they care about",
+    "ambitious and power-hungry, seeking dominance",
+    "isolated and withdrawn, avoiding vampire society",
+    "seductive and manipulative, using charm as a weapon",
+    "warrior-like and honorable in combat",
+    "mysterious and enigmatic, keeping secrets close",
+    "rebellious and defiant against vampire hierarchy",
+    "ancient and wise, having seen empires rise and fall",
+    "tragic and romantic, mourning lost humanity",
+    "cold and emotionless, treating life as a game"
+]
+
+ABILITIES_LORE = [
+    "mastered blood magic through decades of practice",
+    "learned shadow manipulation from an ancient vampire",
+    "developed supernatural speed through constant hunting",
+    "gained hypnotic powers from a mystical artifact",
+    "achieved regeneration by consuming powerful blood",
+    "unlocked mind control through forbidden rituals",
+    "inherited shapeshifting from their vampire sire",
+    "acquired enhanced strength through trial by combat",
+    "learned mist form transformation in the mountains",
+    "developed venomous bite through genetic mutation",
+    "gained telepathy from drinking a witch's blood",
+    "mastered darkness manipulation in underground lairs",
+    "achieved immortality through a blood curse",
+    "learned fear inducement from a nightmare demon",
+    "developed enhanced senses through centuries of survival",
+    "gained death touch from consuming ancient vampire blood",
+    "mastered blood wings through Egyptian blood magic",
+    "unlocked corpse animation from necromantic studies",
+    "developed crimson lightning through storm rituals",
+    "achieved bloodfire mastery from volcanic sacrifice"
+]
+
+GOALS = [
+    "seeking to build an empire of darkness",
+    "hunting the vampire who turned them",
+    "searching for a cure to vampirism",
+    "protecting humanity from supernatural threats",
+    "collecting ancient vampire artifacts",
+    "destroying rival vampire covens",
+    "seeking revenge for their mortal death",
+    "trying to maintain their fading humanity",
+    "building a vampire sanctuary",
+    "searching for their lost love across centuries",
+    "attempting to end their immortal existence",
+    "seeking to become the most powerful vampire",
+    "protecting their bloodline from extinction",
+    "hunting down rogue vampires",
+    "searching for the first vampire",
+    "trying to unite all vampire clans",
+    "seeking redemption for past sins",
+    "collecting knowledge of all vampire bloodlines",
+    "attempting to create a new vampire species",
+    "searching for a way to walk in daylight"
+]
+
+WEAKNESSES = [
+    "vulnerable to silver blessed by ancient priests",
+    "weakened by running water from sacred rivers",
+    "allergic to garlic grown in consecrated ground",
+    "burned by sunlight, even reflected rays",
+    "unable to cross thresholds without invitation",
+    "repelled by religious symbols from their mortal faith",
+    "weakened during new moon phases",
+    "vulnerable to wooden stakes through the heart",
+    "loses power in the presence of pure innocence",
+    "weakened by the sound of church bells",
+    "unable to see their reflection, causing disorientation",
+    "burns when touching holy ground",
+    "weakened by the blood of their human family",
+    "vulnerable to fire from natural sources",
+    "loses strength when starved of blood",
+    "weakened by ancient vampire-killing weapons",
+    "unable to enter homes of those they've wronged",
+    "burns from holy water blessed by seven priests",
+    "weakened by wolfsbane and mountain ash",
+    "vulnerable to magic from their place of origin"
+]
+
+
+def generate_vampire_lore(vampire_name, power_level):
+    origin = random.choice(ORIGINS)
+    personality = random.choice(PERSONALITIES)
+    ability_source = random.choice(ABILITIES_LORE)
+    goal = random.choice(GOALS)
+    weakness = random.choice(WEAKNESSES)
+
+    if power_level <= 400:
+        age = random.randint(50, 200)
+        experience = "relatively young vampire"
+    elif power_level <= 1000:
+        age = random.randint(200, 500)
+        experience = "seasoned vampire"
+    elif power_level <= 1600:
+        age = random.randint(500, 1000)
+        experience = "ancient vampire"
+    else:
+        age = random.randint(1000, 3000)
+        experience = "primordial vampire"
+
+    kills = random.randint(10, 500)
+
+    territories = [
+        "the Gothic ruins of Eastern Europe",
+        "the underground catacombs of Paris",
+        "the foggy streets of London",
+        "the ancient forests of Transylvania",
+        "the abandoned castles of Scotland",
+        "the dark alleys of New York",
+        "the bayous of Louisiana",
+        "the mountain ranges of the Carpathians",
+        "the hidden temples of Southeast Asia",
+        "the frozen wastelands of Siberia",
+        "the desert ruins of Egypt",
+        "the volcanic caves of Iceland",
+        "the rainforests of South America",
+        "the underground cities beneath Rome",
+        "the abandoned subway tunnels of Tokyo"
+    ]
+    territory = random.choice(territories)
+
+    traits = [
+        "can sense fear in mortals from miles away",
+        "has visions of future blood moons",
+        "can communicate with nocturnal creatures",
+        "leaves no trace of their presence",
+        "can drain blood without touching their victim",
+        "immune to most conventional vampire weaknesses",
+        "can turn invisible during moonless nights",
+        "has a hypnotic voice that compels obedience",
+        "can sense other vampires' power levels",
+        "never needs to feed more than once a month",
+        "can walk in cloudy daylight for brief periods",
+        "has memorized the names of all their victims",
+        "can manipulate dreams of sleeping humans",
+        "aged wine tastes like blood to them",
+        "can smell vampire hunters from great distances"
+    ]
+    special_trait = random.choice(traits)
+
+    lore_bonus = random.randint(50, 150)
+
+    return {
+        "origin": origin,
+        "age": age,
+        "experience": experience,
+        "personality": personality,
+        "ability_source": ability_source,
+        "goal": goal,
+        "weakness": weakness,
+        "kills": kills,
+        "territory": territory,
+        "special_trait": special_trait,
+        "lore_bonus": lore_bonus,
+        "lore_revealed": False
     }
-}
 
-# Store types and their potential payouts
-STORE_TYPES = {
-    "Gas Station": {"min": 200, "max": 800, "risk": "low"},
-    "Liquor Store": {"min": 300, "max": 1000, "risk": "low"},
-    "Convenience Store": {"min": 250, "max": 900, "risk": "low"},
-    "Jewelry Store": {"min": 2000, "max": 5000, "risk": "high"},
-    "Bank": {"min": 5000, "max": 15000, "risk": "extreme"},
-    "Check Cashing": {"min": 1000, "max": 3000, "risk": "medium"},
-    "Pharmacy": {"min": 800, "max": 2500, "risk": "medium"},
-    "Electronics Store": {"min": 1500, "max": 4000, "risk": "high"}
-}
 
-# Work jobs and their payouts
-WORK_JOBS = {
-    "McDonald's": {"min": 50, "max": 120, "description": "Flipping burgers at the local Mickey D's"},
-    "Walmart": {"min": 60, "max": 140, "description": "Stocking shelves and dealing with customers"},
-    "Car Wash": {"min": 70, "max": 150, "description": "Washing cars in the hood"},
-    "Pizza Delivery": {"min": 80, "max": 180, "description": "Delivering pizzas around the city"},
-    "Uber Driver": {"min": 90, "max": 200, "description": "Driving people around LA"},
-    "Construction": {"min": 100, "max": 250, "description": "Working construction downtown"},
-    "Warehouse": {"min": 110, "max": 220, "description": "Loading and unloading at the warehouse"},
-    "Security Guard": {"min": 95, "max": 190, "description": "Working security at a local business"},
-    "Mechanic": {"min": 120, "max": 280, "description": "Fixing cars at the local shop"},
-    "Food Truck": {"min": 85, "max": 175, "description": "Serving food from a food truck"}
-}
-
-# Load characters
 def load_characters():
     if os.path.exists(CHARACTERS_FILE):
         with open(CHARACTERS_FILE, 'r') as f:
             return json.load(f)
     return {}
 
-# Save characters
+
 def save_characters(characters):
     with open(CHARACTERS_FILE, 'w') as f:
         json.dump(characters, f, indent=4)
 
-# Load graveyard
+
 def load_graveyard():
     if os.path.exists(GRAVEYARD_FILE):
         with open(GRAVEYARD_FILE, 'r') as f:
             return json.load(f)
     return []
 
-# Save graveyard
+
 def save_graveyard(graveyard):
     with open(GRAVEYARD_FILE, 'w') as f:
         json.dump(graveyard, f, indent=4)
 
-# Generate unique 6-digit ID
+
 def generate_unique_id():
     characters = load_characters()
     graveyard = load_graveyard()
@@ -146,739 +264,64 @@ def generate_unique_id():
         if new_id not in existing_ids:
             return new_id
 
-# Check if user is admin
-def is_admin(ctx):
-    return ctx.author.guild_permissions.administrator
 
-# Check if member is in jail
-def is_in_jail(member):
-    if 'jail_until' not in member:
-        return False
-    jail_until = datetime.strptime(member['jail_until'], '%Y-%m-%d %H:%M:%S')
-    return datetime.now() < jail_until
-
-# Get remaining jail time
-def get_jail_time_remaining(member):
-    if 'jail_until' not in member:
-        return None
-    jail_until = datetime.strptime(member['jail_until'], '%Y-%m-%d %H:%M:%S')
-    now = datetime.now()
-    if now >= jail_until:
-        return None
-    return jail_until - now
-
-# Simulate instant street battle
-def simulate_battle():
+def generate_ai_power():
     roll = random.randint(1, 100)
-    return {"player_won": roll <= 50, "roll": roll}
-
-# Calculate death chance
-def calculate_death_chance(player_won):
-    return 15 if player_won else 40
-
-# Generate a random rival name and gang
-def generate_rival():
-    rival_name = f"{random.choice(FIRST_NAMES)} {random.choice(LAST_NAMES)}"
-    rival_gang = random.choice(list(LA_GANGS.keys()))
-    rival_set = random.choice(LA_GANGS[rival_gang]['sets'])
-    return rival_name, rival_gang, rival_set
+    if roll <= 50:
+        return random.randint(10, 800)
+    elif roll <= 75:
+        return random.randint(801, 1400)
+    elif roll <= 90:
+        return random.randint(1401, 1800)
+    else:
+        return random.randint(1801, 2000)
 
 
-# Handle random street event after a kill
-async def trigger_post_kill_event(ctx, player_char, rival_name, rival_gang, rival_set, character_id):
-    await asyncio.sleep(3)
-
-    characters = load_characters()
-    graveyard = load_graveyard()
-
-    if character_id not in characters:
-        return
-
-    player_char = characters[character_id]
-
-    event_roll = random.randint(1, 100)
-    if event_roll > 40:
-        return
-
-    event_type = random.choice([
-        "retaliation_crew",
-        "witness_calls_police",
-        "rival_solo_retaliation",
-        "bounty_placed",
-        "jumped_walking_home"
-    ])
-
-    if event_type == "retaliation_crew":
-        num_attackers = random.randint(3, 6)
-        attacker_names = [f"{random.choice(FIRST_NAMES)} {random.choice(LAST_NAMES)}" for _ in range(num_attackers)]
-
-        event_embed = discord.Embed(
-            title="RETALIATION - RIVALS INCOMING",
-            description=f"Word got back to the {rival_set} that {player_char['name']} just bodied one of theirs. A crew just pulled up looking for smoke.",
-            color=discord.Color.dark_red()
-        )
-        event_embed.add_field(name="CREW PULLING UP", value="\n".join(attacker_names), inline=False)
-        event_embed.add_field(name="Rival Gang", value=f"{rival_gang} - {rival_set}", inline=True)
-        event_embed.set_footer(text="They came for payback...")
-        await ctx.send(embed=event_embed)
-        await asyncio.sleep(3)
-
-        survival_roll = random.randint(1, 100)
-        survives = survival_roll <= 45
-        death_roll = random.randint(1, 100)
-        dies = death_roll <= 50 if not survives else death_roll <= 10
-
-        if dies:
-            death_embed = discord.Embed(
-                title="OUTNUMBERED AND OUTGUNNED",
-                description=f"{player_char['name']} was caught slipping by the retaliation crew and didn't make it out",
-                color=discord.Color.dark_red()
-            )
-            death_embed.add_field(name="Final Stats", value=f"Body Count: {player_char.get('kills', 0)}\nMoney: ${player_char.get('money', 0):,}\nStatus: DECEASED", inline=False)
-            dead_member = player_char.copy()
-            dead_member['death_date'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-            dead_member['killed_by'] = f"{rival_set} Retaliation Crew"
-            graveyard.append(dead_member)
-            save_graveyard(graveyard)
-            characters = load_characters()
-            if character_id in characters:
-                del characters[character_id]
-                save_characters(characters)
-            await ctx.send(embed=death_embed)
-        else:
-            survive_embed = discord.Embed(
-                title="HELD IT DOWN",
-                description=f"{player_char['name']} stood their ground against the retaliation crew and made it out",
-                color=discord.Color.orange()
-            )
-            survive_embed.add_field(name="Outcome", value=f"Fought off {num_attackers} rivals and lived to tell the story", inline=False)
-            survive_embed.set_footer(text="The streets respect the ones who hold it down")
-            await ctx.send(embed=survive_embed)
-
-    elif event_type == "witness_calls_police":
-        event_embed = discord.Embed(
-            title="WITNESS SNITCHED",
-            description=f"Someone saw what {player_char['name']} did and called the police. Units are closing in.",
-            color=discord.Color.blue()
-        )
-        event_embed.add_field(name="Police Response", value="Multiple units dispatched to the area based on witness description", inline=False)
-        event_embed.set_footer(text="Can they escape in time...")
-        await ctx.send(embed=event_embed)
-        await asyncio.sleep(3)
-
-        escape_roll = random.randint(1, 100)
-        escapes = escape_roll <= 55
-
-        if escapes:
-            escape_embed = discord.Embed(
-                title="CLEAN ESCAPE",
-                description=f"{player_char['name']} heard the sirens and dipped before police could lock the area down",
-                color=discord.Color.green()
-            )
-            escape_embed.add_field(name="Status", value="Made it back to the hood, police have no description", inline=False)
-            await ctx.send(embed=escape_embed)
-        else:
-            jail_time = random.randint(15, 35)
-            jail_embed = discord.Embed(
-                title="CAUGHT BY POLICE",
-                description=f"{player_char['name']} was picked up by police based on the witness description",
-                color=discord.Color.orange()
-            )
-            jail_embed.add_field(name="Arrest Status", value=f"Booked and sentenced to {jail_time} minutes in county jail", inline=False)
-            jail_until = datetime.now() + timedelta(minutes=jail_time)
-            characters = load_characters()
-            if character_id in characters:
-                characters[character_id]['jail_until'] = jail_until.strftime('%Y-%m-%d %H:%M:%S')
-                save_characters(characters)
-            await ctx.send(embed=jail_embed)
-
-    elif event_type == "rival_solo_retaliation":
-        solo_name = f"{random.choice(FIRST_NAMES)} {random.choice(LAST_NAMES)}"
-        event_embed = discord.Embed(
-            title="SOLO RETALIATION",
-            description=f"{solo_name} from the {rival_set} just rolled up on {player_char['name']} alone. He came to handle business himself.",
-            color=discord.Color.red()
-        )
-        event_embed.add_field(name="One on One", value=f"{solo_name} is out here solo, no backup - just him and his anger", inline=False)
-        event_embed.set_footer(text="Settling it the old way...")
-        await ctx.send(embed=event_embed)
-        await asyncio.sleep(3)
-
-        battle = simulate_battle()
-        won = battle['player_won']
-        death_roll = random.randint(1, 100)
-        dies = death_roll <= calculate_death_chance(won)
-
-        characters = load_characters()
-        if character_id not in characters:
-            return
-        player_char = characters[character_id]
-
-        if won and not dies:
-            win_embed = discord.Embed(
-                title="HANDLED THE RETALIATION",
-                description=f"{player_char['name']} bodied {solo_name} when he came for payback",
-                color=discord.Color.green()
-            )
-            player_char['kills'] = player_char.get('kills', 0) + 1
-            if 'kill_list' not in player_char:
-                player_char['kill_list'] = []
-            player_char['kill_list'].append({
-                'victim_name': solo_name,
-                'victim_gang': rival_gang,
-                'victim_set': rival_set,
-                'date': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
-                'type': 'retaliation_defense'
-            })
-            win_embed.add_field(name="Updated Bodies", value=f"Total Bodies: {player_char['kills']}", inline=False)
-            characters[character_id] = player_char
-            save_characters(characters)
-            await ctx.send(embed=win_embed)
-        elif dies:
-            death_embed = discord.Embed(
-                title="GOT CAUGHT LACKING",
-                description=f"{solo_name} caught {player_char['name']} slipping and put him down",
-                color=discord.Color.dark_red()
-            )
-            death_embed.add_field(name="Final Stats", value=f"Body Count: {player_char.get('kills', 0)}\nMoney: ${player_char.get('money', 0):,}\nStatus: DECEASED", inline=False)
-            dead_member = player_char.copy()
-            dead_member['death_date'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-            dead_member['killed_by'] = f"{solo_name} ({rival_set}) Solo Retaliation"
-            graveyard.append(dead_member)
-            save_graveyard(graveyard)
-            del characters[character_id]
-            save_characters(characters)
-            await ctx.send(embed=death_embed)
-        else:
-            loss_embed = discord.Embed(
-                title="GOT BEAT BUT SURVIVED",
-                description=f"{solo_name} got the better of {player_char['name']} but let him live",
-                color=discord.Color.orange()
-            )
-            loss_embed.add_field(name="Outcome", value="Lost the fight but made it out breathing", inline=False)
-            await ctx.send(embed=loss_embed)
-
-    elif event_type == "bounty_placed":
-        bounty_amount = random.randint(500, 3000)
-        event_embed = discord.Embed(
-            title="BOUNTY ON YOUR HEAD",
-            description=f"The {rival_set} put a ${bounty_amount:,} bounty on {player_char['name']} for the body",
-            color=discord.Color.gold()
-        )
-        event_embed.add_field(name="Bounty Amount", value=f"${bounty_amount:,}", inline=True)
-        event_embed.add_field(name="Placed By", value=f"{rival_set}", inline=True)
-        event_embed.add_field(name="Warning", value=f"Everyone in the streets knows there is paper on {player_char['name']} - watch your back", inline=False)
-        event_embed.set_footer(text="The price of putting in work")
-        characters = load_characters()
-        if character_id in characters:
-            characters[character_id]['bounty'] = characters[character_id].get('bounty', 0) + bounty_amount
-            save_characters(characters)
-        await ctx.send(embed=event_embed)
-
-    elif event_type == "jumped_walking_home":
-        num_jumpers = random.randint(2, 5)
-        event_embed = discord.Embed(
-            title="JUMPED WALKING HOME",
-            description=f"{player_char['name']} got rushed by {num_jumpers} opps on the way back from the hit",
-            color=discord.Color.red()
-        )
-        event_embed.add_field(name="Ambush", value=f"They were waiting, knew the route - {num_jumpers} on one", inline=False)
-        event_embed.set_footer(text="Nowhere to run...")
-        await ctx.send(embed=event_embed)
-        await asyncio.sleep(3)
-
-        survival_roll = random.randint(1, 100)
-        survives = survival_roll <= 50
-        death_roll = random.randint(1, 100)
-        dies = death_roll <= 35 if not survives else death_roll <= 8
-
-        characters = load_characters()
-        if character_id not in characters:
-            return
-        player_char = characters[character_id]
-
-        if dies:
-            death_embed = discord.Embed(
-                title="JUMPED AND KILLED",
-                description=f"{player_char['name']} was jumped and beaten to death by the crew",
-                color=discord.Color.dark_red()
-            )
-            death_embed.add_field(name="Final Stats", value=f"Body Count: {player_char.get('kills', 0)}\nMoney: ${player_char.get('money', 0):,}\nStatus: DECEASED", inline=False)
-            dead_member = player_char.copy()
-            dead_member['death_date'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-            dead_member['killed_by'] = f"{rival_set} Jump (Post Kill)"
-            graveyard.append(dead_member)
-            save_graveyard(graveyard)
-            del characters[character_id]
-            save_characters(characters)
-            await ctx.send(embed=death_embed)
-        elif survives:
-            survive_embed = discord.Embed(
-                title="FOUGHT THROUGH THE JUMP",
-                description=f"{player_char['name']} got jumped but scrapped their way out and made it home",
-                color=discord.Color.orange()
-            )
-            survive_embed.add_field(name="Outcome", value="Banged up but alive - made it back to the block", inline=False)
-            await ctx.send(embed=survive_embed)
-        else:
-            survive_embed = discord.Embed(
-                title="BARELY ESCAPED THE JUMP",
-                description=f"{player_char['name']} broke away from the jump and ran before it got worse",
-                color=discord.Color.orange()
-            )
-            survive_embed.add_field(name="Outcome", value="Took some hits but got away before things went fatal", inline=False)
-            await ctx.send(embed=survive_embed)
+def generate_random_vampire_power():
+    roll = random.randint(1, 100)
+    if roll <= 45:
+        return random.randint(10, 400)
+    elif roll <= 75:
+        return random.randint(401, 1000)
+    elif roll <= 90:
+        return random.randint(1001, 1600)
+    else:
+        return random.randint(1601, 2000)
 
 
-async def trigger_passive_event(ctx, player_char, character_id):
-    await asyncio.sleep(random.randint(8, 15))
+def calculate_death_chance(player_power, enemy_power, player_won):
+    if player_won:
+        base_chance = 5
+        power_diff = player_power - enemy_power
+        if power_diff < 100:
+            base_chance = 15
+    else:
+        base_chance = 35
+        power_diff = enemy_power - player_power
+        power_multiplier = power_diff / 200
+        base_chance += power_multiplier
+    return int(max(5, min(80, base_chance)))
 
-    characters = load_characters()
-    if character_id not in characters:
-        return
 
-    player_char = characters[character_id]
-    graveyard = load_graveyard()
-    char_gang = player_char.get('gang_affiliation', 'Unknown')
+def simulate_battle(player_name, player_power, enemy_name, enemy_power, lore_revealed=False):
+    effective_player_power = player_power
+    if lore_revealed:
+        lore_bonus_multiplier = random.uniform(1.05, 1.15)
+        effective_player_power = int(player_power * lore_bonus_multiplier)
 
-    event_roll = random.randint(1, 100)
-    if event_roll > 30:
-        return
+    power_diff = effective_player_power - enemy_power
+    win_probability = 50 + (power_diff / 20)
+    win_probability = max(5, min(95, win_probability))
+    roll = random.randint(1, 100)
+    player_won = roll <= win_probability
 
-    event_type = random.choice([
-        "drive_by_on_block",
-        "found_cash_on_street",
-        "police_raid_area",
-        "homie_in_trouble",
-        "drug_deal_gone_wrong",
-        "shot_at_while_walking",
-        "rival_tags_your_hood",
-        "unexpected_confrontation"
-    ])
-
-    if event_type == "drive_by_on_block":
-        rival_name, rival_gang, rival_set = generate_rival()
-        event_embed = discord.Embed(
-            title="DRIVE BY ON THE BLOCK",
-            description=f"Out of nowhere a car from the {rival_set} just sprayed the block where {player_char['name']} was posted",
-            color=discord.Color.dark_red()
-        )
-        event_embed.add_field(name="Shooter", value=f"{rival_name} - {rival_set}", inline=True)
-        event_embed.add_field(name="Situation", value="Shots fired with no warning - had to react fast", inline=True)
-        event_embed.set_footer(text="The block is never safe...")
-        await ctx.send(embed=event_embed)
-        await asyncio.sleep(3)
-
-        hit_roll = random.randint(1, 100)
-        gets_hit = hit_roll <= 30
-
-        characters = load_characters()
-        if character_id not in characters:
-            return
-        player_char = characters[character_id]
-
-        if gets_hit:
-            death_roll = random.randint(1, 100)
-            if death_roll <= 50:
-                death_embed = discord.Embed(
-                    title="HIT BY THE DRIVE BY",
-                    description=f"{player_char['name']} was struck by bullets in the drive by and didn't survive",
-                    color=discord.Color.dark_red()
-                )
-                death_embed.add_field(name="Final Stats", value=f"Body Count: {player_char.get('kills', 0)}\nMoney: ${player_char.get('money', 0):,}\nStatus: DECEASED", inline=False)
-                dead_member = player_char.copy()
-                dead_member['death_date'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-                dead_member['killed_by'] = f"{rival_set} Drive By (Passive Event)"
-                graveyard.append(dead_member)
-                save_graveyard(graveyard)
-                del characters[character_id]
-                save_characters(characters)
-                await ctx.send(embed=death_embed)
-            else:
-                wound_embed = discord.Embed(
-                    title="WOUNDED BUT ALIVE",
-                    description=f"{player_char['name']} got hit in the drive by but the wounds are not fatal",
-                    color=discord.Color.orange()
-                )
-                wound_embed.add_field(name="Status", value="Took a bullet but survived - heading to get patched up", inline=False)
-                await ctx.send(embed=wound_embed)
-        else:
-            safe_embed = discord.Embed(
-                title="DOVE FOR COVER",
-                description=f"{player_char['name']} hit the ground when the shots rang out and avoided getting hit",
-                color=discord.Color.green()
-            )
-            safe_embed.add_field(name="Outcome", value="Bullets missed - made it out clean", inline=False)
-            await ctx.send(embed=safe_embed)
-
-    elif event_type == "found_cash_on_street":
-        cash_found = random.randint(50, 500)
-        characters = load_characters()
-        if character_id not in characters:
-            return
-        player_char = characters[character_id]
-        player_char['money'] = player_char.get('money', 0) + cash_found
-        characters[character_id] = player_char
-        save_characters(characters)
-        event_embed = discord.Embed(
-            title="FOUND SOMETHING ON THE STREET",
-            description=f"{player_char['name']} was walking through the hood and found a dropped envelope",
-            color=discord.Color.green()
-        )
-        event_embed.add_field(name="Contents", value=f"${cash_found:,} cash inside - no name, no questions", inline=True)
-        event_embed.add_field(name="New Balance", value=f"${player_char['money']:,}", inline=True)
-        event_embed.set_footer(text="Streets provide sometimes")
-        await ctx.send(embed=event_embed)
-
-    elif event_type == "police_raid_area":
-        event_embed = discord.Embed(
-            title="POLICE SWEEPING THE AREA",
-            description=f"LAPD gang unit is doing a sweep through {player_char.get('set_name', 'the hood')} territory right now",
-            color=discord.Color.blue()
-        )
-        event_embed.add_field(name="Police Activity", value="Multiple units rolling through, stopping and questioning everyone on the block", inline=False)
-        event_embed.set_footer(text="Lay low or get caught up...")
-        await ctx.send(embed=event_embed)
-        await asyncio.sleep(3)
-
-        caught_roll = random.randint(1, 100)
-        characters = load_characters()
-        if character_id not in characters:
-            return
-        player_char = characters[character_id]
-
-        if caught_roll <= 20:
-            jail_time = random.randint(5, 20)
-            jail_embed = discord.Embed(
-                title="SWEPT UP IN THE RAID",
-                description=f"{player_char['name']} got caught in the police sweep and taken in",
-                color=discord.Color.orange()
-            )
-            jail_embed.add_field(name="Detention", value=f"Held for {jail_time} minutes before being released", inline=False)
-            jail_until = datetime.now() + timedelta(minutes=jail_time)
-            characters[character_id]['jail_until'] = jail_until.strftime('%Y-%m-%d %H:%M:%S')
-            save_characters(characters)
-            await ctx.send(embed=jail_embed)
-        else:
-            clear_embed = discord.Embed(
-                title="STAYED LOW DURING THE SWEEP",
-                description=f"{player_char['name']} saw the police coming and got off the block in time",
-                color=discord.Color.green()
-            )
-            clear_embed.add_field(name="Outcome", value="Avoided the sweep - back to normal", inline=False)
-            await ctx.send(embed=clear_embed)
-
-    elif event_type == "homie_in_trouble":
-        homie_name = f"{random.choice(FIRST_NAMES)} {random.choice(LAST_NAMES)}"
-        rival_name, rival_gang, rival_set = generate_rival()
-        event_embed = discord.Embed(
-            title="HOMIE NEEDS BACKUP",
-            description=f"{homie_name} from the {player_char.get('set_name', 'set')} just called - he is pinned down by {rival_set} and needs help right now",
-            color=discord.Color.orange()
-        )
-        event_embed.add_field(name="The Call", value=f"{homie_name} is outnumbered and calling for backup in enemy territory", inline=False)
-        event_embed.set_footer(text="You ride for your homies...")
-        await ctx.send(embed=event_embed)
-        await asyncio.sleep(3)
-
-        battle = simulate_battle()
-        won = battle['player_won']
-        death_roll = random.randint(1, 100)
-        dies = death_roll <= calculate_death_chance(won)
-
-        characters = load_characters()
-        if character_id not in characters:
-            return
-        player_char = characters[character_id]
-
-        if won and not dies:
-            win_embed = discord.Embed(
-                title="HOMIE SAVED",
-                description=f"{player_char['name']} ran to the aid of {homie_name} and helped fight off the {rival_set}",
-                color=discord.Color.green()
-            )
-            bonus_money = random.randint(100, 300)
-            player_char['money'] = player_char.get('money', 0) + bonus_money
-            win_embed.add_field(name="Loyalty Reward", value=f"{homie_name} hit {player_char['name']} with ${bonus_money:,} for pulling up", inline=False)
-            characters[character_id] = player_char
-            save_characters(characters)
-            await ctx.send(embed=win_embed)
-        elif dies:
-            death_embed = discord.Embed(
-                title="DIED RIDING FOR THE HOMIES",
-                description=f"{player_char['name']} gave their life pulling up for {homie_name}",
-                color=discord.Color.dark_red()
-            )
-            death_embed.add_field(name="Final Stats", value=f"Body Count: {player_char.get('kills', 0)}\nMoney: ${player_char.get('money', 0):,}\nStatus: DECEASED", inline=False)
-            dead_member = player_char.copy()
-            dead_member['death_date'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-            dead_member['killed_by'] = f"{rival_set} (Died Riding for Homies)"
-            graveyard.append(dead_member)
-            save_graveyard(graveyard)
-            del characters[character_id]
-            save_characters(characters)
-            await ctx.send(embed=death_embed)
-        else:
-            loss_embed = discord.Embed(
-                title="BACKUP CAME BUT LOST THE FIGHT",
-                description=f"{player_char['name']} pulled up for {homie_name} but they both had to retreat",
-                color=discord.Color.orange()
-            )
-            loss_embed.add_field(name="Outcome", value=f"Both made it out alive but the {rival_set} held the block tonight", inline=False)
-            await ctx.send(embed=loss_embed)
-
-    elif event_type == "drug_deal_gone_wrong":
-        rival_name, rival_gang, rival_set = generate_rival()
-        event_embed = discord.Embed(
-            title="DEAL WENT SIDEWAYS",
-            description=f"{player_char['name']} was present when a deal in the hood went completely wrong",
-            color=discord.Color.red()
-        )
-        event_embed.add_field(name="The Situation", value="Someone tried to rob the deal - shots fired, everyone scattering", inline=False)
-        event_embed.set_footer(text="Wrong place wrong time...")
-        await ctx.send(embed=event_embed)
-        await asyncio.sleep(3)
-
-        outcome_roll = random.randint(1, 100)
-        characters = load_characters()
-        if character_id not in characters:
-            return
-        player_char = characters[character_id]
-
-        if outcome_roll <= 40:
-            money_lost = random.randint(100, max(100, player_char.get('money', 100)))
-            money_lost = min(money_lost, player_char.get('money', 0))
-            player_char['money'] = max(0, player_char.get('money', 0) - money_lost)
-            loss_embed = discord.Embed(
-                title="ROBBED IN THE CHAOS",
-                description=f"{player_char['name']} got robbed during the confusion",
-                color=discord.Color.red()
-            )
-            loss_embed.add_field(name="Money Lost", value=f"${money_lost:,} taken", inline=True)
-            loss_embed.add_field(name="New Balance", value=f"${player_char['money']:,}", inline=True)
-            characters[character_id] = player_char
-            save_characters(characters)
-            await ctx.send(embed=loss_embed)
-        elif outcome_roll <= 70:
-            safe_embed = discord.Embed(
-                title="GOT OUT OF THE CHAOS",
-                description=f"{player_char['name']} dipped when the deal went wrong and avoided the fallout",
-                color=discord.Color.green()
-            )
-            safe_embed.add_field(name="Outcome", value="Made it out clean - nothing lost", inline=False)
-            await ctx.send(embed=safe_embed)
-        else:
-            profit = random.randint(200, 800)
-            player_char['money'] = player_char.get('money', 0) + profit
-            profit_embed = discord.Embed(
-                title="CAME UP IN THE CHAOS",
-                description=f"{player_char['name']} moved smart during the confusion and walked away with something",
-                color=discord.Color.green()
-            )
-            profit_embed.add_field(name="Street Profit", value=f"${profit:,} picked up in the chaos", inline=True)
-            profit_embed.add_field(name="New Balance", value=f"${player_char['money']:,}", inline=True)
-            characters[character_id] = player_char
-            save_characters(characters)
-            await ctx.send(embed=profit_embed)
-
-    elif event_type == "shot_at_while_walking":
-        rival_name, rival_gang, rival_set = generate_rival()
-        event_embed = discord.Embed(
-            title="SHOTS FIRED WALKING HOME",
-            description=f"{player_char['name']} was just walking through the hood when a car slowed down and opened fire",
-            color=discord.Color.dark_red()
-        )
-        event_embed.add_field(name="Attack", value=f"Believed to be from the {rival_set} - targeted shooting", inline=False)
-        event_embed.set_footer(text="Can never fully relax out here...")
-        await ctx.send(embed=event_embed)
-        await asyncio.sleep(3)
-
-        hit_roll = random.randint(1, 100)
-        characters = load_characters()
-        if character_id not in characters:
-            return
-        player_char = characters[character_id]
-
-        if hit_roll <= 25:
-            death_roll = random.randint(1, 100)
-            if death_roll <= 45:
-                death_embed = discord.Embed(
-                    title="SHOT AND KILLED",
-                    description=f"{player_char['name']} was hit and killed walking home from nowhere",
-                    color=discord.Color.dark_red()
-                )
-                death_embed.add_field(name="Final Stats", value=f"Body Count: {player_char.get('kills', 0)}\nMoney: ${player_char.get('money', 0):,}\nStatus: DECEASED", inline=False)
-                dead_member = player_char.copy()
-                dead_member['death_date'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-                dead_member['killed_by'] = f"{rival_set} Shooting (Passive Street Event)"
-                graveyard.append(dead_member)
-                save_graveyard(graveyard)
-                del characters[character_id]
-                save_characters(characters)
-                await ctx.send(embed=death_embed)
-            else:
-                wound_embed = discord.Embed(
-                    title="SHOT BUT SURVIVED",
-                    description=f"{player_char['name']} was hit but the wound is not fatal - got to the hospital in time",
-                    color=discord.Color.orange()
-                )
-                wound_embed.add_field(name="Status", value="Wounded and recovering but alive", inline=False)
-                await ctx.send(embed=wound_embed)
-        else:
-            miss_embed = discord.Embed(
-                title="SHOTS MISSED",
-                description=f"{player_char['name']} ducked behind a car and the shots missed - got away clean",
-                color=discord.Color.green()
-            )
-            miss_embed.add_field(name="Outcome", value="Fast reflexes saved the day", inline=False)
-            await ctx.send(embed=miss_embed)
-
-    elif event_type == "rival_tags_your_hood":
-        rival_name, rival_gang, rival_set = generate_rival()
-        event_embed = discord.Embed(
-            title="RIVALS TAGGED YOUR HOOD",
-            description=f"{player_char['name']} woke up to find the {rival_set} had tagged over the {player_char.get('set_name', 'set')} graffiti all through the neighborhood",
-            color=discord.Color.red()
-        )
-        event_embed.add_field(name="Disrespect", value=f"The {rival_set} crossed out the set's tags and put their own up - a direct challenge", inline=False)
-        event_embed.add_field(name="Suspects", value=f"{rival_name} and crew from {rival_gang}", inline=True)
-        event_embed.set_footer(text="Disrespect cannot go unanswered...")
-        await ctx.send(embed=event_embed)
-        await asyncio.sleep(3)
-
-        response_roll = random.randint(1, 100)
-        if response_roll <= 60:
-            battle = simulate_battle()
-            won = battle['player_won']
-            death_roll = random.randint(1, 100)
-            dies = death_roll <= calculate_death_chance(won)
-
-            characters = load_characters()
-            if character_id not in characters:
-                return
-            player_char = characters[character_id]
-
-            if won and not dies:
-                win_embed = discord.Embed(
-                    title="CHECKED THEM FOR THE DISRESPECT",
-                    description=f"{player_char['name']} went and found the {rival_set} crew responsible and made them pay for the disrespect",
-                    color=discord.Color.green()
-                )
-                player_char['kills'] = player_char.get('kills', 0) + 1
-                if 'kill_list' not in player_char:
-                    player_char['kill_list'] = []
-                player_char['kill_list'].append({
-                    'victim_name': rival_name,
-                    'victim_gang': rival_gang,
-                    'victim_set': rival_set,
-                    'date': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
-                    'type': 'hood_defense'
-                })
-                win_embed.add_field(name="Bodies", value=f"{player_char['kills']}", inline=True)
-                characters[character_id] = player_char
-                save_characters(characters)
-                await ctx.send(embed=win_embed)
-            elif dies:
-                death_embed = discord.Embed(
-                    title="DIED DEFENDING THE HOOD",
-                    description=f"{player_char['name']} went to check the {rival_set} for the disrespect but walked into a setup",
-                    color=discord.Color.dark_red()
-                )
-                death_embed.add_field(name="Final Stats", value=f"Body Count: {player_char.get('kills', 0)}\nMoney: ${player_char.get('money', 0):,}\nStatus: DECEASED", inline=False)
-                dead_member = player_char.copy()
-                dead_member['death_date'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-                dead_member['killed_by'] = f"{rival_name} ({rival_set}) Hood Defense"
-                graveyard.append(dead_member)
-                save_graveyard(graveyard)
-                del characters[character_id]
-                save_characters(characters)
-                await ctx.send(embed=death_embed)
-            else:
-                loss_embed = discord.Embed(
-                    title="COULDN'T CHECK THEM TODAY",
-                    description=f"{player_char['name']} went to handle the disrespect but had to fall back",
-                    color=discord.Color.orange()
-                )
-                loss_embed.add_field(name="Outcome", value="Survived but the disrespect is still out there", inline=False)
-                characters[character_id] = player_char
-                save_characters(characters)
-                await ctx.send(embed=loss_embed)
-        else:
-            lay_low_embed = discord.Embed(
-                title="LAID LOW",
-                description=f"{player_char['name']} decided to let it slide for now and not walk into a potential setup",
-                color=discord.Color.orange()
-            )
-            lay_low_embed.add_field(name="Decision", value="Chose not to react - playing it smart", inline=False)
-            await ctx.send(embed=lay_low_embed)
-
-    elif event_type == "unexpected_confrontation":
-        rival_name, rival_gang, rival_set = generate_rival()
-        event_embed = discord.Embed(
-            title="UNEXPECTED RUN IN",
-            description=f"{player_char['name']} was out handling regular business when they crossed paths with {rival_name} from the {rival_set}",
-            color=discord.Color.orange()
-        )
-        event_embed.add_field(name="Chance Encounter", value="Nobody planned this - it just happened. Now what?", inline=False)
-        event_embed.set_footer(text="The streets always got something waiting...")
-        await ctx.send(embed=event_embed)
-        await asyncio.sleep(3)
-
-        battle = simulate_battle()
-        won = battle['player_won']
-        death_roll = random.randint(1, 100)
-        dies = death_roll <= calculate_death_chance(won)
-
-        characters = load_characters()
-        if character_id not in characters:
-            return
-        player_char = characters[character_id]
-
-        if won and not dies:
-            win_embed = discord.Embed(
-                title="HANDLED THE RUN IN",
-                description=f"{player_char['name']} came out on top in the unexpected confrontation with {rival_name}",
-                color=discord.Color.green()
-            )
-            player_char['kills'] = player_char.get('kills', 0) + 1
-            if 'kill_list' not in player_char:
-                player_char['kill_list'] = []
-            player_char['kill_list'].append({
-                'victim_name': rival_name,
-                'victim_gang': rival_gang,
-                'victim_set': rival_set,
-                'date': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
-                'type': 'unexpected_confrontation'
-            })
-            win_embed.add_field(name="Bodies", value=f"{player_char['kills']}", inline=True)
-            characters[character_id] = player_char
-            save_characters(characters)
-            await ctx.send(embed=win_embed)
-        elif dies:
-            death_embed = discord.Embed(
-                title="RUN IN TURNED FATAL",
-                description=f"The chance encounter with {rival_name} ended with {player_char['name']} not making it home",
-                color=discord.Color.dark_red()
-            )
-            death_embed.add_field(name="Final Stats", value=f"Body Count: {player_char.get('kills', 0)}\nMoney: ${player_char.get('money', 0):,}\nStatus: DECEASED", inline=False)
-            dead_member = player_char.copy()
-            dead_member['death_date'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-            dead_member['killed_by'] = f"{rival_name} ({rival_set}) Unexpected Confrontation"
-            graveyard.append(dead_member)
-            save_graveyard(graveyard)
-            del characters[character_id]
-            save_characters(characters)
-            await ctx.send(embed=death_embed)
-        else:
-            loss_embed = discord.Embed(
-                title="LOST THE RUN IN BUT SURVIVED",
-                description=f"{player_char['name']} came out on the losing end of the confrontation with {rival_name} but made it out alive",
-                color=discord.Color.orange()
-            )
-            loss_embed.add_field(name="Outcome", value="Lost this one but lived to fight again", inline=False)
-            characters[character_id] = player_char
-            save_characters(characters)
-            await ctx.send(embed=loss_embed)
+    return {
+        "player_won": player_won,
+        "win_probability": int(win_probability),
+        "roll": roll,
+        "lore_bonus_applied": lore_revealed,
+        "effective_power": effective_player_power if lore_revealed else player_power
+    }
 
 
 characters = load_characters()
@@ -888,7 +331,7 @@ graveyard = load_graveyard()
 @bot.event
 async def on_ready():
     print(f'{bot.user} is online')
-    print('LA Gang Battle System Ready')
+    print('Vampire Battle System Ready')
 
 
 @bot.check
@@ -913,1093 +356,76 @@ async def on_command_error(ctx, error):
 @bot.command(name='make')
 @commands.cooldown(1, 10, commands.BucketType.user)
 async def make_character(ctx):
-    if is_admin(ctx):
-        ctx.command.reset_cooldown(ctx)
-
     user_id = str(ctx.author.id)
-    user_is_admin = is_admin(ctx)
 
-    if not user_is_admin:
-        user_members = [char for char in characters.values() if char.get('user_id') == user_id]
-        if user_members:
-            await ctx.send(f"You already have a gang member alive! You can only have one character at a time.\nUse `?show` to see your current member.")
-            return
+    # Always reload fresh to prevent stale cache bug
+    fresh_characters = load_characters()
+    user_members = [char for char in fresh_characters.values() if char.get('user_id') == user_id]
+    if user_members:
+        await ctx.send("You already have a vampire! Use `?show` to see your current vampire.")
+        return
 
     first_name = random.choice(FIRST_NAMES)
     last_name = random.choice(LAST_NAMES)
     character_name = f"{first_name} {last_name}"
     character_id = generate_unique_id()
-    gang_affiliation = random.choice(list(LA_GANGS.keys()))
-    gang_sets = LA_GANGS[gang_affiliation]['sets']
-    set_name = random.choice(gang_sets)
+    power_level = generate_random_vampire_power()
+    lore_data = generate_vampire_lore(character_name, power_level)
 
     character_data = {
         "character_id": character_id,
         "name": character_name,
         "username": str(ctx.author),
         "user_id": user_id,
-        "gang_affiliation": gang_affiliation,
-        "set_name": set_name,
-        "kills": 0,
-        "money": 0,
-        "kill_list": [],
+        "power_level": power_level,
+        "wins": 0,
+        "losses": 0,
+        "has_been_reborn": False,
+        "lore": lore_data,
         "created_at": datetime.now().strftime('%Y-%m-%d %H:%M:%S')
     }
 
-    characters[character_id] = character_data
-    save_characters(characters)
+    fresh_characters[character_id] = character_data
+    save_characters(fresh_characters)
+    characters.update(fresh_characters)
 
-    gang_color = LA_GANGS[gang_affiliation]['color']
+    if power_level <= 400:
+        tier = "Fledgling"
+        tier_color = discord.Color.dark_grey()
+    elif power_level <= 1000:
+        tier = "Experienced"
+        tier_color = discord.Color.blue()
+    elif power_level <= 1600:
+        tier = "Ancient"
+        tier_color = discord.Color.purple()
+    else:
+        tier = "Primordial"
+        tier_color = discord.Color.gold()
 
     embed = discord.Embed(
-        title="GANG MEMBER CREATED",
-        description=f"**{character_name}**\nA new soldier has joined the streets",
-        color=gang_color
+        title="Vampire Created",
+        description=f"**{character_name}**",
+        color=tier_color
     )
     embed.add_field(name="Owner", value=ctx.author.name, inline=True)
-    embed.add_field(name="Member ID", value=f"`{character_id}`", inline=True)
-    embed.add_field(name="\u200b", value="\u200b", inline=False)
-    embed.add_field(name="Gang Affiliation", value=gang_affiliation, inline=True)
-    embed.add_field(name="Set", value=set_name, inline=True)
-    embed.set_footer(text=f"Use ?random {character_id} to trigger a street event")
+    embed.add_field(name="ID", value=f"`{character_id}`", inline=True)
+    embed.add_field(name="Power Level", value=f"{power_level}", inline=False)
+    embed.add_field(name="Tier", value=tier, inline=True)
+    embed.add_field(name="Record", value="0-0", inline=True)
+    embed.add_field(
+        name="Hidden Lore",
+        value=f"Use `?lore {character_id}` to reveal their dark history and unlock combat bonuses",
+        inline=False
+    )
+    embed.set_footer(text=f"Use ?random {character_id} to trigger a dark street event")
 
     await ctx.send(embed=embed)
 
 
-# Show command
-@bot.command(name='show')
-@commands.cooldown(1, 10, commands.BucketType.user)
-async def show_members(ctx):
-    if is_admin(ctx):
-        ctx.command.reset_cooldown(ctx)
-
-    user_id = str(ctx.author.id)
-    fresh_characters = load_characters()
-    user_members = [char for char in fresh_characters.values() if char.get('user_id') == user_id]
-
-    if not user_members:
-        await ctx.send("You don't have any gang members! Use `?make` to create one.")
-        return
-
-    user_members.sort(key=lambda x: x.get('kills', 0), reverse=True)
-
-    embed = discord.Embed(
-        title=f"{ctx.author.name}'s Gang Roster",
-        description=f"Total active members: {len(user_members)}",
-        color=discord.Color.dark_purple()
-    )
-
-    for member in user_members:
-        in_jail = is_in_jail(member)
-        jail_status = "LOCKED UP" if in_jail else "FREE"
-        kills = member.get('kills', 0)
-        money = member.get('money', 0)
-
-        member_info = f"ID: `{member['character_id']}`\n"
-        member_info += f"Bodies: {kills}\n"
-        member_info += f"Money: ${money:,}\n"
-        member_info += f"Gang: {member.get('gang_affiliation', 'Unknown')}\n"
-        member_info += f"Set: {member.get('set_name', 'Unknown')}\n"
-        member_info += f"Status: {jail_status}"
-
-        if in_jail:
-            remaining = get_jail_time_remaining(member)
-            if remaining:
-                minutes = int(remaining.total_seconds() // 60)
-                seconds = int(remaining.total_seconds() % 60)
-                member_info += f"\nRelease: {minutes}m {seconds}s"
-
-        if member.get('bounty', 0) > 0:
-            member_info += f"\nBounty: ${member['bounty']:,}"
-
-        if member.get('police_heat'):
-            member_info += f"\nPolice Heat: ACTIVE"
-
-        embed.add_field(name=f"{member['name']}", value=member_info, inline=True)
-
-    embed.set_footer(text="Commands: ?slide <id> | ?rob <id> | ?work <id> | ?list <id> | ?block <id> | ?hoodday <id> | ?random <id>")
-    await ctx.send(embed=embed)
-
-
-# List command
-@bot.command(name='list')
-@commands.cooldown(1, 10, commands.BucketType.user)
-async def list_kills(ctx, character_id: str = None):
-    if is_admin(ctx):
-        ctx.command.reset_cooldown(ctx)
-
-    if character_id is None:
-        await ctx.send("Usage: `?list <character_id>`\nExample: `?list 123456`")
-        return
-
-    fresh_characters = load_characters()
-
-    if character_id not in fresh_characters:
-        await ctx.send(f"Gang member ID `{character_id}` not found!")
-        return
-
-    player_char = fresh_characters[character_id]
-    user_id = str(ctx.author.id)
-
-    if player_char.get('user_id') != user_id:
-        await ctx.send("You don't own this gang member!")
-        return
-
-    kill_list = player_char.get('kill_list', [])
-    total_kills = player_char.get('kills', 0)
-    gang_color = LA_GANGS.get(player_char.get('gang_affiliation', 'Crips'), {}).get('color', discord.Color.dark_red())
-
-    embed = discord.Embed(
-        title=f"KILL LIST - {player_char['name']}",
-        description=f"Total bodies: {total_kills}\nGang: {player_char.get('gang_affiliation', 'Unknown')}\nSet: {player_char.get('set_name', 'Unknown')}",
-        color=gang_color
-    )
-
-    if kill_list:
-        sorted_kills = sorted(kill_list, key=lambda x: x.get('date', ''), reverse=True)
-        display_limit = 20
-
-        for idx, kill in enumerate(sorted_kills):
-            if idx >= display_limit:
-                remaining = len(sorted_kills) - display_limit
-                embed.add_field(name="\u200b", value=f"+ {remaining} more bodies not shown", inline=False)
-                break
-
-            victim_name = kill.get('victim_name', 'Unknown')
-            victim_gang = kill.get('victim_gang', 'Unknown')
-            victim_set = kill.get('victim_set', 'Unknown')
-            kill_date = kill.get('date', 'Unknown')
-            kill_type = kill.get('type', 'slide')
-
-            try:
-                date_obj = datetime.strptime(kill_date, '%Y-%m-%d %H:%M:%S')
-                formatted_date = date_obj.strftime('%b %d, %Y at %I:%M %p')
-            except:
-                formatted_date = kill_date
-
-            field_value = f"{victim_name}\nGang: {victim_gang}\nSet: {victim_set}\nDate: {formatted_date}"
-
-            type_labels = {
-                'slide': 'SLIDE',
-                'revenge': 'REVENGE',
-                'retaliation_defense': 'RETALIATION DEFENSE',
-                'creation_event': 'DAY ONE BODY',
-                'old_beef': 'OLD BEEF',
-                'hood_defense': 'HOOD DEFENSE',
-                'unexpected_confrontation': 'STREET RUN IN'
-            }
-            field_value += f"\nType: {type_labels.get(kill_type, kill_type.upper())}"
-
-            embed.add_field(name=f"Body #{idx + 1}", value=field_value, inline=True)
-    else:
-        embed.add_field(name="Status", value=f"{player_char['name']} is clean, no bodies caught yet", inline=False)
-
-    embed.set_footer(text="Bodies caught in the streets")
-    await ctx.send(embed=embed)
-
-
-# Work command
-@bot.command(name='work')
-@commands.cooldown(1, 10, commands.BucketType.user)
-async def work_job(ctx, character_id: str = None):
-    if is_admin(ctx):
-        ctx.command.reset_cooldown(ctx)
-
-    if character_id is None:
-        await ctx.send("Usage: `?work <character_id>`\nExample: `?work 123456`")
-        return
-
-    fresh_characters = load_characters()
-
-    if character_id not in fresh_characters:
-        await ctx.send(f"Gang member ID `{character_id}` not found!")
-        return
-
-    player_char = fresh_characters[character_id]
-    user_id = str(ctx.author.id)
-
-    if player_char.get('user_id') != user_id:
-        await ctx.send("You don't own this gang member!")
-        return
-
-    if is_in_jail(player_char):
-        remaining = get_jail_time_remaining(player_char)
-        if remaining:
-            minutes = int(remaining.total_seconds() // 60)
-            seconds = int(remaining.total_seconds() % 60)
-            await ctx.send(f"{player_char['name']} is currently locked up and will be released in {minutes}m {seconds}s")
-            return
-
-    job_name = random.choice(list(WORK_JOBS.keys()))
-    job_info = WORK_JOBS[job_name]
-
-    intro_embed = discord.Embed(
-        title="CLOCKING IN",
-        description=f"{player_char['name']} is heading to work",
-        color=discord.Color.green()
-    )
-    intro_embed.add_field(name="Job", value=f"{job_name}\n{job_info['description']}", inline=False)
-    intro_embed.add_field(name="Member", value=f"{player_char['name']}\nCurrent Money: ${player_char.get('money', 0):,}", inline=False)
-    intro_embed.set_footer(text="Putting in work...")
-    await ctx.send(embed=intro_embed)
-    await asyncio.sleep(2)
-
-    earnings = random.randint(job_info['min'], job_info['max'])
-    player_char['money'] = player_char.get('money', 0) + earnings
-
-    work_outcomes = [
-        f"{player_char['name']} put in a solid shift and earned their pay",
-        f"{player_char['name']} grinded through the day and got paid",
-        f"{player_char['name']} clocked in, did the work, and clocked out",
-        f"{player_char['name']} handled business and collected the check",
-        f"{player_char['name']} stayed focused and earned that bread",
-        f"{player_char['name']} kept it professional and got the bag"
-    ]
-
-    outcome_embed = discord.Embed(
-        title="SHIFT COMPLETE",
-        description=random.choice(work_outcomes),
-        color=discord.Color.green()
-    )
-    outcome_embed.add_field(name="Job Completed", value=job_name, inline=True)
-    outcome_embed.add_field(name="Earnings", value=f"${earnings:,}", inline=True)
-    outcome_embed.add_field(name="\u200b", value="\u200b", inline=False)
-    outcome_embed.add_field(name="Updated Balance", value=f"${player_char['money']:,}", inline=False)
-    outcome_embed.set_footer(text="Honest work pays off")
-
-    fresh_characters = load_characters()
-    if character_id in fresh_characters:
-        fresh_characters[character_id]['money'] = player_char['money']
-        save_characters(fresh_characters)
-        characters.update(fresh_characters)
-
-    await ctx.send(embed=outcome_embed)
-
-
-# Rob command
-@bot.command(name='rob')
-@commands.cooldown(1, 10, commands.BucketType.user)
-async def rob_store(ctx, character_id: str = None):
-    if is_admin(ctx):
-        ctx.command.reset_cooldown(ctx)
-
-    if character_id is None:
-        await ctx.send("Usage: `?rob <character_id>`\nExample: `?rob 123456`")
-        return
-
-    fresh_characters = load_characters()
-
-    if character_id not in fresh_characters:
-        await ctx.send(f"Gang member ID `{character_id}` not found!")
-        return
-
-    player_char = fresh_characters[character_id]
-    user_id = str(ctx.author.id)
-
-    if player_char.get('user_id') != user_id:
-        await ctx.send("You don't own this gang member!")
-        return
-
-    if is_in_jail(player_char):
-        remaining = get_jail_time_remaining(player_char)
-        if remaining:
-            minutes = int(remaining.total_seconds() // 60)
-            seconds = int(remaining.total_seconds() % 60)
-            await ctx.send(f"{player_char['name']} is currently locked up and will be released in {minutes}m {seconds}s")
-            return
-
-    store_type = random.choice(list(STORE_TYPES.keys()))
-    store_info = STORE_TYPES[store_type]
-    store_name = f"{random.choice(['Main St', 'Broadway', 'Central Ave', 'Sunset Blvd', 'Crenshaw', 'Vermont Ave'])} {store_type}"
-
-    intro_embed = discord.Embed(
-        title="ROBBERY IN PROGRESS",
-        description=f"{player_char['name']} is attempting to rob {store_name}",
-        color=discord.Color.gold()
-    )
-    intro_embed.add_field(name="Target", value=f"{store_name}\nRisk Level: {store_info['risk'].upper()}", inline=True)
-    intro_embed.add_field(name="Member", value=f"{player_char['name']}\nMoney: ${player_char.get('money', 0):,}", inline=True)
-    intro_embed.set_footer(text="The heist is underway...")
-    await ctx.send(embed=intro_embed)
-    await asyncio.sleep(3)
-
-    robbery_roll = random.randint(1, 100)
-    police_heat_bonus = 15 if player_char.get('police_heat') else 0
-    robbery_success = robbery_roll <= 70
-
-    money_stolen = 0
-    if robbery_success:
-        money_stolen = random.randint(store_info['min'], store_info['max'])
-
-    caught_by_police = False
-    jail_time = 0
-    witnesses_present = False
-
-    if robbery_success:
-        if store_info['risk'] == "low":
-            police_chance = 20 + police_heat_bonus
-        elif store_info['risk'] == "medium":
-            police_chance = 35 + police_heat_bonus
-        elif store_info['risk'] == "high":
-            police_chance = 50 + police_heat_bonus
-        else:
-            police_chance = 70 + police_heat_bonus
-
-        police_roll = random.randint(1, 100)
-        caught_by_police = police_roll <= police_chance
-
-        if caught_by_police:
-            witness_roll = random.randint(1, 100)
-            witnesses_present = witness_roll <= 30
-            jail_time = random.randint(20, 30) if witnesses_present else random.randint(5, 10)
-
-    if robbery_success:
-        if caught_by_police:
-            outcome_embed = discord.Embed(
-                title="ROBBERY SUCCESSFUL - BUT ARRESTED",
-                description=f"{player_char['name']} successfully robbed {store_name} but was caught by police",
-                color=discord.Color.orange()
-            )
-            outcome_embed.add_field(name="Money Stolen", value=f"${money_stolen:,}", inline=True)
-            outcome_embed.add_field(name="Police Response", value="CAUGHT", inline=True)
-            outcome_embed.add_field(name="\u200b", value="\u200b", inline=False)
-            if witnesses_present:
-                outcome_embed.add_field(name="WITNESSES PRESENT", value=f"Multiple witnesses identified {player_char['name']}\nSentence increased due to evidence", inline=False)
-            outcome_embed.add_field(name="ARREST STATUS", value=f"Sentenced to {jail_time} minutes in county jail\nMoney confiscated by police", inline=False)
-            jail_until = datetime.now() + timedelta(minutes=jail_time)
-            fresh_characters = load_characters()
-            if character_id in fresh_characters:
-                fresh_characters[character_id]['jail_until'] = jail_until.strftime('%Y-%m-%d %H:%M:%S')
-                save_characters(fresh_characters)
-                characters.update(fresh_characters)
-        else:
-            outcome_embed = discord.Embed(
-                title="ROBBERY SUCCESSFUL",
-                description=f"{player_char['name']} successfully robbed {store_name} and escaped",
-                color=discord.Color.green()
-            )
-            outcome_embed.add_field(name="Money Stolen", value=f"${money_stolen:,}", inline=True)
-            outcome_embed.add_field(name="Police Response", value="ESCAPED", inline=True)
-            outcome_embed.add_field(name="\u200b", value="\u200b", inline=False)
-            player_char['money'] = player_char.get('money', 0) + money_stolen
-            outcome_embed.add_field(name="CLEAN GETAWAY", value=f"{player_char['name']} evaded police and made it back to the hood", inline=False)
-            outcome_embed.add_field(name="Updated Balance", value=f"${player_char['money']:,}", inline=False)
-            fresh_characters = load_characters()
-            if character_id in fresh_characters:
-                fresh_characters[character_id]['money'] = player_char['money']
-                save_characters(fresh_characters)
-                characters.update(fresh_characters)
-    else:
-        outcome_embed = discord.Embed(
-            title="ROBBERY FAILED",
-            description=f"{player_char['name']} failed to rob {store_name}",
-            color=discord.Color.red()
-        )
-        outcome_embed.add_field(name="Result", value="The robbery went wrong before anything could be taken", inline=False)
-        outcome_embed.add_field(name="Money Stolen", value="$0", inline=True)
-        outcome_embed.add_field(name="Status", value="Fled the scene empty-handed", inline=True)
-
-    outcome_embed.set_footer(text="Crime doesn't always pay")
-    await ctx.send(embed=outcome_embed)
-
-
-# Block command
-@bot.command(name='block')
-@commands.cooldown(1, 10, commands.BucketType.user)
-async def block_party(ctx, character_id: str = None):
-    if is_admin(ctx):
-        ctx.command.reset_cooldown(ctx)
-
-    if character_id is None:
-        await ctx.send("Usage: `?block <character_id>`\nExample: `?block 123456`")
-        return
-
-    fresh_characters = load_characters()
-
-    if character_id not in fresh_characters:
-        await ctx.send(f"Gang member ID `{character_id}` not found!")
-        return
-
-    player_char = fresh_characters[character_id]
-    user_id = str(ctx.author.id)
-
-    if player_char.get('user_id') != user_id:
-        await ctx.send("You don't own this gang member!")
-        return
-
-    if is_in_jail(player_char):
-        remaining = get_jail_time_remaining(player_char)
-        if remaining:
-            minutes = int(remaining.total_seconds() // 60)
-            seconds = int(remaining.total_seconds() % 60)
-            await ctx.send(f"{player_char['name']} is currently locked up and will be released in {minutes}m {seconds}s")
-            return
-
-    char_gang = player_char.get('gang_affiliation', 'Unknown')
-    char_set = player_char.get('set_name', 'Unknown')
-    gang_color = LA_GANGS.get(char_gang, {}).get('color', discord.Color.purple())
-
-    intro_embed = discord.Embed(
-        title="BLOCK PARTY STARTING",
-        description=f"{player_char['name']} is throwing a block party in {char_set} territory",
-        color=gang_color
-    )
-    intro_embed.add_field(name="Host", value=f"{player_char['name']}", inline=True)
-    intro_embed.add_field(name="Location", value=f"{char_set} turf", inline=True)
-    intro_embed.add_field(name="\u200b", value="\u200b", inline=False)
-    intro_embed.add_field(name="The Scene", value="Music bumping, homies gathered, BBQ going, everyone having a good time in the hood", inline=False)
-    intro_embed.set_footer(text="The party is live...")
-    await ctx.send(embed=intro_embed)
-    await asyncio.sleep(3)
-
-    rival_roll = random.randint(1, 100)
-    rival_shows_up = rival_roll <= 35
-
-    if not rival_shows_up:
-        outcome_embed = discord.Embed(
-            title="BLOCK PARTY SUCCESS",
-            description=f"The block party was a success! Everyone had a good time and no drama went down",
-            color=discord.Color.green()
-        )
-        outcome_embed.add_field(name="Party Status", value="Everything stayed peaceful in the hood tonight", inline=False)
-        outcome_embed.add_field(name=f"{player_char['name']}", value="Threw a legendary block party that the hood will remember", inline=False)
-        outcome_embed.set_footer(text="Good vibes only")
-        await ctx.send(embed=outcome_embed)
-    else:
-        available_gangs = [g for g in LA_GANGS.keys() if g != char_gang]
-        if not available_gangs:
-            available_gangs = list(LA_GANGS.keys())
-        rival_gang = random.choice(available_gangs)
-        rival_set = random.choice(LA_GANGS[rival_gang]['sets'])
-        num_shooters = random.randint(2, 4)
-        rival_names = [f"{random.choice(FIRST_NAMES)} {random.choice(LAST_NAMES)}" for _ in range(num_shooters)]
-
-        driveby_embed = discord.Embed(
-            title="RIVAL GANG ALERT",
-            description=f"A car full of {rival_set} members just rolled up on the block party!",
-            color=discord.Color.red()
-        )
-        driveby_embed.add_field(name="Rival Gang", value=f"{rival_gang}", inline=True)
-        driveby_embed.add_field(name="Set", value=f"{rival_set}", inline=True)
-        driveby_embed.add_field(name="\u200b", value="\u200b", inline=False)
-        driveby_embed.add_field(name="SHOOTERS SPOTTED", value="\n".join(rival_names), inline=False)
-        driveby_embed.set_footer(text="Shots about to be fired...")
-        await ctx.send(embed=driveby_embed)
-        await asyncio.sleep(3)
-
-        shooting_embed = discord.Embed(
-            title="SHOTS FIRED!",
-            description=f"The {rival_set} members opened fire on the block party!",
-            color=discord.Color.dark_red()
-        )
-        shooting_embed.add_field(name="Drive-By Shooting", value="Bullets flying everywhere, people running for cover, chaos in the streets", inline=False)
-        await ctx.send(embed=shooting_embed)
-        await asyncio.sleep(3)
-
-        bullet_roll = random.randint(1, 100)
-        player_hit = bullet_roll <= 40
-
-        if player_hit:
-            fresh_characters = load_characters()
-            if character_id not in fresh_characters:
-                return
-            player_char = fresh_characters[character_id]
-            death_embed = discord.Embed(
-                title="CAUGHT BY A BULLET",
-                description=f"{player_char['name']} was hit during the drive-by shooting",
-                color=discord.Color.dark_red()
-            )
-            death_embed.add_field(name="Fatal Outcome", value=f"{player_char['name']} caught a stray bullet during the shootout and didn't make it", inline=False)
-            death_embed.add_field(name="Final Stats", value=f"Body Count: {player_char.get('kills', 0)}\nMoney: ${player_char.get('money', 0):,}\nStatus: DECEASED", inline=False)
-            dead_member = player_char.copy()
-            dead_member['death_date'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-            dead_member['killed_by'] = f"{rival_set} Drive-By Shooting (Block Party)"
-            graveyard = load_graveyard()
-            graveyard.append(dead_member)
-            save_graveyard(graveyard)
-            del fresh_characters[character_id]
-            save_characters(fresh_characters)
-            characters.update(fresh_characters)
-            death_embed.set_footer(text="Wrong place, wrong time")
-            await ctx.send(embed=death_embed)
-        else:
-            survive_embed = discord.Embed(
-                title="SURVIVED THE SHOOTING",
-                description=f"{player_char['name']} managed to avoid the bullets and survive the drive-by",
-                color=discord.Color.orange()
-            )
-            survive_embed.add_field(name="Close Call", value=f"{player_char['name']} hit the ground and avoided getting hit", inline=False)
-            await ctx.send(embed=survive_embed)
-            await asyncio.sleep(2)
-
-            police_roll = random.randint(1, 100)
-            if police_roll <= 60:
-                police_embed = discord.Embed(
-                    title="POLICE ARRIVAL",
-                    description="LAPD rolled up on the scene after the shooting",
-                    color=discord.Color.blue()
-                )
-                police_embed.add_field(name="Police Response", value="Multiple units arrived on scene, investigating the shooting", inline=False)
-                police_embed.add_field(name=f"{player_char['name']} Status", value="Questioned by police but not arrested - no jail time for being a victim", inline=False)
-                police_embed.set_footer(text="Survived to see another day")
-                await ctx.send(embed=police_embed)
-            else:
-                final_embed = discord.Embed(
-                    title="ESCAPED CLEAN",
-                    description=f"{player_char['name']} survived the shooting and got away before police arrived",
-                    color=discord.Color.green()
-                )
-                final_embed.add_field(name="Status", value="Made it out alive, no police involvement", inline=False)
-                final_embed.set_footer(text="Lucky to be alive")
-                await ctx.send(embed=final_embed)
-
-
-# Hoodday command
-@bot.command(name='hoodday')
-@commands.cooldown(1, 10, commands.BucketType.user)
-async def hoodday(ctx, character_id: str = None):
-    if is_admin(ctx):
-        ctx.command.reset_cooldown(ctx)
-
-    if character_id is None:
-        await ctx.send("Usage: `?hoodday <character_id>`\nExample: `?hoodday 123456`")
-        return
-
-    fresh_characters = load_characters()
-
-    if character_id not in fresh_characters:
-        await ctx.send(f"Gang member ID `{character_id}` not found!")
-        return
-
-    player_char = fresh_characters[character_id]
-    user_id = str(ctx.author.id)
-
-    if player_char.get('user_id') != user_id:
-        await ctx.send("You don't own this gang member!")
-        return
-
-    if is_in_jail(player_char):
-        remaining = get_jail_time_remaining(player_char)
-        if remaining:
-            minutes = int(remaining.total_seconds() // 60)
-            seconds = int(remaining.total_seconds() % 60)
-            await ctx.send(f"{player_char['name']} is currently locked up and will be released in {minutes}m {seconds}s")
-            return
-
-    char_gang = player_char.get('gang_affiliation', 'Unknown')
-    char_set = player_char.get('set_name', 'Unknown')
-    gang_color = LA_GANGS.get(char_gang, {}).get('color', discord.Color.purple())
-    num_members = random.randint(10, 20)
-
-    intro_embed = discord.Embed(
-        title="HOOD DAY CELEBRATION",
-        description=f"{player_char['name']} has organized a massive hood celebration bringing the whole {char_set} together!",
-        color=gang_color
-    )
-    intro_embed.add_field(name="Organizer", value=f"{player_char['name']}", inline=True)
-    intro_embed.add_field(name="Gang", value=f"{char_gang}", inline=True)
-    intro_embed.add_field(name="\u200b", value="\u200b", inline=False)
-    intro_embed.add_field(name="Location", value=f"{char_set} territory - The whole hood is out", inline=True)
-    intro_embed.add_field(name="Attendance", value=f"{num_members} gang members present", inline=True)
-    intro_embed.add_field(name="\u200b", value="\u200b", inline=False)
-    intro_embed.add_field(name="The Celebration", value="The whole hood is lit! DJ spinning, grills fired up, kids playing, OGs telling stories, lowriders cruising, everyone representing the set with pride", inline=False)
-    intro_embed.set_footer(text="The entire hood is celebrating...")
-    await ctx.send(embed=intro_embed)
-    await asyncio.sleep(4)
-
-    trouble_roll = random.randint(1, 100)
-    trouble_occurs = trouble_roll <= 10
-
-    if not trouble_occurs:
-        success_embed = discord.Embed(
-            title="HOOD DAY SUCCESS",
-            description=f"The hood day celebration was a massive success! The whole {char_set} came together for an unforgettable day",
-            color=discord.Color.green()
-        )
-        success_embed.add_field(name="Celebration Status", value="Peace throughout the hood, everybody had a great time, no drama all day", inline=False)
-        success_embed.add_field(name="Hood Unity", value=f"The {char_set} showed the whole city what unity looks like - {num_members} members strong", inline=False)
-        success_embed.add_field(name=f"{player_char['name']}", value="Organized a legendary hood day that will be remembered for years to come", inline=False)
-        success_embed.set_footer(text="Hood day for the books")
-        await ctx.send(embed=success_embed)
-    else:
-        trouble_type_roll = random.randint(1, 100)
-        rival_attack = trouble_type_roll <= 50
-
-        if rival_attack:
-            available_gangs = [g for g in LA_GANGS.keys() if g != char_gang]
-            if not available_gangs:
-                available_gangs = list(LA_GANGS.keys())
-            rival_gang = random.choice(available_gangs)
-            rival_set = random.choice(LA_GANGS[rival_gang]['sets'])
-            num_shooters = random.randint(5, 8)
-            rival_names = [f"{random.choice(FIRST_NAMES)} {random.choice(LAST_NAMES)}" for _ in range(num_shooters)]
-
-            rival_embed = discord.Embed(
-                title="RIVAL GANG ATTACK",
-                description=f"Multiple cars full of {rival_set} members just pulled up on the hood day celebration!",
-                color=discord.Color.red()
-            )
-            rival_embed.add_field(name="Rival Gang", value=f"{rival_gang}", inline=True)
-            rival_embed.add_field(name="Rival Set", value=f"{rival_set}", inline=True)
-            rival_embed.add_field(name="\u200b", value="\u200b", inline=False)
-            rival_embed.add_field(name="ATTACKERS SPOTTED", value="\n".join(rival_names[:5]) + (f"\n+ {len(rival_names) - 5} more..." if len(rival_names) > 5 else ""), inline=False)
-            rival_embed.set_footer(text="This is a major attack...")
-            await ctx.send(embed=rival_embed)
-            await asyncio.sleep(3)
-
-            shooting_embed = discord.Embed(
-                title="MASSIVE SHOOTOUT!",
-                description=f"The {rival_set} opened fire on the hood day! The {char_set} is firing back!",
-                color=discord.Color.dark_red()
-            )
-            shooting_embed.add_field(name="All-Out War", value="Gunfire erupting from all directions, the entire celebration turned into a warzone", inline=False)
-            await ctx.send(embed=shooting_embed)
-            await asyncio.sleep(3)
-
-            bullet_roll = random.randint(1, 100)
-            player_hit = bullet_roll <= 25
-
-            if player_hit:
-                fresh_characters = load_characters()
-                if character_id not in fresh_characters:
-                    return
-                player_char = fresh_characters[character_id]
-                death_embed = discord.Embed(
-                    title="FALLEN IN THE BATTLE",
-                    description=f"{player_char['name']} was struck down during the massive shootout",
-                    color=discord.Color.dark_red()
-                )
-                death_embed.add_field(name="Fatal Outcome", value=f"{player_char['name']} was hit during the chaos and didn't survive", inline=False)
-                death_embed.add_field(name="Final Stats", value=f"Body Count: {player_char.get('kills', 0)}\nMoney: ${player_char.get('money', 0):,}\nStatus: DECEASED", inline=False)
-                dead_member = player_char.copy()
-                dead_member['death_date'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-                dead_member['killed_by'] = f"{rival_set} Attack (Hood Day Massacre)"
-                graveyard = load_graveyard()
-                graveyard.append(dead_member)
-                save_graveyard(graveyard)
-                del fresh_characters[character_id]
-                save_characters(fresh_characters)
-                characters.update(fresh_characters)
-                death_embed.set_footer(text="The hood day turned tragic")
-                await ctx.send(embed=death_embed)
-            else:
-                survive_embed = discord.Embed(
-                    title="SURVIVED THE WAR",
-                    description=f"{player_char['name']} made it through the massive shootout alive",
-                    color=discord.Color.orange()
-                )
-                survive_embed.add_field(name="Battle Outcome", value=f"The {char_set} held their ground and the {rival_set} was driven off", inline=False)
-                survive_embed.add_field(name=f"{player_char['name']} Status", value="Survived the attack but the hood day was ruined by the violence", inline=False)
-                survive_embed.set_footer(text="Hood defended but at what cost")
-                await ctx.send(embed=survive_embed)
-        else:
-            police_embed = discord.Embed(
-                title="POLICE RAID",
-                description="LAPD task force rolled up on the hood day celebration in force!",
-                color=discord.Color.blue()
-            )
-            police_embed.add_field(name="Police Response", value="Multiple units, helicopters overhead, they're shutting down the whole celebration", inline=False)
-            police_embed.add_field(name="The Scene", value="Cops are everywhere, people scattering, chaos as the party gets broken up", inline=False)
-            await ctx.send(embed=police_embed)
-            await asyncio.sleep(3)
-
-            arrest_roll = random.randint(1, 100)
-            if arrest_roll <= 30:
-                arrest_embed = discord.Embed(
-                    title="DETAINED BY POLICE",
-                    description=f"{player_char['name']} was detained during the raid",
-                    color=discord.Color.orange()
-                )
-                arrest_embed.add_field(name="Police Harassment", value=f"{player_char['name']} was questioned and searched but released after a few hours - no charges filed", inline=False)
-                arrest_embed.add_field(name="Hood Day Outcome", value="The celebration was shut down but everyone made it home safe", inline=False)
-                arrest_embed.set_footer(text="Hood day ended early")
-                await ctx.send(embed=arrest_embed)
-            else:
-                escape_embed = discord.Embed(
-                    title="ESCAPED THE RAID",
-                    description=f"{player_char['name']} and most of the hood got away clean",
-                    color=discord.Color.green()
-                )
-                escape_embed.add_field(name="Quick Escape", value=f"{player_char['name']} slipped away before police could lock anyone down", inline=False)
-                escape_embed.add_field(name="Hood Day Outcome", value="Police broke up the party but everyone avoided arrest and made it home", inline=False)
-                escape_embed.set_footer(text="Hood day shut down but no arrests")
-                await ctx.send(embed=escape_embed)
-
-
-# Slide command
-@bot.command(name='slide')
-@commands.cooldown(1, 10, commands.BucketType.user)
-async def slide_on_opps(ctx, *character_ids):
-    if is_admin(ctx):
-        ctx.command.reset_cooldown(ctx)
-
-    if not character_ids:
-        await ctx.send("Usage: `?slide <character_id> [character_id2] [character_id3]...`\nExample: `?slide 123456`")
-        return
-
-    user_id = str(ctx.author.id)
-    fresh_characters = load_characters()
-    valid_members = []
-    invalid_ids = []
-    not_owned = []
-    in_jail_members = []
-
-    for character_id in character_ids:
-        if character_id not in fresh_characters:
-            invalid_ids.append(character_id)
-            continue
-        player_char = fresh_characters[character_id]
-        if player_char.get('user_id') != user_id:
-            not_owned.append(character_id)
-            continue
-        if is_in_jail(player_char):
-            remaining = get_jail_time_remaining(player_char)
-            if remaining:
-                minutes = int(remaining.total_seconds() // 60)
-                seconds = int(remaining.total_seconds() % 60)
-                in_jail_members.append(f"{player_char['name']} ({minutes}m {seconds}s)")
-            continue
-        valid_members.append(player_char)
-
-    if invalid_ids:
-        await ctx.send(f"Invalid member IDs: {', '.join(invalid_ids)}")
-        return
-    if not_owned:
-        await ctx.send(f"You don't own these members: {', '.join(not_owned)}")
-        return
-    if in_jail_members:
-        await ctx.send(f"The following members are locked up:\n" + "\n".join(in_jail_members))
-        return
-    if not valid_members:
-        await ctx.send("No valid members available to slide!")
-        return
-
-    for idx, player_char in enumerate(valid_members):
-        character_id = player_char['character_id']
-        rival_name = f"{random.choice(FIRST_NAMES)} {random.choice(LAST_NAMES)}"
-        available_gangs = [g for g in LA_GANGS.keys() if g != player_char.get('gang_affiliation')]
-        if not available_gangs:
-            available_gangs = list(LA_GANGS.keys())
-        rival_gang = random.choice(available_gangs)
-        rival_set = random.choice(LA_GANGS[rival_gang]['sets'])
-
-        intro_embed = discord.Embed(
-            title=f"SLIDING ON OPPS ({idx + 1}/{len(valid_members)})",
-            description=f"Your member has spotted an enemy in rival territory",
-            color=discord.Color.orange()
-        )
-        intro_embed.add_field(name="YOUR MEMBER", value=f"{player_char['name']}\nBodies: {player_char.get('kills', 0)}\nGang: {player_char.get('gang_affiliation', 'Unknown')}\nSet: {player_char.get('set_name', 'Unknown')}", inline=True)
-        intro_embed.add_field(name="ENEMY SPOTTED", value=f"{rival_name}\nGang: {rival_gang}\nSet: {rival_set}", inline=True)
-        intro_embed.set_footer(text="The confrontation is about to go down...")
-        await ctx.send(embed=intro_embed)
-        await asyncio.sleep(2)
-
-        battle_result = simulate_battle()
-        player_won = battle_result['player_won']
-        death_chance = calculate_death_chance(player_won)
-        death_roll = random.randint(1, 100)
-        member_dies = death_roll <= death_chance
-        jail_roll = random.randint(1, 100)
-        goes_to_jail = False
-        jail_minutes = 0
-
-        fresh_characters = load_characters()
-        if character_id not in fresh_characters:
-            continue
-        player_char = fresh_characters[character_id]
-
-        if not member_dies and player_won:
-            player_char['kills'] = player_char.get('kills', 0) + 1
-            if 'kill_list' not in player_char:
-                player_char['kill_list'] = []
-            player_char['kill_list'].append({
-                'victim_name': rival_name,
-                'victim_gang': rival_gang,
-                'victim_set': rival_set,
-                'date': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
-                'type': 'slide'
-            })
-            jail_chance = 30
-            goes_to_jail = jail_roll <= jail_chance
-            if goes_to_jail:
-                jail_minutes = player_char['kills']
-
-        if player_won:
-            if member_dies:
-                outcome_embed = discord.Embed(
-                    title="PYRRHIC VICTORY",
-                    description=f"{player_char['name']} successfully eliminated {rival_name} but sustained fatal injuries in the process",
-                    color=discord.Color.dark_red()
-                )
-                outcome_embed.add_field(name="Final Outcome", value=f"Despite winning the confrontation, {player_char['name']} succumbed to their wounds", inline=False)
-                outcome_embed.add_field(name="Final Stats", value=f"Body Count: {player_char.get('kills', 0)}\nMoney: ${player_char.get('money', 0):,}\nStatus: DECEASED", inline=False)
-                dead_member = player_char.copy()
-                dead_member['death_date'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-                dead_member['killed_by'] = f"{rival_name} ({rival_set}) - Fatal Wounds"
-                graveyard = load_graveyard()
-                graveyard.append(dead_member)
-                save_graveyard(graveyard)
-                del fresh_characters[character_id]
-                save_characters(fresh_characters)
-                characters.update(fresh_characters)
-            else:
-                if goes_to_jail:
-                    outcome_embed = discord.Embed(
-                        title="BODY CAUGHT - ARRESTED",
-                        description=f"{player_char['name']} eliminated {rival_name} from the {rival_set} but was caught by law enforcement",
-                        color=discord.Color.orange()
-                    )
-                else:
-                    outcome_embed = discord.Embed(
-                        title="BODY CAUGHT",
-                        description=f"{player_char['name']} successfully eliminated {rival_name} from the {rival_set}",
-                        color=discord.Color.green()
-                    )
-                outcome_embed.add_field(name="Updated Stats", value=f"Total Bodies: {player_char['kills']}\nMoney: ${player_char.get('money', 0):,}", inline=False)
-                if goes_to_jail:
-                    jail_until = datetime.now() + timedelta(minutes=jail_minutes)
-                    player_char['jail_until'] = jail_until.strftime('%Y-%m-%d %H:%M:%S')
-                    outcome_embed.add_field(name="ARREST STATUS", value=f"Sentenced to {jail_minutes} minutes in county jail\nWill be released in {jail_minutes} minutes", inline=False)
-                else:
-                    outcome_embed.add_field(name="POLICE STATUS", value="Successfully evaded law enforcement and made it back safely", inline=False)
-
-                fresh_characters[character_id] = player_char
-                save_characters(fresh_characters)
-                characters.update(fresh_characters)
-        else:
-            if member_dies:
-                outcome_embed = discord.Embed(
-                    title="CAUGHT SLIPPING",
-                    description=f"{player_char['name']} was eliminated by {rival_name} from the {rival_set}",
-                    color=discord.Color.dark_red()
-                )
-                outcome_embed.add_field(name="Final Words", value=f"{player_char['name']} was caught lacking deep in enemy territory and paid the ultimate price", inline=False)
-                outcome_embed.add_field(name="Final Stats", value=f"Body Count: {player_char.get('kills', 0)}\nMoney: ${player_char.get('money', 0):,}\nStatus: DECEASED", inline=False)
-                dead_member = player_char.copy()
-                dead_member['death_date'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-                dead_member['killed_by'] = f"{rival_name} ({rival_set})"
-                graveyard = load_graveyard()
-                graveyard.append(dead_member)
-                save_graveyard(graveyard)
-                del fresh_characters[character_id]
-                save_characters(fresh_characters)
-                characters.update(fresh_characters)
-            else:
-                outcome_embed = discord.Embed(
-                    title="TOOK AN L - SURVIVED",
-                    description=f"{player_char['name']} was defeated by {rival_name} but managed to escape alive",
-                    color=discord.Color.orange()
-                )
-                outcome_embed.add_field(name="Outcome", value="Lost the confrontation but survived to fight another day", inline=False)
-                outcome_embed.add_field(name="Current Stats", value=f"Body Count: {player_char.get('kills', 0)}\nMoney: ${player_char.get('money', 0):,}\nStatus: ALIVE", inline=False)
-                fresh_characters[character_id] = player_char
-                save_characters(fresh_characters)
-                characters.update(fresh_characters)
-
-        outcome_embed.set_footer(text="The streets never forget")
-        await ctx.send(embed=outcome_embed)
-
-        if idx < len(valid_members) - 1:
-            await asyncio.sleep(3)
-
-
-# Revenge command
-@bot.command(name='revenge')
-@commands.cooldown(1, 10, commands.BucketType.user)
-async def revenge_battle(ctx, dead_character_id: str = None, avenger_character_id: str = None):
-    if is_admin(ctx):
-        ctx.command.reset_cooldown(ctx)
-
-    if dead_character_id is None or avenger_character_id is None:
-        await ctx.send("Usage: `?revenge <dead_member_id> <avenger_member_id>`\nExample: `?revenge 123456 789012`")
-        return
-
-    user_id = str(ctx.author.id)
-    fresh_characters = load_characters()
-
-    if avenger_character_id not in fresh_characters:
-        await ctx.send(f"Avenger member ID `{avenger_character_id}` not found!")
-        return
-
-    avenger_char = fresh_characters[avenger_character_id]
-
-    if avenger_char.get('user_id') != user_id:
-        await ctx.send("You don't own this avenger!")
-        return
-
-    if is_in_jail(avenger_char):
-        remaining = get_jail_time_remaining(avenger_char)
-        if remaining:
-            minutes = int(remaining.total_seconds() // 60)
-            seconds = int(remaining.total_seconds() % 60)
-            await ctx.send(f"{avenger_char['name']} is currently locked up and will be released in {minutes}m {seconds}s")
-            return
-
-    current_graveyard = load_graveyard()
-    dead_member = None
-    for member in current_graveyard:
-        if member.get('character_id') == dead_character_id:
-            dead_member = member
-            break
-
-    if dead_member is None:
-        await ctx.send(f"No dead member with ID `{dead_character_id}` found in the graveyard!")
-        return
-
-    if dead_member.get('user_id') != user_id:
-        await ctx.send("The dead member doesn't belong to you!")
-        return
-
-    killer_name = dead_member.get('killed_by', 'Unknown')
-
-    if "Crew War" in killer_name:
-        await ctx.send(f"{dead_member['name']} was killed in a crew war. Revenge is not available for crew war deaths.")
-        return
-
-    if "(Fatal Wounds)" in killer_name or "- Fatal Wounds" in killer_name:
-        killer_name = killer_name.replace(" (Fatal Wounds)", "").replace(" - Fatal Wounds", "").strip()
-        if "(" in killer_name and ")" in killer_name:
-            killer_name = killer_name.split("(")[0].strip()
-
-    rival_gang = "Unknown Gang"
-    rival_set = "Unknown Set"
-    if "(" in dead_member.get('killed_by', '') and ")" in dead_member.get('killed_by', ''):
-        try:
-            set_info = dead_member['killed_by'].split("(")[1].split(")")[0]
-            rival_set = set_info
-            for gang, info in LA_GANGS.items():
-                if rival_set in info['sets']:
-                    rival_gang = gang
-                    break
-        except:
-            pass
-
-    intro_embed = discord.Embed(
-        title="REVENGE MISSION",
-        description=f"Your member is on a mission to avenge a fallen homie",
-        color=discord.Color.dark_red()
-    )
-    intro_embed.add_field(name="YOUR AVENGER", value=f"{avenger_char['name']}\nBodies: {avenger_char.get('kills', 0)}\nGang: {avenger_char.get('gang_affiliation', 'Unknown')}\nSet: {avenger_char.get('set_name', 'Unknown')}", inline=True)
-    intro_embed.add_field(name="TARGET LOCATED", value=f"{killer_name}\nGang: {rival_gang}\nSet: {rival_set}", inline=True)
-    intro_embed.add_field(name="\u200b", value="\u200b", inline=False)
-    intro_embed.add_field(name="FALLEN HOMIE", value=f"{dead_member['name']}\nBodies: {dead_member.get('kills', 0)}\nDeath Date: {dead_member.get('death_date', 'Unknown')}", inline=False)
-    intro_embed.set_footer(text="Blood calls for blood...")
-    await ctx.send(embed=intro_embed)
-    await asyncio.sleep(3)
-
-    battle_result = simulate_battle()
-    player_won = battle_result['player_won']
-    death_chance = calculate_death_chance(player_won)
-    death_roll = random.randint(1, 100)
-    member_dies = death_roll <= death_chance
-    jail_roll = random.randint(1, 100)
-    goes_to_jail = False
-    jail_minutes = 0
-
-    fresh_characters = load_characters()
-    if avenger_character_id not in fresh_characters:
-        return
-    avenger_char = fresh_characters[avenger_character_id]
-
-    if not member_dies and player_won:
-        avenger_char['kills'] = avenger_char.get('kills', 0) + 1
-        if 'kill_list' not in avenger_char:
-            avenger_char['kill_list'] = []
-        avenger_char['kill_list'].append({
-            'victim_name': killer_name,
-            'victim_gang': rival_gang,
-            'victim_set': rival_set,
-            'date': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
-            'type': 'revenge'
-        })
-        goes_to_jail = jail_roll <= 30
-        if goes_to_jail:
-            jail_minutes = avenger_char['kills']
-
-    if player_won:
-        if member_dies:
-            outcome_embed = discord.Embed(
-                title="REVENGE COMPLETE - ULTIMATE SACRIFICE",
-                description=f"{avenger_char['name']} successfully eliminated {killer_name}, avenging {dead_member['name']}, but was fatally wounded in the process",
-                color=discord.Color.dark_red()
-            )
-            outcome_embed.add_field(name="Final Moments", value=f"{avenger_char['name']} avenged their fallen homie but paid the ultimate price", inline=False)
-            outcome_embed.add_field(name="Final Stats", value=f"Body Count: {avenger_char.get('kills', 0)}\nMoney: ${avenger_char.get('money', 0):,}\nStatus: DECEASED", inline=False)
-            dead_avenger = avenger_char.copy()
-            dead_avenger['death_date'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-            dead_avenger['killed_by'] = f"{killer_name} (Revenge Mission - Fatal Wounds)"
-            graveyard = load_graveyard()
-            graveyard.append(dead_avenger)
-            save_graveyard(graveyard)
-            del fresh_characters[avenger_character_id]
-            save_characters(fresh_characters)
-            characters.update(fresh_characters)
-        else:
-            if goes_to_jail:
-                outcome_embed = discord.Embed(
-                    title="REVENGE COMPLETE - ARRESTED",
-                    description=f"{avenger_char['name']} successfully eliminated {killer_name}, avenging {dead_member['name']}, but was caught by law enforcement",
-                    color=discord.Color.orange()
-                )
-            else:
-                outcome_embed = discord.Embed(
-                    title="REVENGE COMPLETE",
-                    description=f"{avenger_char['name']} successfully eliminated {killer_name}, avenging {dead_member['name']}",
-                    color=discord.Color.green()
-                )
-            outcome_embed.add_field(name="Vengeance Delivered", value=f"{dead_member['name']} has been avenged - {killer_name} is no longer a threat", inline=False)
-            outcome_embed.add_field(name="Updated Stats", value=f"Total Bodies: {avenger_char['kills']}\nMoney: ${avenger_char.get('money', 0):,}", inline=False)
-            if goes_to_jail:
-                jail_until = datetime.now() + timedelta(minutes=jail_minutes)
-                avenger_char['jail_until'] = jail_until.strftime('%Y-%m-%d %H:%M:%S')
-                outcome_embed.add_field(name="ARREST STATUS", value=f"Sentenced to {jail_minutes} minutes in county jail", inline=False)
-            else:
-                outcome_embed.add_field(name="POLICE STATUS", value="Successfully evaded law enforcement after the revenge hit", inline=False)
-
-            fresh_characters[avenger_character_id] = avenger_char
-            save_characters(fresh_characters)
-            characters.update(fresh_characters)
-    else:
-        if member_dies:
-            outcome_embed = discord.Embed(
-                title="REVENGE FAILED - ELIMINATED",
-                description=f"{avenger_char['name']} was eliminated by {killer_name} during the revenge attempt",
-                color=discord.Color.dark_red()
-            )
-            outcome_embed.add_field(name="Failed Mission", value=f"{avenger_char['name']} fell to the same killer who took {dead_member['name']}\n{dead_member['name']} remains unavenged", inline=False)
-            outcome_embed.add_field(name="Final Stats", value=f"Body Count: {avenger_char.get('kills', 0)}\nMoney: ${avenger_char.get('money', 0):,}\nStatus: DECEASED", inline=False)
-            dead_avenger = avenger_char.copy()
-            dead_avenger['death_date'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-            dead_avenger['killed_by'] = f"{killer_name} (Failed Revenge Mission)"
-            graveyard = load_graveyard()
-            graveyard.append(dead_avenger)
-            save_graveyard(graveyard)
-            del fresh_characters[avenger_character_id]
-            save_characters(fresh_characters)
-            characters.update(fresh_characters)
-        else:
-            outcome_embed = discord.Embed(
-                title="REVENGE FAILED - RETREAT",
-                description=f"{avenger_char['name']} was defeated by {killer_name} but managed to escape alive",
-                color=discord.Color.orange()
-            )
-            outcome_embed.add_field(name="Failed Attempt", value=f"The revenge mission was unsuccessful but {avenger_char['name']} survived to try again\n{dead_member['name']} remains unavenged", inline=False)
-            outcome_embed.add_field(name="Current Stats", value=f"Body Count: {avenger_char.get('kills', 0)}\nMoney: ${avenger_char.get('money', 0):,}\nStatus: ALIVE", inline=False)
-            fresh_characters[avenger_character_id] = avenger_char
-            save_characters(fresh_characters)
-            characters.update(fresh_characters)
-
-    outcome_embed.set_footer(text="The cycle of violence continues")
-    await ctx.send(embed=outcome_embed)
-
-
-# Random command - manually trigger a street event
+# Random command - trigger a vampire street event
 @bot.command(name='random')
 @commands.cooldown(1, 30, commands.BucketType.user)
 async def random_event(ctx, character_id: str = None):
-    if is_admin(ctx):
-        ctx.command.reset_cooldown(ctx)
-
     if character_id is None:
         await ctx.send("Usage: `?random <character_id>`\nExample: `?random 123456`")
         return
@@ -2007,219 +433,156 @@ async def random_event(ctx, character_id: str = None):
     fresh_characters = load_characters()
 
     if character_id not in fresh_characters:
-        await ctx.send(f"Gang member ID `{character_id}` not found!")
+        await ctx.send(f"Vampire ID `{character_id}` not found!")
         return
 
-    player_char = fresh_characters[character_id]
+    vampire = fresh_characters[character_id]
     user_id = str(ctx.author.id)
 
-    if player_char.get('user_id') != user_id:
-        await ctx.send("You don't own this gang member!")
+    if vampire.get('user_id') != user_id:
+        await ctx.send("You don't own this vampire!")
         return
 
-    if is_in_jail(player_char):
-        remaining = get_jail_time_remaining(player_char)
-        if remaining:
-            minutes = int(remaining.total_seconds() // 60)
-            seconds = int(remaining.total_seconds() % 60)
-            await ctx.send(f"{player_char['name']} is currently locked up and will be released in {minutes}m {seconds}s")
-            return
-
     graveyard = load_graveyard()
-    char_gang = player_char.get('gang_affiliation', 'Unknown')
 
     event_type = random.choice([
-        "drive_by_on_block",
-        "found_cash_on_street",
-        "police_raid_area",
-        "homie_in_trouble",
-        "drug_deal_gone_wrong",
-        "shot_at_while_walking",
-        "rival_tags_your_hood",
-        "unexpected_confrontation",
-        "retaliation_crew",
-        "witness_calls_police",
-        "rival_solo_retaliation",
-        "bounty_placed",
-        "jumped_walking_home",
-        "rival_spots_new_member",
-        "initiated_by_hood",
-        "found_on_wrong_block",
-        "old_beef_resurfaces",
-        "police_already_watching"
+        "ambushed_by_hunters",
+        "rival_vampire_challenges",
+        "blood_moon_ritual",
+        "coven_attack",
+        "ancient_vampire_encounter",
+        "daylight_trap",
+        "witch_curse",
+        "blood_feast",
+        "vampire_hunter_raid",
+        "forbidden_blood",
+        "territory_dispute",
+        "sire_returns",
+        "dark_gift_offer",
+        "mortal_falls_in_love",
+        "church_confrontation",
+        "bounty_on_blood",
+        "underground_fighting_ring",
+        "cursed_artifact"
     ])
 
     notify_embed = discord.Embed(
-        title="STREET EVENT INCOMING",
-        description=f"Something is about to go down for {player_char['name']} in the streets...",
-        color=discord.Color.dark_gold()
+        title="DARK EVENT INCOMING",
+        description=f"Something stirs in the night for **{vampire['name']}**...",
+        color=discord.Color.dark_purple()
     )
-    notify_embed.set_footer(text="The streets never sleep")
+    notify_embed.set_footer(text="The darkness never sleeps")
     await ctx.send(embed=notify_embed)
     await asyncio.sleep(2)
 
-    rival_name, rival_gang, rival_set = generate_rival()
+    # Generate rival info
+    rival_name = f"{random.choice(FIRST_NAMES)} {random.choice(LAST_NAMES)}"
+    rival_power = generate_ai_power()
 
-    if event_type == "drive_by_on_block":
+    lore_revealed = False
+    if 'lore' in vampire:
+        lore_revealed = vampire['lore'].get('lore_revealed', False)
+
+    if event_type == "ambushed_by_hunters":
+        num_hunters = random.randint(2, 6)
         event_embed = discord.Embed(
-            title="DRIVE BY ON THE BLOCK",
-            description=f"Out of nowhere a car from the {rival_set} just sprayed the block where {player_char['name']} was posted",
+            title="VAMPIRE HUNTER AMBUSH",
+            description=f"**{vampire['name']}** has been ambushed by {num_hunters} vampire hunters armed with stakes and holy water!",
             color=discord.Color.dark_red()
         )
-        event_embed.add_field(name="Shooter", value=f"{rival_name} - {rival_set}", inline=True)
-        event_embed.add_field(name="Situation", value="Shots fired with no warning - had to react fast", inline=True)
-        event_embed.set_footer(text="The block is never safe...")
+        event_embed.add_field(name="Threat", value=f"{num_hunters} hunters closing in from all sides", inline=False)
+        event_embed.set_footer(text="Fight or flee...")
         await ctx.send(embed=event_embed)
         await asyncio.sleep(3)
 
-        hit_roll = random.randint(1, 100)
-        gets_hit = hit_roll <= 30
+        survival_roll = random.randint(1, 100)
+        survives = survival_roll <= 60
+        death_roll = random.randint(1, 100)
+        dies = death_roll <= 40 if not survives else death_roll <= 8
 
         fresh_characters = load_characters()
         if character_id not in fresh_characters:
             return
-        player_char = fresh_characters[character_id]
+        vampire = fresh_characters[character_id]
 
-        if gets_hit:
-            death_roll = random.randint(1, 100)
-            if death_roll <= 50:
-                death_embed = discord.Embed(
-                    title="HIT BY THE DRIVE BY",
-                    description=f"{player_char['name']} was struck by bullets in the drive by and didn't survive",
-                    color=discord.Color.dark_red()
-                )
-                death_embed.add_field(name="Final Stats", value=f"Body Count: {player_char.get('kills', 0)}\nMoney: ${player_char.get('money', 0):,}\nStatus: DECEASED", inline=False)
-                dead_member = player_char.copy()
-                dead_member['death_date'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-                dead_member['killed_by'] = f"{rival_set} Drive By"
-                graveyard.append(dead_member)
-                save_graveyard(graveyard)
-                del fresh_characters[character_id]
-                save_characters(fresh_characters)
-                characters.update(fresh_characters)
-                await ctx.send(embed=death_embed)
-            else:
-                wound_embed = discord.Embed(
-                    title="WOUNDED BUT ALIVE",
-                    description=f"{player_char['name']} got hit in the drive by but the wounds are not fatal",
-                    color=discord.Color.orange()
-                )
-                wound_embed.add_field(name="Status", value="Took a bullet but survived - heading to get patched up", inline=False)
-                await ctx.send(embed=wound_embed)
-        else:
-            safe_embed = discord.Embed(
-                title="DOVE FOR COVER",
-                description=f"{player_char['name']} hit the ground when the shots rang out and avoided getting hit",
-                color=discord.Color.green()
+        if dies:
+            death_embed = discord.Embed(
+                title="STAKED BY HUNTERS",
+                description=f"**{vampire['name']}** was overwhelmed by the hunters and staked through the heart",
+                color=discord.Color.dark_red()
             )
-            safe_embed.add_field(name="Outcome", value="Bullets missed - made it out clean", inline=False)
-            await ctx.send(embed=safe_embed)
-
-    elif event_type == "found_cash_on_street":
-        cash_found = random.randint(50, 500)
-        fresh_characters = load_characters()
-        if character_id not in fresh_characters:
-            return
-        player_char = fresh_characters[character_id]
-        player_char['money'] = player_char.get('money', 0) + cash_found
-        fresh_characters[character_id] = player_char
-        save_characters(fresh_characters)
-        characters.update(fresh_characters)
-        event_embed = discord.Embed(
-            title="FOUND SOMETHING ON THE STREET",
-            description=f"{player_char['name']} was walking through the hood and found a dropped envelope",
-            color=discord.Color.green()
-        )
-        event_embed.add_field(name="Contents", value=f"${cash_found:,} cash inside - no name, no questions", inline=True)
-        event_embed.add_field(name="New Balance", value=f"${player_char['money']:,}", inline=True)
-        event_embed.set_footer(text="Streets provide sometimes")
-        await ctx.send(embed=event_embed)
-
-    elif event_type == "police_raid_area":
-        event_embed = discord.Embed(
-            title="POLICE SWEEPING THE AREA",
-            description=f"LAPD gang unit is doing a sweep through {player_char.get('set_name', 'the hood')} territory right now",
-            color=discord.Color.blue()
-        )
-        event_embed.add_field(name="Police Activity", value="Multiple units rolling through, stopping and questioning everyone on the block", inline=False)
-        event_embed.set_footer(text="Lay low or get caught up...")
-        await ctx.send(embed=event_embed)
-        await asyncio.sleep(3)
-
-        caught_roll = random.randint(1, 100)
-        fresh_characters = load_characters()
-        if character_id not in fresh_characters:
-            return
-        player_char = fresh_characters[character_id]
-
-        if caught_roll <= 20:
-            jail_time = random.randint(5, 20)
-            jail_embed = discord.Embed(
-                title="SWEPT UP IN THE RAID",
-                description=f"{player_char['name']} got caught in the police sweep and taken in",
-                color=discord.Color.orange()
-            )
-            jail_embed.add_field(name="Detention", value=f"Held for {jail_time} minutes before being released", inline=False)
-            jail_until = datetime.now() + timedelta(minutes=jail_time)
-            fresh_characters[character_id]['jail_until'] = jail_until.strftime('%Y-%m-%d %H:%M:%S')
+            death_embed.add_field(name="Final Stats", value=f"Power: {vampire['power_level']}\nRecord: {vampire.get('wins', 0)}-{vampire.get('losses', 0)}\nStatus: DESTROYED", inline=False)
+            dead_vampire = vampire.copy()
+            dead_vampire['death_date'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+            dead_vampire['killed_by'] = "Vampire Hunter Ambush"
+            graveyard.append(dead_vampire)
+            save_graveyard(graveyard)
+            del fresh_characters[character_id]
             save_characters(fresh_characters)
             characters.update(fresh_characters)
-            await ctx.send(embed=jail_embed)
-        else:
-            clear_embed = discord.Embed(
-                title="STAYED LOW DURING THE SWEEP",
-                description=f"{player_char['name']} saw the police coming and got off the block in time",
+            await ctx.send(embed=death_embed)
+        elif survives:
+            survive_embed = discord.Embed(
+                title="HUNTERS DEFEATED",
+                description=f"**{vampire['name']}** tore through the hunters and left them broken in the darkness",
                 color=discord.Color.green()
             )
-            clear_embed.add_field(name="Outcome", value="Avoided the sweep - back to normal", inline=False)
-            await ctx.send(embed=clear_embed)
+            survive_embed.add_field(name="Outcome", value=f"Fought off {num_hunters} hunters and survived", inline=False)
+            await ctx.send(embed=survive_embed)
+        else:
+            escape_embed = discord.Embed(
+                title="BARELY ESCAPED",
+                description=f"**{vampire['name']}** fled into the shadows as the hunters closed in",
+                color=discord.Color.orange()
+            )
+            escape_embed.add_field(name="Outcome", value="Escaped with wounds - the hunters know your face now", inline=False)
+            await ctx.send(embed=escape_embed)
 
-    elif event_type == "homie_in_trouble":
-        homie_name = f"{random.choice(FIRST_NAMES)} {random.choice(LAST_NAMES)}"
+    elif event_type == "rival_vampire_challenges":
         event_embed = discord.Embed(
-            title="HOMIE NEEDS BACKUP",
-            description=f"{homie_name} from the {player_char.get('set_name', 'set')} just called - he is pinned down by {rival_set} and needs help right now",
-            color=discord.Color.orange()
+            title="RIVAL VAMPIRE CHALLENGE",
+            description=f"**{rival_name}** (Power: {rival_power}) has stepped into **{vampire['name']}'s** territory and issued a direct challenge",
+            color=discord.Color.red()
         )
-        event_embed.add_field(name="The Call", value=f"{homie_name} is outnumbered and calling for backup in enemy territory", inline=False)
-        event_embed.set_footer(text="You ride for your homies...")
+        event_embed.add_field(name="Challenger", value=f"{rival_name}\nPower: {rival_power}", inline=True)
+        event_embed.add_field(name="Your Vampire", value=f"{vampire['name']}\nPower: {vampire['power_level']}", inline=True)
+        event_embed.set_footer(text="Only one walks away...")
         await ctx.send(embed=event_embed)
         await asyncio.sleep(3)
 
-        battle = simulate_battle()
+        battle = simulate_battle(vampire['name'], vampire['power_level'], rival_name, rival_power, lore_revealed)
         won = battle['player_won']
         death_roll = random.randint(1, 100)
-        dies = death_roll <= calculate_death_chance(won)
+        dies = death_roll <= calculate_death_chance(vampire['power_level'], rival_power, won)
 
         fresh_characters = load_characters()
         if character_id not in fresh_characters:
             return
-        player_char = fresh_characters[character_id]
+        vampire = fresh_characters[character_id]
 
         if won and not dies:
             win_embed = discord.Embed(
-                title="HOMIE SAVED",
-                description=f"{player_char['name']} ran to the aid of {homie_name} and helped fight off the {rival_set}",
+                title="CHALLENGER DESTROYED",
+                description=f"**{vampire['name']}** defeated **{rival_name}** and defended their territory",
                 color=discord.Color.green()
             )
-            bonus_money = random.randint(100, 300)
-            player_char['money'] = player_char.get('money', 0) + bonus_money
-            win_embed.add_field(name="Loyalty Reward", value=f"{homie_name} hit {player_char['name']} with ${bonus_money:,} for pulling up", inline=False)
-            fresh_characters[character_id] = player_char
+            vampire['wins'] = vampire.get('wins', 0) + 1
+            fresh_characters[character_id] = vampire
             save_characters(fresh_characters)
             characters.update(fresh_characters)
+            win_embed.add_field(name="New Record", value=f"{vampire['wins']}-{vampire.get('losses', 0)}", inline=True)
             await ctx.send(embed=win_embed)
         elif dies:
             death_embed = discord.Embed(
-                title="DIED RIDING FOR THE HOMIES",
-                description=f"{player_char['name']} gave their life pulling up for {homie_name}",
+                title="DESTROYED BY THE CHALLENGER",
+                description=f"**{rival_name}** overpowered **{vampire['name']}** and turned them to ash",
                 color=discord.Color.dark_red()
             )
-            death_embed.add_field(name="Final Stats", value=f"Body Count: {player_char.get('kills', 0)}\nMoney: ${player_char.get('money', 0):,}\nStatus: DECEASED", inline=False)
-            dead_member = player_char.copy()
-            dead_member['death_date'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-            dead_member['killed_by'] = f"{rival_set} (Died Riding for Homies)"
-            graveyard.append(dead_member)
+            death_embed.add_field(name="Final Stats", value=f"Power: {vampire['power_level']}\nRecord: {vampire.get('wins', 0)}-{vampire.get('losses', 0)}\nStatus: DESTROYED", inline=False)
+            dead_vampire = vampire.copy()
+            dead_vampire['death_date'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+            dead_vampire['killed_by'] = f"{rival_name} (Territory Challenge)"
+            graveyard.append(dead_vampire)
             save_graveyard(graveyard)
             del fresh_characters[character_id]
             save_characters(fresh_characters)
@@ -2227,21 +590,25 @@ async def random_event(ctx, character_id: str = None):
             await ctx.send(embed=death_embed)
         else:
             loss_embed = discord.Embed(
-                title="BACKUP CAME BUT LOST THE FIGHT",
-                description=f"{player_char['name']} pulled up for {homie_name} but they both had to retreat",
+                title="DEFEATED BUT ALIVE",
+                description=f"**{rival_name}** bested **{vampire['name']}** but let them live as a warning",
                 color=discord.Color.orange()
             )
-            loss_embed.add_field(name="Outcome", value=f"Both made it out alive but the {rival_set} held the block tonight", inline=False)
+            vampire['losses'] = vampire.get('losses', 0) + 1
+            fresh_characters[character_id] = vampire
+            save_characters(fresh_characters)
+            characters.update(fresh_characters)
+            loss_embed.add_field(name="Outcome", value="Lost the challenge but survived - territory now contested", inline=False)
             await ctx.send(embed=loss_embed)
 
-    elif event_type == "drug_deal_gone_wrong":
+    elif event_type == "blood_moon_ritual":
         event_embed = discord.Embed(
-            title="DEAL WENT SIDEWAYS",
-            description=f"{player_char['name']} was present when a deal in the hood went completely wrong",
-            color=discord.Color.red()
+            title="BLOOD MOON RITUAL",
+            description=f"A blood moon rises and **{vampire['name']}** feels ancient power surge through their veins",
+            color=discord.Color.dark_red()
         )
-        event_embed.add_field(name="The Situation", value="Someone tried to rob the deal - shots fired, everyone scattering", inline=False)
-        event_embed.set_footer(text="Wrong place wrong time...")
+        event_embed.add_field(name="Cosmic Event", value="The blood moon amplifies all vampire abilities for a brief window", inline=False)
+        event_embed.set_footer(text="Power flows through the darkness...")
         await ctx.send(embed=event_embed)
         await asyncio.sleep(3)
 
@@ -2249,260 +616,54 @@ async def random_event(ctx, character_id: str = None):
         fresh_characters = load_characters()
         if character_id not in fresh_characters:
             return
-        player_char = fresh_characters[character_id]
+        vampire = fresh_characters[character_id]
 
-        if outcome_roll <= 40:
-            money_lost = random.randint(100, max(100, player_char.get('money', 100)))
-            money_lost = min(money_lost, player_char.get('money', 0))
-            player_char['money'] = max(0, player_char.get('money', 0) - money_lost)
+        if outcome_roll <= 60:
+            power_gain = random.randint(50, 200)
+            vampire['power_level'] = min(2000, vampire['power_level'] + power_gain)
+            fresh_characters[character_id] = vampire
+            save_characters(fresh_characters)
+            characters.update(fresh_characters)
+            gain_embed = discord.Embed(
+                title="POWER SURGE",
+                description=f"**{vampire['name']}** absorbed the blood moon's energy and grew stronger",
+                color=discord.Color.gold()
+            )
+            gain_embed.add_field(name="Power Gained", value=f"+{power_gain}", inline=True)
+            gain_embed.add_field(name="New Power Level", value=f"{vampire['power_level']}", inline=True)
+            await ctx.send(embed=gain_embed)
+        elif outcome_roll <= 85:
+            neutral_embed = discord.Embed(
+                title="BLOOD MOON FADES",
+                description=f"**{vampire['name']}** felt the surge but could not fully absorb the ancient energy",
+                color=discord.Color.orange()
+            )
+            neutral_embed.add_field(name="Outcome", value="The blood moon passed without lasting effect", inline=False)
+            await ctx.send(embed=neutral_embed)
+        else:
+            power_loss = random.randint(20, 100)
+            vampire['power_level'] = max(10, vampire['power_level'] - power_loss)
+            fresh_characters[character_id] = vampire
+            save_characters(fresh_characters)
+            characters.update(fresh_characters)
             loss_embed = discord.Embed(
-                title="ROBBED IN THE CHAOS",
-                description=f"{player_char['name']} got robbed during the confusion",
+                title="BLOOD MOON OVERWHELM",
+                description=f"The blood moon's energy was too intense - **{vampire['name']}** was weakened by the overload",
                 color=discord.Color.red()
             )
-            loss_embed.add_field(name="Money Lost", value=f"${money_lost:,} taken", inline=True)
-            loss_embed.add_field(name="New Balance", value=f"${player_char['money']:,}", inline=True)
-            fresh_characters[character_id] = player_char
-            save_characters(fresh_characters)
-            characters.update(fresh_characters)
-            await ctx.send(embed=loss_embed)
-        elif outcome_roll <= 70:
-            safe_embed = discord.Embed(
-                title="GOT OUT OF THE CHAOS",
-                description=f"{player_char['name']} dipped when the deal went wrong and avoided the fallout",
-                color=discord.Color.green()
-            )
-            safe_embed.add_field(name="Outcome", value="Made it out clean - nothing lost", inline=False)
-            await ctx.send(embed=safe_embed)
-        else:
-            profit = random.randint(200, 800)
-            player_char['money'] = player_char.get('money', 0) + profit
-            profit_embed = discord.Embed(
-                title="CAME UP IN THE CHAOS",
-                description=f"{player_char['name']} moved smart during the confusion and walked away with something",
-                color=discord.Color.green()
-            )
-            profit_embed.add_field(name="Street Profit", value=f"${profit:,} picked up in the chaos", inline=True)
-            profit_embed.add_field(name="New Balance", value=f"${player_char['money']:,}", inline=True)
-            fresh_characters[character_id] = player_char
-            save_characters(fresh_characters)
-            characters.update(fresh_characters)
-            await ctx.send(embed=profit_embed)
-
-    elif event_type == "shot_at_while_walking":
-        event_embed = discord.Embed(
-            title="SHOTS FIRED WALKING HOME",
-            description=f"{player_char['name']} was just walking through the hood when a car slowed down and opened fire",
-            color=discord.Color.dark_red()
-        )
-        event_embed.add_field(name="Attack", value=f"Believed to be from the {rival_set} - targeted shooting", inline=False)
-        event_embed.set_footer(text="Can never fully relax out here...")
-        await ctx.send(embed=event_embed)
-        await asyncio.sleep(3)
-
-        hit_roll = random.randint(1, 100)
-        fresh_characters = load_characters()
-        if character_id not in fresh_characters:
-            return
-        player_char = fresh_characters[character_id]
-
-        if hit_roll <= 25:
-            death_roll = random.randint(1, 100)
-            if death_roll <= 45:
-                death_embed = discord.Embed(
-                    title="SHOT AND KILLED",
-                    description=f"{player_char['name']} was hit and killed walking home",
-                    color=discord.Color.dark_red()
-                )
-                death_embed.add_field(name="Final Stats", value=f"Body Count: {player_char.get('kills', 0)}\nMoney: ${player_char.get('money', 0):,}\nStatus: DECEASED", inline=False)
-                dead_member = player_char.copy()
-                dead_member['death_date'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-                dead_member['killed_by'] = f"{rival_set} Shooting"
-                graveyard.append(dead_member)
-                save_graveyard(graveyard)
-                del fresh_characters[character_id]
-                save_characters(fresh_characters)
-                characters.update(fresh_characters)
-                await ctx.send(embed=death_embed)
-            else:
-                wound_embed = discord.Embed(
-                    title="SHOT BUT SURVIVED",
-                    description=f"{player_char['name']} was hit but the wound is not fatal - got to the hospital in time",
-                    color=discord.Color.orange()
-                )
-                wound_embed.add_field(name="Status", value="Wounded and recovering but alive", inline=False)
-                await ctx.send(embed=wound_embed)
-        else:
-            miss_embed = discord.Embed(
-                title="SHOTS MISSED",
-                description=f"{player_char['name']} ducked behind a car and the shots missed - got away clean",
-                color=discord.Color.green()
-            )
-            miss_embed.add_field(name="Outcome", value="Fast reflexes saved the day", inline=False)
-            await ctx.send(embed=miss_embed)
-
-    elif event_type == "rival_tags_your_hood":
-        event_embed = discord.Embed(
-            title="RIVALS TAGGED YOUR HOOD",
-            description=f"{player_char['name']} woke up to find the {rival_set} had tagged over the {player_char.get('set_name', 'set')} graffiti all through the neighborhood",
-            color=discord.Color.red()
-        )
-        event_embed.add_field(name="Disrespect", value=f"The {rival_set} crossed out the set's tags and put their own up - a direct challenge", inline=False)
-        event_embed.add_field(name="Suspects", value=f"{rival_name} and crew from {rival_gang}", inline=True)
-        event_embed.set_footer(text="Disrespect cannot go unanswered...")
-        await ctx.send(embed=event_embed)
-        await asyncio.sleep(3)
-
-        response_roll = random.randint(1, 100)
-        if response_roll <= 60:
-            battle = simulate_battle()
-            won = battle['player_won']
-            death_roll = random.randint(1, 100)
-            dies = death_roll <= calculate_death_chance(won)
-
-            fresh_characters = load_characters()
-            if character_id not in fresh_characters:
-                return
-            player_char = fresh_characters[character_id]
-
-            if won and not dies:
-                win_embed = discord.Embed(
-                    title="CHECKED THEM FOR THE DISRESPECT",
-                    description=f"{player_char['name']} went and found the {rival_set} crew responsible and made them pay",
-                    color=discord.Color.green()
-                )
-                player_char['kills'] = player_char.get('kills', 0) + 1
-                if 'kill_list' not in player_char:
-                    player_char['kill_list'] = []
-                player_char['kill_list'].append({
-                    'victim_name': rival_name,
-                    'victim_gang': rival_gang,
-                    'victim_set': rival_set,
-                    'date': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
-                    'type': 'hood_defense'
-                })
-                win_embed.add_field(name="Bodies", value=f"{player_char['kills']}", inline=True)
-                fresh_characters[character_id] = player_char
-                save_characters(fresh_characters)
-                characters.update(fresh_characters)
-                await ctx.send(embed=win_embed)
-            elif dies:
-                death_embed = discord.Embed(
-                    title="DIED DEFENDING THE HOOD",
-                    description=f"{player_char['name']} went to check the {rival_set} but walked into a setup",
-                    color=discord.Color.dark_red()
-                )
-                death_embed.add_field(name="Final Stats", value=f"Body Count: {player_char.get('kills', 0)}\nMoney: ${player_char.get('money', 0):,}\nStatus: DECEASED", inline=False)
-                dead_member = player_char.copy()
-                dead_member['death_date'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-                dead_member['killed_by'] = f"{rival_name} ({rival_set}) Hood Defense"
-                graveyard.append(dead_member)
-                save_graveyard(graveyard)
-                del fresh_characters[character_id]
-                save_characters(fresh_characters)
-                characters.update(fresh_characters)
-                await ctx.send(embed=death_embed)
-            else:
-                loss_embed = discord.Embed(
-                    title="COULDN'T CHECK THEM TODAY",
-                    description=f"{player_char['name']} went to handle the disrespect but had to fall back",
-                    color=discord.Color.orange()
-                )
-                loss_embed.add_field(name="Outcome", value="Survived but the disrespect is still out there", inline=False)
-                fresh_characters[character_id] = player_char
-                save_characters(fresh_characters)
-                characters.update(fresh_characters)
-                await ctx.send(embed=loss_embed)
-        else:
-            lay_low_embed = discord.Embed(
-                title="LAID LOW",
-                description=f"{player_char['name']} decided to let it slide and not walk into a potential setup",
-                color=discord.Color.orange()
-            )
-            lay_low_embed.add_field(name="Decision", value="Chose not to react - playing it smart", inline=False)
-            await ctx.send(embed=lay_low_embed)
-
-    elif event_type == "unexpected_confrontation":
-        event_embed = discord.Embed(
-            title="UNEXPECTED RUN IN",
-            description=f"{player_char['name']} was out handling regular business when they crossed paths with {rival_name} from the {rival_set}",
-            color=discord.Color.orange()
-        )
-        event_embed.add_field(name="Chance Encounter", value="Nobody planned this - it just happened. Now what?", inline=False)
-        event_embed.set_footer(text="The streets always got something waiting...")
-        await ctx.send(embed=event_embed)
-        await asyncio.sleep(3)
-
-        battle = simulate_battle()
-        won = battle['player_won']
-        death_roll = random.randint(1, 100)
-        dies = death_roll <= calculate_death_chance(won)
-
-        fresh_characters = load_characters()
-        if character_id not in fresh_characters:
-            return
-        player_char = fresh_characters[character_id]
-
-        if won and not dies:
-            win_embed = discord.Embed(
-                title="HANDLED THE RUN IN",
-                description=f"{player_char['name']} came out on top in the confrontation with {rival_name}",
-                color=discord.Color.green()
-            )
-            player_char['kills'] = player_char.get('kills', 0) + 1
-            if 'kill_list' not in player_char:
-                player_char['kill_list'] = []
-            player_char['kill_list'].append({
-                'victim_name': rival_name,
-                'victim_gang': rival_gang,
-                'victim_set': rival_set,
-                'date': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
-                'type': 'unexpected_confrontation'
-            })
-            win_embed.add_field(name="Bodies", value=f"{player_char['kills']}", inline=True)
-            fresh_characters[character_id] = player_char
-            save_characters(fresh_characters)
-            characters.update(fresh_characters)
-            await ctx.send(embed=win_embed)
-        elif dies:
-            death_embed = discord.Embed(
-                title="RUN IN TURNED FATAL",
-                description=f"The chance encounter with {rival_name} ended with {player_char['name']} not making it home",
-                color=discord.Color.dark_red()
-            )
-            death_embed.add_field(name="Final Stats", value=f"Body Count: {player_char.get('kills', 0)}\nMoney: ${player_char.get('money', 0):,}\nStatus: DECEASED", inline=False)
-            dead_member = player_char.copy()
-            dead_member['death_date'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-            dead_member['killed_by'] = f"{rival_name} ({rival_set}) Unexpected Confrontation"
-            graveyard.append(dead_member)
-            save_graveyard(graveyard)
-            del fresh_characters[character_id]
-            save_characters(fresh_characters)
-            characters.update(fresh_characters)
-            await ctx.send(embed=death_embed)
-        else:
-            loss_embed = discord.Embed(
-                title="LOST THE RUN IN BUT SURVIVED",
-                description=f"{player_char['name']} came out on the losing end with {rival_name} but made it out alive",
-                color=discord.Color.orange()
-            )
-            loss_embed.add_field(name="Outcome", value="Lost this one but lived to fight again", inline=False)
-            fresh_characters[character_id] = player_char
-            save_characters(fresh_characters)
-            characters.update(fresh_characters)
+            loss_embed.add_field(name="Power Lost", value=f"-{power_loss}", inline=True)
+            loss_embed.add_field(name="New Power Level", value=f"{vampire['power_level']}", inline=True)
             await ctx.send(embed=loss_embed)
 
-    elif event_type == "retaliation_crew":
-        num_attackers = random.randint(3, 6)
-        attacker_names = [f"{random.choice(FIRST_NAMES)} {random.choice(LAST_NAMES)}" for _ in range(num_attackers)]
+    elif event_type == "coven_attack":
+        coven_size = random.randint(3, 8)
         event_embed = discord.Embed(
-            title="RETALIATION CREW PULLING UP",
-            description=f"A crew from the {rival_set} just pulled up looking for smoke with {player_char['name']}",
+            title="COVEN ATTACK",
+            description=f"A rival coven of {coven_size} vampires has descended on **{vampire['name']}** in the night",
             color=discord.Color.dark_red()
         )
-        event_embed.add_field(name="CREW PULLING UP", value="\n".join(attacker_names), inline=False)
-        event_embed.add_field(name="Rival Gang", value=f"{rival_gang} - {rival_set}", inline=True)
-        event_embed.set_footer(text="They came for payback...")
+        event_embed.add_field(name="Attackers", value=f"{coven_size} coven vampires moving as one", inline=False)
+        event_embed.set_footer(text="Outnumbered in the dark...")
         await ctx.send(embed=event_embed)
         await asyncio.sleep(3)
 
@@ -2514,191 +675,19 @@ async def random_event(ctx, character_id: str = None):
         fresh_characters = load_characters()
         if character_id not in fresh_characters:
             return
-        player_char = fresh_characters[character_id]
+        vampire = fresh_characters[character_id]
 
         if dies:
             death_embed = discord.Embed(
-                title="OUTNUMBERED AND OUTGUNNED",
-                description=f"{player_char['name']} was caught slipping by the crew and didn't make it out",
+                title="DESTROYED BY THE COVEN",
+                description=f"**{vampire['name']}** was overwhelmed by the coven and destroyed",
                 color=discord.Color.dark_red()
             )
-            death_embed.add_field(name="Final Stats", value=f"Body Count: {player_char.get('kills', 0)}\nMoney: ${player_char.get('money', 0):,}\nStatus: DECEASED", inline=False)
-            dead_member = player_char.copy()
-            dead_member['death_date'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-            dead_member['killed_by'] = f"{rival_set} Retaliation Crew"
-            graveyard.append(dead_member)
-            save_graveyard(graveyard)
-            del fresh_characters[character_id]
-            save_characters(fresh_characters)
-            characters.update(fresh_characters)
-            await ctx.send(embed=death_embed)
-        else:
-            survive_embed = discord.Embed(
-                title="HELD IT DOWN",
-                description=f"{player_char['name']} stood their ground against the retaliation crew and made it out",
-                color=discord.Color.orange()
-            )
-            survive_embed.add_field(name="Outcome", value=f"Fought off {num_attackers} rivals and lived to tell the story", inline=False)
-            survive_embed.set_footer(text="The streets respect the ones who hold it down")
-            await ctx.send(embed=survive_embed)
-
-    elif event_type == "witness_calls_police":
-        event_embed = discord.Embed(
-            title="WITNESS SNITCHED",
-            description=f"Someone in the streets snitched on {player_char['name']} and called the police. Units are closing in.",
-            color=discord.Color.blue()
-        )
-        event_embed.add_field(name="Police Response", value="Multiple units dispatched to the area based on witness description", inline=False)
-        event_embed.set_footer(text="Can they escape in time...")
-        await ctx.send(embed=event_embed)
-        await asyncio.sleep(3)
-
-        escape_roll = random.randint(1, 100)
-        escapes = escape_roll <= 55
-
-        if escapes:
-            escape_embed = discord.Embed(
-                title="CLEAN ESCAPE",
-                description=f"{player_char['name']} heard the sirens and dipped before police could lock the area down",
-                color=discord.Color.green()
-            )
-            escape_embed.add_field(name="Status", value="Made it back to the hood, police have no description", inline=False)
-            await ctx.send(embed=escape_embed)
-        else:
-            jail_time = random.randint(15, 35)
-            jail_embed = discord.Embed(
-                title="CAUGHT BY POLICE",
-                description=f"{player_char['name']} was picked up by police based on the witness description",
-                color=discord.Color.orange()
-            )
-            jail_embed.add_field(name="Arrest Status", value=f"Booked and sentenced to {jail_time} minutes in county jail", inline=False)
-            jail_until = datetime.now() + timedelta(minutes=jail_time)
-            fresh_characters = load_characters()
-            if character_id in fresh_characters:
-                fresh_characters[character_id]['jail_until'] = jail_until.strftime('%Y-%m-%d %H:%M:%S')
-                save_characters(fresh_characters)
-                characters.update(fresh_characters)
-            await ctx.send(embed=jail_embed)
-
-    elif event_type == "rival_solo_retaliation":
-        solo_name = f"{random.choice(FIRST_NAMES)} {random.choice(LAST_NAMES)}"
-        event_embed = discord.Embed(
-            title="SOLO RETALIATION",
-            description=f"{solo_name} from the {rival_set} just rolled up on {player_char['name']} alone to handle business",
-            color=discord.Color.red()
-        )
-        event_embed.add_field(name="One on One", value=f"{solo_name} is out here solo, no backup - just him and his anger", inline=False)
-        event_embed.set_footer(text="Settling it the old way...")
-        await ctx.send(embed=event_embed)
-        await asyncio.sleep(3)
-
-        battle = simulate_battle()
-        won = battle['player_won']
-        death_roll = random.randint(1, 100)
-        dies = death_roll <= calculate_death_chance(won)
-
-        fresh_characters = load_characters()
-        if character_id not in fresh_characters:
-            return
-        player_char = fresh_characters[character_id]
-
-        if won and not dies:
-            win_embed = discord.Embed(
-                title="HANDLED THE RETALIATION",
-                description=f"{player_char['name']} bodied {solo_name} when he came for payback",
-                color=discord.Color.green()
-            )
-            player_char['kills'] = player_char.get('kills', 0) + 1
-            if 'kill_list' not in player_char:
-                player_char['kill_list'] = []
-            player_char['kill_list'].append({
-                'victim_name': solo_name,
-                'victim_gang': rival_gang,
-                'victim_set': rival_set,
-                'date': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
-                'type': 'retaliation_defense'
-            })
-            win_embed.add_field(name="Updated Bodies", value=f"Total Bodies: {player_char['kills']}", inline=False)
-            fresh_characters[character_id] = player_char
-            save_characters(fresh_characters)
-            characters.update(fresh_characters)
-            await ctx.send(embed=win_embed)
-        elif dies:
-            death_embed = discord.Embed(
-                title="GOT CAUGHT LACKING",
-                description=f"{solo_name} caught {player_char['name']} slipping and put him down",
-                color=discord.Color.dark_red()
-            )
-            death_embed.add_field(name="Final Stats", value=f"Body Count: {player_char.get('kills', 0)}\nMoney: ${player_char.get('money', 0):,}\nStatus: DECEASED", inline=False)
-            dead_member = player_char.copy()
-            dead_member['death_date'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-            dead_member['killed_by'] = f"{solo_name} ({rival_set}) Solo Retaliation"
-            graveyard.append(dead_member)
-            save_graveyard(graveyard)
-            del fresh_characters[character_id]
-            save_characters(fresh_characters)
-            characters.update(fresh_characters)
-            await ctx.send(embed=death_embed)
-        else:
-            loss_embed = discord.Embed(
-                title="GOT BEAT BUT SURVIVED",
-                description=f"{solo_name} got the better of {player_char['name']} but let him live",
-                color=discord.Color.orange()
-            )
-            loss_embed.add_field(name="Outcome", value="Lost the fight but made it out breathing", inline=False)
-            await ctx.send(embed=loss_embed)
-
-    elif event_type == "bounty_placed":
-        bounty_amount = random.randint(500, 3000)
-        event_embed = discord.Embed(
-            title="BOUNTY ON YOUR HEAD",
-            description=f"The {rival_set} put a ${bounty_amount:,} bounty on {player_char['name']}",
-            color=discord.Color.gold()
-        )
-        event_embed.add_field(name="Bounty Amount", value=f"${bounty_amount:,}", inline=True)
-        event_embed.add_field(name="Placed By", value=f"{rival_set}", inline=True)
-        event_embed.add_field(name="Warning", value=f"Everyone in the streets knows there is paper on {player_char['name']} - watch your back", inline=False)
-        event_embed.set_footer(text="The price of putting in work")
-        fresh_characters = load_characters()
-        if character_id in fresh_characters:
-            fresh_characters[character_id]['bounty'] = fresh_characters[character_id].get('bounty', 0) + bounty_amount
-            save_characters(fresh_characters)
-            characters.update(fresh_characters)
-        await ctx.send(embed=event_embed)
-
-    elif event_type == "jumped_walking_home":
-        num_jumpers = random.randint(2, 5)
-        event_embed = discord.Embed(
-            title="JUMPED WALKING HOME",
-            description=f"{player_char['name']} got rushed by {num_jumpers} opps on the way home",
-            color=discord.Color.red()
-        )
-        event_embed.add_field(name="Ambush", value=f"They were waiting - {num_jumpers} on one", inline=False)
-        event_embed.set_footer(text="Nowhere to run...")
-        await ctx.send(embed=event_embed)
-        await asyncio.sleep(3)
-
-        survival_roll = random.randint(1, 100)
-        survives = survival_roll <= 50
-        death_roll = random.randint(1, 100)
-        dies = death_roll <= 35 if not survives else death_roll <= 8
-
-        fresh_characters = load_characters()
-        if character_id not in fresh_characters:
-            return
-        player_char = fresh_characters[character_id]
-
-        if dies:
-            death_embed = discord.Embed(
-                title="JUMPED AND KILLED",
-                description=f"{player_char['name']} was jumped and beaten to death by the crew",
-                color=discord.Color.dark_red()
-            )
-            death_embed.add_field(name="Final Stats", value=f"Body Count: {player_char.get('kills', 0)}\nMoney: ${player_char.get('money', 0):,}\nStatus: DECEASED", inline=False)
-            dead_member = player_char.copy()
-            dead_member['death_date'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-            dead_member['killed_by'] = f"{rival_set} Jump"
-            graveyard.append(dead_member)
+            death_embed.add_field(name="Final Stats", value=f"Power: {vampire['power_level']}\nRecord: {vampire.get('wins', 0)}-{vampire.get('losses', 0)}\nStatus: DESTROYED", inline=False)
+            dead_vampire = vampire.copy()
+            dead_vampire['death_date'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+            dead_vampire['killed_by'] = "Rival Coven Attack"
+            graveyard.append(dead_vampire)
             save_graveyard(graveyard)
             del fresh_characters[character_id]
             save_characters(fresh_characters)
@@ -2706,75 +695,391 @@ async def random_event(ctx, character_id: str = None):
             await ctx.send(embed=death_embed)
         elif survives:
             survive_embed = discord.Embed(
-                title="FOUGHT THROUGH THE JUMP",
-                description=f"{player_char['name']} got jumped but scrapped their way out and made it home",
-                color=discord.Color.orange()
+                title="COVEN REPELLED",
+                description=f"**{vampire['name']}** fought off all {coven_size} coven members single-handedly",
+                color=discord.Color.green()
             )
-            survive_embed.add_field(name="Outcome", value="Banged up but alive - made it back to the block", inline=False)
+            survive_embed.add_field(name="Outcome", value=f"Stood alone against {coven_size} and survived - legend grows", inline=False)
             await ctx.send(embed=survive_embed)
         else:
-            survive_embed = discord.Embed(
-                title="BARELY ESCAPED THE JUMP",
-                description=f"{player_char['name']} broke away from the jump and ran before it got worse",
+            flee_embed = discord.Embed(
+                title="FLED THE COVEN",
+                description=f"**{vampire['name']}** escaped into the night before the coven could finish the job",
                 color=discord.Color.orange()
             )
-            survive_embed.add_field(name="Outcome", value="Took some hits but got away before things went fatal", inline=False)
-            await ctx.send(embed=survive_embed)
+            flee_embed.add_field(name="Outcome", value="Made it out alive but the coven will return", inline=False)
+            await ctx.send(embed=flee_embed)
 
-    elif event_type == "rival_spots_new_member":
+    elif event_type == "ancient_vampire_encounter":
+        ancient_power = random.randint(1500, 2000)
+        ancient_name = f"{random.choice(FIRST_NAMES)} {random.choice(LAST_NAMES)}"
         event_embed = discord.Embed(
-            title="NEW FACE GETS NOTICED",
-            description=f"Word traveled fast. {rival_name} from the {rival_set} knows {player_char['name']} is out here and is coming to send a message.",
-            color=discord.Color.red()
+            title="ANCIENT ONE APPEARS",
+            description=f"**{ancient_name}**, an ancient vampire of immense power ({ancient_power}), has taken notice of **{vampire['name']}**",
+            color=discord.Color.dark_purple()
         )
-        event_embed.add_field(name="Threat", value=f"{rival_name} is coming to test {player_char['name']} before they get established", inline=False)
-        event_embed.add_field(name="Enemy Info", value=f"Gang: {rival_gang}\nSet: {rival_set}", inline=True)
-        event_embed.set_footer(text="The streets already know your name...")
+        event_embed.add_field(name="The Ancient", value=f"{ancient_name}\nPower: {ancient_power}", inline=True)
+        event_embed.add_field(name="Their Interest", value="Unknown - could be mentor, rival, or executioner", inline=True)
+        event_embed.set_footer(text="When ancients take notice...")
         await ctx.send(embed=event_embed)
         await asyncio.sleep(3)
 
-        battle = simulate_battle()
-        won = battle['player_won']
-        death_roll = random.randint(1, 100)
-        dies = death_roll <= calculate_death_chance(won)
+        outcome_roll = random.randint(1, 100)
+        fresh_characters = load_characters()
+        if character_id not in fresh_characters:
+            return
+        vampire = fresh_characters[character_id]
+
+        if outcome_roll <= 40:
+            power_grant = random.randint(100, 300)
+            vampire['power_level'] = min(2000, vampire['power_level'] + power_grant)
+            fresh_characters[character_id] = vampire
+            save_characters(fresh_characters)
+            characters.update(fresh_characters)
+            mentor_embed = discord.Embed(
+                title="ANCIENT MENTOR",
+                description=f"**{ancient_name}** was impressed and shared forbidden knowledge with **{vampire['name']}**",
+                color=discord.Color.gold()
+            )
+            mentor_embed.add_field(name="Power Granted", value=f"+{power_grant}", inline=True)
+            mentor_embed.add_field(name="New Power", value=f"{vampire['power_level']}", inline=True)
+            await ctx.send(embed=mentor_embed)
+        elif outcome_roll <= 70:
+            warning_embed = discord.Embed(
+                title="ANCIENT WARNING",
+                description=f"**{ancient_name}** issued a chilling warning and vanished into the night",
+                color=discord.Color.orange()
+            )
+            warning_embed.add_field(name="Message", value=f"'Stay out of my territory, {vampire['name']}. Next time I will not be so merciful.'", inline=False)
+            await ctx.send(embed=warning_embed)
+        else:
+            attack_embed = discord.Embed(
+                title="ANCIENT ATTACKS",
+                description=f"**{ancient_name}** decided **{vampire['name']}** was a threat and attacked without warning",
+                color=discord.Color.dark_red()
+            )
+
+            death_roll = random.randint(1, 100)
+            if death_roll <= 55:
+                attack_embed.add_field(name="Result", value=f"**{vampire['name']}** was destroyed by the ancient's overwhelming power", inline=False)
+                attack_embed.add_field(name="Final Stats", value=f"Power: {vampire['power_level']}\nStatus: DESTROYED", inline=False)
+                dead_vampire = vampire.copy()
+                dead_vampire['death_date'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+                dead_vampire['killed_by'] = f"{ancient_name} (Ancient Vampire)"
+                graveyard.append(dead_vampire)
+                save_graveyard(graveyard)
+                del fresh_characters[character_id]
+                save_characters(fresh_characters)
+                characters.update(fresh_characters)
+            else:
+                attack_embed.add_field(name="Result", value=f"**{vampire['name']}** barely escaped the ancient's wrath", inline=False)
+            await ctx.send(embed=attack_embed)
+
+    elif event_type == "daylight_trap":
+        event_embed = discord.Embed(
+            title="DAYLIGHT TRAP",
+            description=f"**{vampire['name']}** was lured into a building that hunters then exposed to sunlight through shattered windows",
+            color=discord.Color.orange()
+        )
+        event_embed.add_field(name="Danger", value="Sunlight flooding in from all directions - seconds to escape", inline=False)
+        event_embed.set_footer(text="The sun burns...")
+        await ctx.send(embed=event_embed)
+        await asyncio.sleep(3)
+
+        escape_roll = random.randint(1, 100)
+        fresh_characters = load_characters()
+        if character_id not in fresh_characters:
+            return
+        vampire = fresh_characters[character_id]
+
+        if escape_roll <= 30:
+            death_embed = discord.Embed(
+                title="BURNED BY SUNLIGHT",
+                description=f"**{vampire['name']}** could not escape in time and was destroyed by the sunlight",
+                color=discord.Color.dark_red()
+            )
+            death_embed.add_field(name="Final Stats", value=f"Power: {vampire['power_level']}\nStatus: DESTROYED", inline=False)
+            dead_vampire = vampire.copy()
+            dead_vampire['death_date'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+            dead_vampire['killed_by'] = "Daylight Trap"
+            graveyard.append(dead_vampire)
+            save_graveyard(graveyard)
+            del fresh_characters[character_id]
+            save_characters(fresh_characters)
+            characters.update(fresh_characters)
+            await ctx.send(embed=death_embed)
+        elif escape_roll <= 65:
+            wound_embed = discord.Embed(
+                title="BURNED BUT ESCAPED",
+                description=f"**{vampire['name']}** burst through the wall and escaped, badly burned",
+                color=discord.Color.orange()
+            )
+            power_loss = random.randint(10, 50)
+            vampire['power_level'] = max(10, vampire['power_level'] - power_loss)
+            fresh_characters[character_id] = vampire
+            save_characters(fresh_characters)
+            characters.update(fresh_characters)
+            wound_embed.add_field(name="Wounds", value=f"Sunlight burns cost {power_loss} power", inline=True)
+            wound_embed.add_field(name="New Power", value=f"{vampire['power_level']}", inline=True)
+            await ctx.send(embed=wound_embed)
+        else:
+            escape_embed = discord.Embed(
+                title="CLEAN ESCAPE",
+                description=f"**{vampire['name']}** found a shadow passage and escaped before a single ray touched them",
+                color=discord.Color.green()
+            )
+            escape_embed.add_field(name="Outcome", value="Escaped the trap unscathed - the hunters failed", inline=False)
+            await ctx.send(embed=escape_embed)
+
+    elif event_type == "witch_curse":
+        event_embed = discord.Embed(
+            title="WITCH CURSE",
+            description=f"A powerful witch has placed a curse on **{vampire['name']}** for trespassing in her domain",
+            color=discord.Color.dark_purple()
+        )
+        event_embed.add_field(name="The Curse", value="Ancient magic binds the vampire - their power wavers", inline=False)
+        event_embed.set_footer(text="Magic older than most vampires...")
+        await ctx.send(embed=event_embed)
+        await asyncio.sleep(3)
+
+        curse_roll = random.randint(1, 100)
+        fresh_characters = load_characters()
+        if character_id not in fresh_characters:
+            return
+        vampire = fresh_characters[character_id]
+
+        if curse_roll <= 35:
+            power_loss = random.randint(50, 150)
+            vampire['power_level'] = max(10, vampire['power_level'] - power_loss)
+            fresh_characters[character_id] = vampire
+            save_characters(fresh_characters)
+            characters.update(fresh_characters)
+            curse_embed = discord.Embed(
+                title="CURSE TAKES HOLD",
+                description=f"The witch's curse weakened **{vampire['name']}** significantly",
+                color=discord.Color.red()
+            )
+            curse_embed.add_field(name="Power Lost", value=f"-{power_loss}", inline=True)
+            curse_embed.add_field(name="New Power", value=f"{vampire['power_level']}", inline=True)
+            await ctx.send(embed=curse_embed)
+        elif curse_roll <= 70:
+            resist_embed = discord.Embed(
+                title="CURSE RESISTED",
+                description=f"**{vampire['name']}** fought off the witch's magic through sheer force of will",
+                color=discord.Color.orange()
+            )
+            resist_embed.add_field(name="Outcome", value="The curse failed to take hold - ancient blood runs strong", inline=False)
+            await ctx.send(embed=resist_embed)
+        else:
+            turn_embed = discord.Embed(
+                title="CURSE BACKFIRES",
+                description=f"**{vampire['name']}** absorbed the witch's curse and converted it into raw power",
+                color=discord.Color.gold()
+            )
+            power_gain = random.randint(30, 100)
+            vampire['power_level'] = min(2000, vampire['power_level'] + power_gain)
+            fresh_characters[character_id] = vampire
+            save_characters(fresh_characters)
+            characters.update(fresh_characters)
+            turn_embed.add_field(name="Power Gained", value=f"+{power_gain}", inline=True)
+            turn_embed.add_field(name="New Power", value=f"{vampire['power_level']}", inline=True)
+            await ctx.send(embed=turn_embed)
+
+    elif event_type == "blood_feast":
+        event_embed = discord.Embed(
+            title="BLOOD FEAST",
+            description=f"**{vampire['name']}** stumbles upon an unguarded blood supply - an opportunity to feed and grow stronger",
+            color=discord.Color.dark_red()
+        )
+        event_embed.add_field(name="Opportunity", value="Rich blood waiting - feed and grow powerful", inline=False)
+        event_embed.set_footer(text="The hunger calls...")
+        await ctx.send(embed=event_embed)
+        await asyncio.sleep(3)
 
         fresh_characters = load_characters()
         if character_id not in fresh_characters:
             return
-        player_char = fresh_characters[character_id]
+        vampire = fresh_characters[character_id]
+
+        power_gain = random.randint(30, 150)
+        vampire['power_level'] = min(2000, vampire['power_level'] + power_gain)
+        fresh_characters[character_id] = vampire
+        save_characters(fresh_characters)
+        characters.update(fresh_characters)
+
+        feast_embed = discord.Embed(
+            title="POWER FROM THE FEAST",
+            description=f"**{vampire['name']}** fed deeply and grew stronger",
+            color=discord.Color.green()
+        )
+        feast_embed.add_field(name="Power Gained", value=f"+{power_gain}", inline=True)
+        feast_embed.add_field(name="New Power", value=f"{vampire['power_level']}", inline=True)
+        await ctx.send(embed=feast_embed)
+
+    elif event_type == "vampire_hunter_raid":
+        num_hunters = random.randint(4, 10)
+        event_embed = discord.Embed(
+            title="HUNTER RAID ON LAIR",
+            description=f"A full hunter squad of {num_hunters} has raided **{vampire['name']}'s** lair with silver weapons and holy fire",
+            color=discord.Color.dark_red()
+        )
+        event_embed.add_field(name="Raid Force", value=f"{num_hunters} hunters - heavily armed", inline=False)
+        event_embed.set_footer(text="They know where you sleep...")
+        await ctx.send(embed=event_embed)
+        await asyncio.sleep(3)
+
+        outcome_roll = random.randint(1, 100)
+        fresh_characters = load_characters()
+        if character_id not in fresh_characters:
+            return
+        vampire = fresh_characters[character_id]
+
+        if outcome_roll <= 25:
+            death_embed = discord.Embed(
+                title="LAIR OVERRUN",
+                description=f"**{vampire['name']}** was caught off guard and destroyed in their own lair",
+                color=discord.Color.dark_red()
+            )
+            death_embed.add_field(name="Final Stats", value=f"Power: {vampire['power_level']}\nStatus: DESTROYED", inline=False)
+            dead_vampire = vampire.copy()
+            dead_vampire['death_date'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+            dead_vampire['killed_by'] = f"Hunter Raid ({num_hunters} hunters)"
+            graveyard.append(dead_vampire)
+            save_graveyard(graveyard)
+            del fresh_characters[character_id]
+            save_characters(fresh_characters)
+            characters.update(fresh_characters)
+            await ctx.send(embed=death_embed)
+        elif outcome_roll <= 60:
+            escape_embed = discord.Embed(
+                title="ESCAPED THE RAID",
+                description=f"**{vampire['name']}** fled through a hidden passage as the hunters swarmed the lair",
+                color=discord.Color.orange()
+            )
+            escape_embed.add_field(name="Outcome", value="Lost the lair but kept their life - must find new territory", inline=False)
+            await ctx.send(embed=escape_embed)
+        else:
+            defend_embed = discord.Embed(
+                title="LAIR DEFENDED",
+                description=f"**{vampire['name']}** slaughtered the hunter squad before they could complete the raid",
+                color=discord.Color.green()
+            )
+            defend_embed.add_field(name="Outcome", value=f"All {num_hunters} hunters destroyed - lair remains secure", inline=False)
+            await ctx.send(embed=defend_embed)
+
+    elif event_type == "forbidden_blood":
+        event_embed = discord.Embed(
+            title="FORBIDDEN BLOOD OFFER",
+            description=f"A mysterious figure offers **{vampire['name']}** a vial of forbidden ancient blood - immense power but unknown risk",
+            color=discord.Color.dark_purple()
+        )
+        event_embed.add_field(name="The Offer", value="Ancient blood of unknown origin - could grant great power or destruction", inline=False)
+        event_embed.set_footer(text="Some power comes at a price...")
+        await ctx.send(embed=event_embed)
+        await asyncio.sleep(3)
+
+        drink_roll = random.randint(1, 100)
+        fresh_characters = load_characters()
+        if character_id not in fresh_characters:
+            return
+        vampire = fresh_characters[character_id]
+
+        if drink_roll <= 30:
+            power_surge = random.randint(200, 500)
+            vampire['power_level'] = min(2000, vampire['power_level'] + power_surge)
+            fresh_characters[character_id] = vampire
+            save_characters(fresh_characters)
+            characters.update(fresh_characters)
+            surge_embed = discord.Embed(
+                title="ANCIENT POWER AWAKENED",
+                description=f"The forbidden blood transformed **{vampire['name']}** - ancient power flows through their veins",
+                color=discord.Color.gold()
+            )
+            surge_embed.add_field(name="Power Surge", value=f"+{power_surge}", inline=True)
+            surge_embed.add_field(name="New Power", value=f"{vampire['power_level']}", inline=True)
+            await ctx.send(embed=surge_embed)
+        elif drink_roll <= 55:
+            loss_embed = discord.Embed(
+                title="BLOOD POISON",
+                description=f"The forbidden blood was a trap - it burned through **{vampire['name']}** like acid",
+                color=discord.Color.red()
+            )
+            power_loss = random.randint(100, 300)
+            vampire['power_level'] = max(10, vampire['power_level'] - power_loss)
+            fresh_characters[character_id] = vampire
+            save_characters(fresh_characters)
+            characters.update(fresh_characters)
+            loss_embed.add_field(name="Power Lost", value=f"-{power_loss}", inline=True)
+            loss_embed.add_field(name="New Power", value=f"{vampire['power_level']}", inline=True)
+            await ctx.send(embed=loss_embed)
+        elif drink_roll <= 75:
+            nothing_embed = discord.Embed(
+                title="BLOOD REJECTED",
+                description=f"**{vampire['name']}**'s body rejected the forbidden blood with no lasting effect",
+                color=discord.Color.orange()
+            )
+            nothing_embed.add_field(name="Outcome", value="The ancient blood had no effect - neither gain nor loss", inline=False)
+            await ctx.send(embed=nothing_embed)
+        else:
+            death_embed = discord.Embed(
+                title="BLOOD DESTROYS",
+                description=f"The forbidden blood was lethal - **{vampire['name']}** dissolved from within",
+                color=discord.Color.dark_red()
+            )
+            death_embed.add_field(name="Final Stats", value=f"Power: {vampire['power_level']}\nStatus: DESTROYED", inline=False)
+            dead_vampire = vampire.copy()
+            dead_vampire['death_date'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+            dead_vampire['killed_by'] = "Forbidden Blood"
+            graveyard.append(dead_vampire)
+            save_graveyard(graveyard)
+            del fresh_characters[character_id]
+            save_characters(fresh_characters)
+            characters.update(fresh_characters)
+            await ctx.send(embed=death_embed)
+
+    elif event_type == "territory_dispute":
+        event_embed = discord.Embed(
+            title="TERRITORY DISPUTE",
+            description=f"**{rival_name}** (Power: {rival_power}) claims the hunting grounds **{vampire['name']}** controls",
+            color=discord.Color.red()
+        )
+        event_embed.add_field(name="The Dispute", value=f"{rival_name} has been feeding in your territory without permission", inline=False)
+        event_embed.set_footer(text="Territory means everything in the night...")
+        await ctx.send(embed=event_embed)
+        await asyncio.sleep(3)
+
+        battle = simulate_battle(vampire['name'], vampire['power_level'], rival_name, rival_power, lore_revealed)
+        won = battle['player_won']
+        death_roll = random.randint(1, 100)
+        dies = death_roll <= calculate_death_chance(vampire['power_level'], rival_power, won)
+
+        fresh_characters = load_characters()
+        if character_id not in fresh_characters:
+            return
+        vampire = fresh_characters[character_id]
 
         if won and not dies:
             win_embed = discord.Embed(
-                title="PASSED THE TEST",
-                description=f"{player_char['name']} handled {rival_name} and let the whole hood know they are not to be played with",
+                title="TERRITORY HELD",
+                description=f"**{vampire['name']}** drove **{rival_name}** out of their territory permanently",
                 color=discord.Color.green()
             )
-            player_char['kills'] = player_char.get('kills', 0) + 1
-            if 'kill_list' not in player_char:
-                player_char['kill_list'] = []
-            player_char['kill_list'].append({
-                'victim_name': rival_name,
-                'victim_gang': rival_gang,
-                'victim_set': rival_set,
-                'date': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
-                'type': 'creation_event'
-            })
-            win_embed.add_field(name="Bodies", value=f"{player_char['kills']}", inline=True)
-            fresh_characters[character_id] = player_char
+            vampire['wins'] = vampire.get('wins', 0) + 1
+            fresh_characters[character_id] = vampire
             save_characters(fresh_characters)
             characters.update(fresh_characters)
+            win_embed.add_field(name="Outcome", value="Territory secured - rivals will think twice", inline=False)
             await ctx.send(embed=win_embed)
         elif dies:
             death_embed = discord.Embed(
-                title="TAKEN OUT",
-                description=f"{player_char['name']} got taken out by {rival_name} before they could establish themselves",
+                title="TERRITORY LOST - DESTROYED",
+                description=f"**{rival_name}** not only took the territory but destroyed **{vampire['name']}**",
                 color=discord.Color.dark_red()
             )
-            death_embed.add_field(name="Final Stats", value=f"Body Count: {player_char.get('kills', 0)}\nMoney: ${player_char.get('money', 0):,}\nStatus: DECEASED", inline=False)
-            dead_member = player_char.copy()
-            dead_member['death_date'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-            dead_member['killed_by'] = f"{rival_name} ({rival_set})"
-            graveyard.append(dead_member)
+            dead_vampire = vampire.copy()
+            dead_vampire['death_date'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+            dead_vampire['killed_by'] = f"{rival_name} (Territory Dispute)"
+            graveyard.append(dead_vampire)
             save_graveyard(graveyard)
             del fresh_characters[character_id]
             save_characters(fresh_characters)
@@ -2782,91 +1087,302 @@ async def random_event(ctx, character_id: str = None):
             await ctx.send(embed=death_embed)
         else:
             loss_embed = discord.Embed(
-                title="ROUGH DAY",
-                description=f"{player_char['name']} got tested and lost but survived. The streets already humbled them.",
+                title="TERRITORY LOST",
+                description=f"**{vampire['name']}** was driven from their own territory by **{rival_name}**",
                 color=discord.Color.orange()
             )
-            loss_embed.add_field(name="Outcome", value="Lost the fight but lived to learn from it", inline=False)
-            fresh_characters[character_id] = player_char
+            vampire['losses'] = vampire.get('losses', 0) + 1
+            fresh_characters[character_id] = vampire
             save_characters(fresh_characters)
             characters.update(fresh_characters)
+            loss_embed.add_field(name="Outcome", value="Survived but homeless - must reclaim territory", inline=False)
             await ctx.send(embed=loss_embed)
 
-    elif event_type == "initiated_by_hood":
-        char_set = player_char.get('set_name', 'the set')
-        num_homies = random.randint(5, 12)
+    elif event_type == "sire_returns":
+        sire_name = f"{random.choice(FIRST_NAMES)} {random.choice(LAST_NAMES)}"
+        sire_power = random.randint(800, 2000)
         event_embed = discord.Embed(
-            title="INITIATION - GETTING JUMPED IN",
-            description=f"Before {player_char['name']} can officially run with the {char_set}, they gotta get jumped in. {num_homies} homies are waiting.",
-            color=discord.Color.purple()
+            title="SIRE RETURNS",
+            description=f"**{sire_name}** (Power: {sire_power}), the vampire who created **{vampire['name']}**, has returned after centuries",
+            color=discord.Color.dark_purple()
         )
-        event_embed.add_field(name="The Initiation", value=f"{num_homies} members of the {char_set} are about to put hands on {player_char['name']} for 60 seconds", inline=False)
-        event_embed.set_footer(text="Everyone goes through it...")
+        event_embed.add_field(name="The Sire", value=f"{sire_name}\nPower: {sire_power}", inline=True)
+        event_embed.add_field(name="Their Mood", value="Unknown - creator and creation reunite", inline=True)
+        event_embed.set_footer(text="The blood bond never breaks...")
         await ctx.send(embed=event_embed)
         await asyncio.sleep(3)
 
-        survive_roll = random.randint(1, 100)
-        if survive_roll <= 85:
-            success_embed = discord.Embed(
-                title="OFFICIALLY JUMPED IN",
-                description=f"{player_char['name']} took the beat down and didn't fold. Now officially a member of the {char_set}.",
-                color=discord.Color.green()
+        outcome_roll = random.randint(1, 100)
+        fresh_characters = load_characters()
+        if character_id not in fresh_characters:
+            return
+        vampire = fresh_characters[character_id]
+
+        if outcome_roll <= 45:
+            power_gift = random.randint(100, 250)
+            vampire['power_level'] = min(2000, vampire['power_level'] + power_gift)
+            fresh_characters[character_id] = vampire
+            save_characters(fresh_characters)
+            characters.update(fresh_characters)
+            gift_embed = discord.Embed(
+                title="SIRE'S GIFT",
+                description=f"**{sire_name}** was pleased with their creation and granted **{vampire['name']}** ancient power",
+                color=discord.Color.gold()
             )
-            success_embed.add_field(name="Hood Status", value=f"Officially recognized by the {char_set} - welcome to the family", inline=False)
-            success_embed.set_footer(text="One of us now")
-            await ctx.send(embed=success_embed)
-        else:
-            fail_embed = discord.Embed(
-                title="INITIATION GONE WRONG",
-                description=f"{player_char['name']} couldn't handle the initiation and got seriously hurt",
+            gift_embed.add_field(name="Power Gift", value=f"+{power_gift}", inline=True)
+            gift_embed.add_field(name="New Power", value=f"{vampire['power_level']}", inline=True)
+            await ctx.send(embed=gift_embed)
+        elif outcome_roll <= 75:
+            warn_embed = discord.Embed(
+                title="SIRE'S WARNING",
+                description=f"**{sire_name}** appeared only to deliver a warning before vanishing again",
                 color=discord.Color.orange()
             )
-            fail_embed.add_field(name="Outcome", value="Survived but in bad shape - still made it into the set but paid a heavy price", inline=False)
-            await ctx.send(embed=fail_embed)
+            warn_embed.add_field(name="The Warning", value="'You are being watched. Do not disappoint me.'", inline=False)
+            await ctx.send(embed=warn_embed)
+        else:
+            attack_embed = discord.Embed(
+                title="SIRE TURNS HOSTILE",
+                description=f"**{sire_name}** returned to destroy what they created - the sire has gone mad",
+                color=discord.Color.dark_red()
+            )
+            death_roll = random.randint(1, 100)
+            if death_roll <= 45:
+                attack_embed.add_field(name="Result", value=f"**{vampire['name']}** was destroyed by their own creator", inline=False)
+                dead_vampire = vampire.copy()
+                dead_vampire['death_date'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+                dead_vampire['killed_by'] = f"{sire_name} (Sire Betrayal)"
+                graveyard.append(dead_vampire)
+                save_graveyard(graveyard)
+                del fresh_characters[character_id]
+                save_characters(fresh_characters)
+                characters.update(fresh_characters)
+            else:
+                attack_embed.add_field(name="Result", value=f"**{vampire['name']}** barely escaped their sire's wrath", inline=False)
+            await ctx.send(embed=attack_embed)
 
-    elif event_type == "found_on_wrong_block":
+    elif event_type == "dark_gift_offer":
         event_embed = discord.Embed(
-            title="WRONG BLOCK",
-            description=f"{player_char['name']} was on the wrong side of the map when {rival_name} from {rival_set} spotted them deep in enemy territory",
-            color=discord.Color.red()
+            title="DARK GIFT OFFERED",
+            description=f"A demon offers **{vampire['name']}** a dark gift - enhanced power in exchange for a piece of their immortal soul",
+            color=discord.Color.dark_purple()
         )
-        event_embed.add_field(name="Caught Out There", value=f"Deep in {rival_set} territory with no backup - this is a problem", inline=False)
-        event_embed.set_footer(text="Nowhere to run on the wrong block...")
+        event_embed.add_field(name="The Deal", value="Demonic power on offer - but souls are precious even to vampires", inline=False)
+        event_embed.set_footer(text="Every deal has a price...")
         await ctx.send(embed=event_embed)
         await asyncio.sleep(3)
 
-        battle = simulate_battle()
+        deal_roll = random.randint(1, 100)
+        fresh_characters = load_characters()
+        if character_id not in fresh_characters:
+            return
+        vampire = fresh_characters[character_id]
+
+        if deal_roll <= 40:
+            power_gain = random.randint(150, 400)
+            vampire['power_level'] = min(2000, vampire['power_level'] + power_gain)
+            fresh_characters[character_id] = vampire
+            save_characters(fresh_characters)
+            characters.update(fresh_characters)
+            deal_embed = discord.Embed(
+                title="DARK DEAL ACCEPTED",
+                description=f"**{vampire['name']}** made the deal and gained tremendous power",
+                color=discord.Color.gold()
+            )
+            deal_embed.add_field(name="Power Gained", value=f"+{power_gain}", inline=True)
+            deal_embed.add_field(name="New Power", value=f"{vampire['power_level']}", inline=True)
+            deal_embed.add_field(name="Cost", value="A fragment of their immortal soul - consequences unknown", inline=False)
+            await ctx.send(embed=deal_embed)
+        elif deal_roll <= 70:
+            refuse_embed = discord.Embed(
+                title="DEAL REFUSED",
+                description=f"**{vampire['name']}** rejected the demon's offer and drove it away",
+                color=discord.Color.green()
+            )
+            refuse_embed.add_field(name="Outcome", value="Soul intact - no power gained but no price paid", inline=False)
+            await ctx.send(embed=refuse_embed)
+        else:
+            trick_embed = discord.Embed(
+                title="DEMON TRICK",
+                description=f"The demon tricked **{vampire['name']}** and stole power without granting anything in return",
+                color=discord.Color.red()
+            )
+            power_loss = random.randint(50, 200)
+            vampire['power_level'] = max(10, vampire['power_level'] - power_loss)
+            fresh_characters[character_id] = vampire
+            save_characters(fresh_characters)
+            characters.update(fresh_characters)
+            trick_embed.add_field(name="Power Stolen", value=f"-{power_loss}", inline=True)
+            trick_embed.add_field(name="New Power", value=f"{vampire['power_level']}", inline=True)
+            await ctx.send(embed=trick_embed)
+
+    elif event_type == "mortal_falls_in_love":
+        mortal_name = f"{random.choice(['Elena', 'Isabella', 'Mina', 'Lucy', 'Lydia', 'Rose', 'Clara', 'James', 'Edward', 'Thomas', 'William', 'Henry'])} {random.choice(LAST_NAMES)}"
+        event_embed = discord.Embed(
+            title="MORTAL OBSESSION",
+            description=f"A mortal named **{mortal_name}** has discovered **{vampire['name']}**'s true nature and become dangerously obsessed",
+            color=discord.Color.purple()
+        )
+        event_embed.add_field(name="The Mortal", value=f"{mortal_name} - knows your secret and won't stay quiet", inline=False)
+        event_embed.set_footer(text="Mortals who know the truth are dangerous...")
+        await ctx.send(embed=event_embed)
+        await asyncio.sleep(3)
+
+        outcome_roll = random.randint(1, 100)
+        fresh_characters = load_characters()
+        if character_id not in fresh_characters:
+            return
+        vampire = fresh_characters[character_id]
+
+        if outcome_roll <= 35:
+            turn_embed = discord.Embed(
+                title="MORTAL TURNED",
+                description=f"**{vampire['name']}** turned **{mortal_name}** to silence them - a new vampire born",
+                color=discord.Color.dark_purple()
+            )
+            turn_embed.add_field(name="Outcome", value="The secret is safe but now there is another mouth to feed", inline=False)
+            await ctx.send(embed=turn_embed)
+        elif outcome_roll <= 65:
+            useful_embed = discord.Embed(
+                title="MORTAL BECOMES USEFUL",
+                description=f"**{mortal_name}** proved useful - providing information and a daytime spy",
+                color=discord.Color.green()
+            )
+            money_gain = random.randint(0, 0)
+            power_gain = random.randint(20, 60)
+            vampire['power_level'] = min(2000, vampire['power_level'] + power_gain)
+            fresh_characters[character_id] = vampire
+            save_characters(fresh_characters)
+            characters.update(fresh_characters)
+            useful_embed.add_field(name="Intelligence Gained", value=f"Power boost from mortal knowledge: +{power_gain}", inline=False)
+            await ctx.send(embed=useful_embed)
+        else:
+            hunter_embed = discord.Embed(
+                title="MORTAL TIPS OFF HUNTERS",
+                description=f"**{mortal_name}** panicked and told vampire hunters about **{vampire['name']}**",
+                color=discord.Color.red()
+            )
+            hunter_embed.add_field(name="Consequence", value="Hunter squads now have your location - increased danger", inline=False)
+            await ctx.send(embed=hunter_embed)
+
+    elif event_type == "church_confrontation":
+        priest_power = random.randint(200, 800)
+        event_embed = discord.Embed(
+            title="CHURCH CONFRONTATION",
+            description=f"**{vampire['name']}** was cornered by a holy warrior priest wielding sacred relics and blessed weapons",
+            color=discord.Color.blue()
+        )
+        event_embed.add_field(name="Holy Warrior", value=f"Priest armed with blessed silver and holy fire\nEstimated Threat: {priest_power}", inline=False)
+        event_embed.set_footer(text="Faith versus darkness...")
+        await ctx.send(embed=event_embed)
+        await asyncio.sleep(3)
+
+        battle = simulate_battle(vampire['name'], vampire['power_level'], "Holy Warrior Priest", priest_power, lore_revealed)
         won = battle['player_won']
         death_roll = random.randint(1, 100)
-        dies = death_roll <= (calculate_death_chance(won) + 10)
+        dies = death_roll <= (calculate_death_chance(vampire['power_level'], priest_power, won) + 10)
 
         fresh_characters = load_characters()
         if character_id not in fresh_characters:
             return
-        player_char = fresh_characters[character_id]
+        vampire = fresh_characters[character_id]
 
         if won and not dies:
             win_embed = discord.Embed(
-                title="GOT OUT ALIVE",
-                description=f"{player_char['name']} scrapped their way out of enemy territory",
+                title="DARKNESS OVERCOMES FAITH",
+                description=f"**{vampire['name']}** overpowered the holy warrior despite the sacred weapons",
                 color=discord.Color.green()
             )
-            win_embed.add_field(name="Outcome", value="Made it back to the hood - won't make that mistake again", inline=False)
-            fresh_characters[character_id] = player_char
+            vampire['wins'] = vampire.get('wins', 0) + 1
+            fresh_characters[character_id] = vampire
+            save_characters(fresh_characters)
+            characters.update(fresh_characters)
+            win_embed.add_field(name="Outcome", value="The priest was defeated - faith alone could not stop this vampire", inline=False)
+            await ctx.send(embed=win_embed)
+        elif dies:
+            death_embed = discord.Embed(
+                title="DESTROYED BY HOLY POWER",
+                description=f"**{vampire['name']}** was destroyed by the holy warrior's blessed weapons",
+                color=discord.Color.dark_red()
+            )
+            dead_vampire = vampire.copy()
+            dead_vampire['death_date'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+            dead_vampire['killed_by'] = "Holy Warrior Priest"
+            graveyard.append(dead_vampire)
+            save_graveyard(graveyard)
+            del fresh_characters[character_id]
+            save_characters(fresh_characters)
+            characters.update(fresh_characters)
+            await ctx.send(embed=death_embed)
+        else:
+            flee_embed = discord.Embed(
+                title="FLED FROM HOLY GROUND",
+                description=f"**{vampire['name']}** could not withstand the holy warrior's power and retreated",
+                color=discord.Color.orange()
+            )
+            vampire['losses'] = vampire.get('losses', 0) + 1
+            fresh_characters[character_id] = vampire
+            save_characters(fresh_characters)
+            characters.update(fresh_characters)
+            flee_embed.add_field(name="Outcome", value="Escaped but wounded by blessed silver", inline=False)
+            await ctx.send(embed=flee_embed)
+
+    elif event_type == "bounty_on_blood":
+        bounty_amount = random.randint(500, 3000)
+        event_embed = discord.Embed(
+            title="BOUNTY PLACED",
+            description=f"A powerful vampire lord has placed a blood bounty of {bounty_amount} on **{vampire['name']}**",
+            color=discord.Color.gold()
+        )
+        event_embed.add_field(name="Bounty", value=f"{bounty_amount} in ancient coin", inline=True)
+        event_embed.add_field(name="Who Wants You Dead", value="A vampire lord whose territory you violated", inline=True)
+        event_embed.add_field(name="Warning", value="Every vampire and hunter in the region now knows your face", inline=False)
+        event_embed.set_footer(text="There is a price on your head...")
+        await ctx.send(embed=event_embed)
+        await asyncio.sleep(3)
+
+        bounty_hunter_power = generate_ai_power()
+        bounty_hunter_name = f"{random.choice(FIRST_NAMES)} {random.choice(LAST_NAMES)}"
+
+        hunter_embed = discord.Embed(
+            title="BOUNTY HUNTER ARRIVES",
+            description=f"**{bounty_hunter_name}** (Power: {bounty_hunter_power}) has already tracked down **{vampire['name']}** to collect",
+            color=discord.Color.red()
+        )
+        await ctx.send(embed=hunter_embed)
+        await asyncio.sleep(3)
+
+        fresh_characters = load_characters()
+        if character_id not in fresh_characters:
+            return
+        vampire = fresh_characters[character_id]
+
+        battle = simulate_battle(vampire['name'], vampire['power_level'], bounty_hunter_name, bounty_hunter_power, lore_revealed)
+        won = battle['player_won']
+        death_roll = random.randint(1, 100)
+        dies = death_roll <= calculate_death_chance(vampire['power_level'], bounty_hunter_power, won)
+
+        if won and not dies:
+            win_embed = discord.Embed(
+                title="BOUNTY HUNTER DESTROYED",
+                description=f"**{vampire['name']}** killed the bounty hunter - sending a message to the vampire lord",
+                color=discord.Color.green()
+            )
+            vampire['wins'] = vampire.get('wins', 0) + 1
+            fresh_characters[character_id] = vampire
             save_characters(fresh_characters)
             characters.update(fresh_characters)
             await ctx.send(embed=win_embed)
         elif dies:
             death_embed = discord.Embed(
-                title="KILLED ON ENEMY TURF",
-                description=f"{player_char['name']} was caught on the wrong block and paid the price",
+                title="COLLECTED BY THE HUNTER",
+                description=f"**{bounty_hunter_name}** collected the bounty - **{vampire['name']}** is no more",
                 color=discord.Color.dark_red()
             )
-            death_embed.add_field(name="Final Stats", value=f"Body Count: {player_char.get('kills', 0)}\nMoney: ${player_char.get('money', 0):,}\nStatus: DECEASED", inline=False)
-            dead_member = player_char.copy()
-            dead_member['death_date'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-            dead_member['killed_by'] = f"{rival_name} ({rival_set}) Wrong Block"
-            graveyard.append(dead_member)
+            dead_vampire = vampire.copy()
+            dead_vampire['death_date'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+            dead_vampire['killed_by'] = f"{bounty_hunter_name} (Bounty Hunter)"
+            graveyard.append(dead_vampire)
             save_graveyard(graveyard)
             del fresh_characters[character_id]
             save_characters(fresh_characters)
@@ -2874,70 +1390,74 @@ async def random_event(ctx, character_id: str = None):
             await ctx.send(embed=death_embed)
         else:
             escape_embed = discord.Embed(
-                title="BARELY GOT OUT",
-                description=f"{player_char['name']} got beat up on enemy turf but managed to limp back home",
+                title="ESCAPED THE HUNTER",
+                description=f"**{vampire['name']}** lost the fight but escaped before the hunter could finish the job",
                 color=discord.Color.orange()
             )
-            escape_embed.add_field(name="Outcome", value="Learned the hard way where the boundaries are", inline=False)
-            fresh_characters[character_id] = player_char
+            vampire['losses'] = vampire.get('losses', 0) + 1
+            fresh_characters[character_id] = vampire
             save_characters(fresh_characters)
             characters.update(fresh_characters)
             await ctx.send(embed=escape_embed)
 
-    elif event_type == "old_beef_resurfaces":
+    elif event_type == "underground_fighting_ring":
         event_embed = discord.Embed(
-            title="OLD BEEF RESURFACES",
-            description=f"Before {player_char['name']} could settle in, {rival_name} from the {rival_set} came around claiming there is already history between them.",
-            color=discord.Color.dark_orange()
+            title="UNDERGROUND VAMPIRE FIGHT RING",
+            description=f"**{vampire['name']}** has been dragged into an underground vampire fighting ring and forced to compete",
+            color=discord.Color.dark_red()
         )
-        event_embed.add_field(name="The Situation", value=f"{rival_name} says the beef is from before and it's time to settle it", inline=False)
-        event_embed.add_field(name="Enemy", value=f"{rival_gang} - {rival_set}", inline=True)
-        event_embed.set_footer(text="Old beef never dies in the streets...")
+        event_embed.add_field(name="The Ring", value="Ancient vampires betting on supernatural combat - no escape", inline=False)
+        event_embed.set_footer(text="Fight or be destroyed for their entertainment...")
         await ctx.send(embed=event_embed)
         await asyncio.sleep(3)
 
-        battle = simulate_battle()
-        won = battle['player_won']
-        death_roll = random.randint(1, 100)
-        dies = death_roll <= calculate_death_chance(won)
+        opponent_power = generate_ai_power()
+        opponent_name = f"{random.choice(FIRST_NAMES)} {random.choice(LAST_NAMES)}"
+
+        match_embed = discord.Embed(
+            title="OPPONENT ANNOUNCED",
+            description=f"**{vampire['name']}** vs **{opponent_name}** (Power: {opponent_power})",
+            color=discord.Color.orange()
+        )
+        await ctx.send(embed=match_embed)
+        await asyncio.sleep(3)
 
         fresh_characters = load_characters()
         if character_id not in fresh_characters:
             return
-        player_char = fresh_characters[character_id]
+        vampire = fresh_characters[character_id]
+
+        battle = simulate_battle(vampire['name'], vampire['power_level'], opponent_name, opponent_power, lore_revealed)
+        won = battle['player_won']
+        death_roll = random.randint(1, 100)
+        dies = death_roll <= calculate_death_chance(vampire['power_level'], opponent_power, won)
 
         if won and not dies:
-            win_embed = discord.Embed(
-                title="BEEF SQUASHED",
-                description=f"{player_char['name']} handled {rival_name} and that old beef is officially dead",
-                color=discord.Color.green()
-            )
-            player_char['kills'] = player_char.get('kills', 0) + 1
-            if 'kill_list' not in player_char:
-                player_char['kill_list'] = []
-            player_char['kill_list'].append({
-                'victim_name': rival_name,
-                'victim_gang': rival_gang,
-                'victim_set': rival_set,
-                'date': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
-                'type': 'old_beef'
-            })
-            win_embed.add_field(name="Bodies", value=f"{player_char['kills']}", inline=True)
-            fresh_characters[character_id] = player_char
+            prize = random.randint(100, 300)
+            power_gain = random.randint(20, 80)
+            vampire['wins'] = vampire.get('wins', 0) + 1
+            vampire['power_level'] = min(2000, vampire['power_level'] + power_gain)
+            fresh_characters[character_id] = vampire
             save_characters(fresh_characters)
             characters.update(fresh_characters)
+            win_embed = discord.Embed(
+                title="RING CHAMPION",
+                description=f"**{vampire['name']}** defeated **{opponent_name}** and earned the crowd's respect",
+                color=discord.Color.gold()
+            )
+            win_embed.add_field(name="Power Gained", value=f"+{power_gain} from combat experience", inline=True)
+            win_embed.add_field(name="New Power", value=f"{vampire['power_level']}", inline=True)
             await ctx.send(embed=win_embed)
         elif dies:
             death_embed = discord.Embed(
-                title="OLD BEEF TOOK THEM OUT",
-                description=f"{player_char['name']} couldn't shake the old history - {rival_name} settled it permanently",
+                title="DESTROYED IN THE RING",
+                description=f"**{opponent_name}** destroyed **{vampire['name']}** for the crowd's entertainment",
                 color=discord.Color.dark_red()
             )
-            death_embed.add_field(name="Final Stats", value=f"Body Count: {player_char.get('kills', 0)}\nMoney: ${player_char.get('money', 0):,}\nStatus: DECEASED", inline=False)
-            dead_member = player_char.copy()
-            dead_member['death_date'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-            dead_member['killed_by'] = f"{rival_name} ({rival_set}) Old Beef"
-            graveyard.append(dead_member)
+            dead_vampire = vampire.copy()
+            dead_vampire['death_date'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+            dead_vampire['killed_by'] = f"{opponent_name} (Underground Fight Ring)"
+            graveyard.append(dead_vampire)
             save_graveyard(graveyard)
             del fresh_characters[character_id]
             save_characters(fresh_characters)
@@ -2945,31 +1465,92 @@ async def random_event(ctx, character_id: str = None):
             await ctx.send(embed=death_embed)
         else:
             loss_embed = discord.Embed(
-                title="OLD BEEF STILL GOING",
-                description=f"{player_char['name']} couldn't settle the beef today but is still breathing",
+                title="DEFEATED IN THE RING",
+                description=f"**{vampire['name']}** lost to **{opponent_name}** but the crowd let them live",
                 color=discord.Color.orange()
             )
-            loss_embed.add_field(name="Outcome", value="The beef is still alive - this is not over", inline=False)
-            fresh_characters[character_id] = player_char
+            vampire['losses'] = vampire.get('losses', 0) + 1
+            fresh_characters[character_id] = vampire
             save_characters(fresh_characters)
             characters.update(fresh_characters)
+            loss_embed.add_field(name="Outcome", value="Defeated and humiliated but alive - crawled out of the ring", inline=False)
             await ctx.send(embed=loss_embed)
 
-    elif event_type == "police_already_watching":
+    elif event_type == "cursed_artifact":
+        artifact_names = [
+            "the Crimson Chalice", "a cursed ring of ancient blood", "the Obsidian Fang",
+            "a shard of the first vampire's coffin", "the Bloodstone Amulet",
+            "a vial of sunlight trapped in glass", "the Shadow Crown",
+            "a mirror that shows your true death", "the Bone Dagger of St. Marcus"
+        ]
+        artifact = random.choice(artifact_names)
         event_embed = discord.Embed(
-            title="POLICE ALREADY ON YOU",
-            description=f"The LAPD gang unit already has eyes on {player_char['name']}. They're watching every move.",
-            color=discord.Color.blue()
+            title="CURSED ARTIFACT FOUND",
+            description=f"**{vampire['name']}** discovered {artifact} in an abandoned crypt",
+            color=discord.Color.dark_purple()
         )
-        event_embed.add_field(name="Surveillance", value="Gang detectives already building a file on the member", inline=False)
-        event_embed.add_field(name="Warning", value="Any crime committed has a higher chance of getting caught for the next few runs", inline=False)
-        event_embed.set_footer(text="They know your face before you know theirs")
+        event_embed.add_field(name="The Artifact", value=f"{artifact} - radiates ancient power and dark energy", inline=False)
+        event_embed.set_footer(text="Ancient objects carry ancient curses...")
+        await ctx.send(embed=event_embed)
+        await asyncio.sleep(3)
+
+        artifact_roll = random.randint(1, 100)
         fresh_characters = load_characters()
-        if character_id in fresh_characters:
-            fresh_characters[character_id]['police_heat'] = True
+        if character_id not in fresh_characters:
+            return
+        vampire = fresh_characters[character_id]
+
+        if artifact_roll <= 40:
+            power_gain = random.randint(80, 250)
+            vampire['power_level'] = min(2000, vampire['power_level'] + power_gain)
+            fresh_characters[character_id] = vampire
             save_characters(fresh_characters)
             characters.update(fresh_characters)
-        await ctx.send(embed=event_embed)
+            bless_embed = discord.Embed(
+                title="ARTIFACT EMPOWERS",
+                description=f"{artifact} resonated with **{vampire['name']}**'s blood and granted power",
+                color=discord.Color.gold()
+            )
+            bless_embed.add_field(name="Power Gained", value=f"+{power_gain}", inline=True)
+            bless_embed.add_field(name="New Power", value=f"{vampire['power_level']}", inline=True)
+            await ctx.send(embed=bless_embed)
+        elif artifact_roll <= 65:
+            curse_embed = discord.Embed(
+                title="ARTIFACT CURSES",
+                description=f"{artifact} released a dark curse on **{vampire['name']}**",
+                color=discord.Color.red()
+            )
+            power_loss = random.randint(40, 150)
+            vampire['power_level'] = max(10, vampire['power_level'] - power_loss)
+            fresh_characters[character_id] = vampire
+            save_characters(fresh_characters)
+            characters.update(fresh_characters)
+            curse_embed.add_field(name="Power Lost", value=f"-{power_loss}", inline=True)
+            curse_embed.add_field(name="New Power", value=f"{vampire['power_level']}", inline=True)
+            await ctx.send(embed=curse_embed)
+        elif artifact_roll <= 85:
+            neutral_embed = discord.Embed(
+                title="ARTIFACT DORMANT",
+                description=f"{artifact} did nothing - its power may be sealed or simply not compatible",
+                color=discord.Color.orange()
+            )
+            neutral_embed.add_field(name="Outcome", value="No effect - the artifact remains a mystery", inline=False)
+            await ctx.send(embed=neutral_embed)
+        else:
+            death_embed = discord.Embed(
+                title="ARTIFACT DESTROYS",
+                description=f"{artifact} unleashed a catastrophic curse that destroyed **{vampire['name']}**",
+                color=discord.Color.dark_red()
+            )
+            dead_vampire = vampire.copy()
+            dead_vampire['death_date'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+            dead_vampire['killed_by'] = f"Cursed Artifact - {artifact}"
+            graveyard.append(dead_vampire)
+            save_graveyard(graveyard)
+            del fresh_characters[character_id]
+            save_characters(fresh_characters)
+            characters.update(fresh_characters)
+            await ctx.send(embed=death_embed)
 
 
 if __name__ == "__main__":
