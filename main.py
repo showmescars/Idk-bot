@@ -32,9 +32,9 @@ LAST_NAMES = [
 ]
 
 vampires = {}
-# Tracks every user who has EVER made a vampire (including dead ones)
-# Format: user_id -> True
-ever_made = {}
+# Tracks users who currently have at least one living vampire
+# Admins bypass this entirely
+active_vampire_owners = set()
 
 
 def is_admin(message):
@@ -42,6 +42,10 @@ def is_admin(message):
     if isinstance(member, discord.Member):
         return member.guild_permissions.administrator
     return False
+
+
+def user_has_living_vampire(user_id):
+    return any(v['owner_id'] == user_id and v['alive'] for v in vampires.values())
 
 
 def generate_power():
@@ -80,6 +84,16 @@ def generate_ai_vampire(carry_stake=False):
     name = f"{first} {last}"
     power = generate_power()
     return {"name": name, "power": power, "has_stake": carry_stake}
+
+
+def mark_vampire_dead(code):
+    """Mark a vampire as dead and update active_vampire_owners if needed."""
+    if code in vampires:
+        vampires[code]['alive'] = False
+        owner_id = vampires[code]['owner_id']
+        # If user has no more living vampires, remove from active set
+        if not user_has_living_vampire(owner_id):
+            active_vampire_owners.discard(owner_id)
 
 
 EVENTS = [
@@ -140,25 +154,13 @@ EVENT_WEIGHTS = [1 if e['type'] == 'ancient_blood' else 200 for e in EVENTS]
 async def handle_vampire(message, args):
     user_id = message.author.id
 
-    # Admins bypass the one-vampire-per-life rule
     if not is_admin(message):
-        # Check if this user has ever made a vampire
-        if user_id in ever_made:
-            # Check if they still have a living vampire
-            user_alive = [v for v in vampires.values() if v['owner_id'] == user_id and v['alive']]
-            if user_alive:
-                await message.channel.send(
-                    f"You already have a living vampire. You can only have one vampire per life. "
-                    f"Type `show` to see them."
-                )
-                return
-            else:
-                # They have made one before and it is dead — permanently locked out
-                await message.channel.send(
-                    "Your vampire has fallen and cannot be replaced. "
-                    "Regular users only get one vampire per life. Their story is over."
-                )
-                return
+        # Block only if they currently have a living vampire
+        if user_has_living_vampire(user_id):
+            await message.channel.send(
+                "You already have a living vampire. You can only create a new one once all your current vampires have fallen. Type `show` to see them."
+            )
+            return
 
     name = f"{random.choice(FIRST_NAMES)} {random.choice(LAST_NAMES)}"
     power = generate_power()
@@ -175,16 +177,15 @@ async def handle_vampire(message, args):
         "immortal": False
     }
 
-    # Mark this user as having ever made a vampire (only for non-admins)
     if not is_admin(message):
-        ever_made[user_id] = True
+        active_vampire_owners.add(user_id)
 
     embed = discord.Embed(title="A Vampire Has Risen", description=f"**{name}**", color=color)
     embed.add_field(name="Owner", value=message.author.name, inline=True)
     embed.add_field(name="Power Level", value=str(power), inline=True)
     embed.add_field(name="Tier", value=tier, inline=True)
     embed.add_field(name="Code", value=f"`{code}`", inline=False)
-    embed.set_footer(text="This is your one vampire. Protect them at all costs.")
+    embed.set_footer(text="Protect them. When they fall, you may rise again.")
     await message.channel.send(embed=embed)
 
 
@@ -217,7 +218,7 @@ async def handle_show(message, args):
     else:
         embed.add_field(
             name="No Alive Vampires",
-            value="All your vampires have perished.",
+            value="All your vampires have fallen. Type `vampire` to rise again.",
             inline=False
         )
 
@@ -282,20 +283,20 @@ async def handle_random(message, args):
         if is_immortal:
             stake_roll = random.randint(1, 100)
             if stake_roll <= 5:
-                vampire['alive'] = False
+                mark_vampire_dead(code)
                 embed.color = discord.Color.dark_red()
                 embed.add_field(name="The Undying Stake", value=f"This was no ordinary enemy. They carried the **Undying Stake** — the one weapon forged to end even immortal vampires. Your immortality meant nothing. {name} is gone.", inline=False)
                 embed.add_field(name="Power at Death", value=str(power), inline=False)
-                embed.set_footer(text="Even immortality has its end.")
+                embed.set_footer(text="Even immortality has its end. Type vampire to rise again when all are gone.")
             else:
                 embed.color = discord.Color.from_rgb(80, 0, 80)
                 embed.add_field(name="Immortality Holds", value=f"Death came for {name} — but could not take them. Their immortality repelled the killing blow. They walk away untouched.", inline=False)
                 embed.add_field(name="Power", value=str(power), inline=True)
                 embed.set_footer(text="Death itself cannot claim this vampire.")
         else:
-            vampire['alive'] = False
+            mark_vampire_dead(code)
             embed.add_field(name="Power at Death", value=str(power), inline=False)
-            embed.set_footer(text="This vampire is gone forever.")
+            embed.set_footer(text="This vampire is gone. Type vampire to rise again when all are gone.")
 
     elif event['type'] == 'nothing':
         tier, _ = get_tier(power)
@@ -315,6 +316,7 @@ async def handle_random(message, args):
             "alive": True,
             "immortal": False
         }
+        active_vampire_owners.add(message.author.id)
         recruited_tier, _ = get_tier(recruited['power'])
         embed.add_field(name="New Recruit", value=recruited['name'], inline=True)
         embed.add_field(name="Recruit Power", value=str(recruited['power']), inline=True)
@@ -397,15 +399,15 @@ async def handle_fight(message, args):
                 result_embed.add_field(name="New Tier", value=new_tier, inline=True)
                 result_embed.set_footer(text="Death cannot claim this vampire.")
             elif is_immortal and enemy_has_stake:
-                vampire['alive'] = False
+                mark_vampire_dead(code)
                 result_embed = discord.Embed(title="Victory — But the Stake Found Its Mark", description=f"**{vampire['name']}** defeated **{enemy['name']}** — but in the final moment the enemy drove the **Undying Stake** through their heart. Immortality shattered. They are gone.", color=discord.Color.dark_red())
                 result_embed.add_field(name="Power at Death", value=str(player_power), inline=False)
-                result_embed.set_footer(text="Even immortality has its end.")
+                result_embed.set_footer(text="Even immortality has its end. Type vampire to rise again when all are gone.")
             else:
-                vampire['alive'] = False
+                mark_vampire_dead(code)
                 result_embed = discord.Embed(title="Pyrrhic Victory", description=f"**{vampire['name']}** defeated **{enemy['name']}** but sustained fatal wounds in the process. They crumble to ash moments after victory.", color=discord.Color.dark_red())
                 result_embed.add_field(name="Power at Death", value=str(player_power), inline=False)
-                result_embed.set_footer(text="Your vampire's story is over.")
+                result_embed.set_footer(text="Type vampire to rise again when all are gone.")
         else:
             result_embed = discord.Embed(title="Victory", description=f"**{vampire['name']}** has defeated **{enemy['name']}** and drained their power!", color=discord.Color.green())
             result_embed.add_field(name="Enemy Power", value=str(enemy_power), inline=True)
@@ -430,16 +432,16 @@ async def handle_fight(message, args):
                 result_embed.add_field(name="New Tier", value=new_tier, inline=True)
                 result_embed.set_footer(text="Immortality held. But barely.")
             elif is_immortal and enemy_has_stake:
-                vampire['alive'] = False
+                mark_vampire_dead(code)
                 result_embed = discord.Embed(title="Defeated — The Undying Stake", description=f"**{vampire['name']}** was defeated by **{enemy['name']}** who drove the **Undying Stake** through their heart. The one weapon that can kill what cannot die. Your vampire is gone.", color=discord.Color.dark_red())
                 result_embed.add_field(name="Power at Death", value=str(player_power), inline=False)
-                result_embed.set_footer(text="Even immortality has its end.")
+                result_embed.set_footer(text="Even immortality has its end. Type vampire to rise again when all are gone.")
             else:
-                vampire['alive'] = False
+                mark_vampire_dead(code)
                 result_embed = discord.Embed(title="Defeated", description=f"**{vampire['name']}** was overpowered by **{enemy['name']}** and has been destroyed.", color=discord.Color.dark_red())
                 result_embed.add_field(name="Enemy Power", value=str(enemy_power), inline=True)
                 result_embed.add_field(name="Your Power", value=str(player_power), inline=True)
-                result_embed.set_footer(text="Your vampire's story is over.")
+                result_embed.set_footer(text="Type vampire to rise again when all are gone.")
         else:
             power_loss = random.randint(50, int(player_power * 0.25))
             new_power = max(10, player_power - power_loss)
