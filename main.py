@@ -35,16 +35,38 @@ STREET_NAMES = [
     "Lil Scarface", "Hitman", "Lil Hitman", "Naughty", "Lil Naughty"
 ]
 
-# Gang name parts for user gangs
-GANG_PREFIX = [
-    "Eastside", "Westside", "Northside", "Southside", "Original",
-    "Young", "Tiny", "Big", "Street", "Block",
-    "Project", "Avenue", "Hillside", "Valley", "Harbor"
-]
-
-GANG_SUFFIX = [
-    "Boys", "Gang", "Mob", "Squad", "Crew",
-    "Family", "Nation", "Click", "Set", "Mafia"
+# Real LA Gangs
+LA_GANGS = [
+    {"name": "Rollin 60s Crips", "hood": "West Adams, LA"},
+    {"name": "Grape Street Watts Crips", "hood": "Watts, LA"},
+    {"name": "Eight Tray Gangster Crips", "hood": "South LA"},
+    {"name": "Compton Crips", "hood": "Compton, LA"},
+    {"name": "Bounty Hunter Bloods", "hood": "Watts, LA"},
+    {"name": "Piru Street Boys", "hood": "Compton, LA"},
+    {"name": "Inglewood Family Bloods", "hood": "Inglewood, LA"},
+    {"name": "Brims", "hood": "South LA"},
+    {"name": "MS-13", "hood": "Pico-Union, LA"},
+    {"name": "18th Street Gang", "hood": "Rampart, LA"},
+    {"name": "Florencia 13", "hood": "Florence, LA"},
+    {"name": "Avenues", "hood": "Northeast LA"},
+    {"name": "White Fence", "hood": "East LA"},
+    {"name": "Varrio Nuevo Estrada", "hood": "Boyle Heights, LA"},
+    {"name": "Mara Salvatrucha", "hood": "Multiple, LA"},
+    {"name": "East Coast Crips", "hood": "South LA"},
+    {"name": "Hoover Criminals", "hood": "South LA"},
+    {"name": "Nutty Blocc Crips", "hood": "Compton, LA"},
+    {"name": "Crenshaw Mafia Bloods", "hood": "Crenshaw, LA"},
+    {"name": "Black P Stones", "hood": "Exposition Park, LA"},
+    {"name": "Pueblo Bishops Bloods", "hood": "Watts, LA"},
+    {"name": "Harpys 13", "hood": "East LA"},
+    {"name": "Clanton 14", "hood": "South LA"},
+    {"name": "Temple Street", "hood": "Echo Park, LA"},
+    {"name": "Rampart Villains", "hood": "Rampart, LA"},
+    {"name": "Compton Avenue Crips", "hood": "Compton, LA"},
+    {"name": "Elm Street Piru", "hood": "Compton, LA"},
+    {"name": "Tree Top Piru", "hood": "Compton, LA"},
+    {"name": "Fruit Town Piru", "hood": "Compton, LA"},
+    {"name": "Westside Crips", "hood": "West LA"},
 ]
 
 gangs = {}
@@ -143,16 +165,17 @@ async def handle_gang(message, args):
             )
             return
 
-    prefix = random.choice(GANG_PREFIX)
-    suffix = random.choice(GANG_SUFFIX)
-    gang_name = f"{prefix} {suffix}"
+    # Pick a real LA gang
+    la_gang = random.choice(LA_GANGS)
+    gang_name = la_gang["name"]
+    hood = la_gang["hood"]
     code = generate_code()
     rep = random.randint(10, 100)
-
     leader = random.choice(STREET_NAMES)
 
     gangs[code] = {
         "name": gang_name,
+        "hood": hood,
         "leader": leader,
         "rep": rep,
         "owner_id": user_id,
@@ -162,19 +185,21 @@ async def handle_gang(message, args):
         "kills": 0,
         "fights_won": 0,
         "fights_lost": 0,
+        "members": [leader],
     }
 
     if not is_admin(message):
         active_gang_owners.add(user_id)
 
     embed = discord.Embed(
-        title="Crew Created",
-        description=f"**{gang_name}** is now on the streets.",
+        title="You're In",
+        description=f"You just got put on with **{gang_name}**.",
         color=discord.Color.dark_grey()
     )
+    embed.add_field(name="Hood", value=hood, inline=True)
     embed.add_field(name="Shot Caller", value=leader, inline=True)
-    embed.add_field(name="Owner", value=message.author.name, inline=True)
     embed.add_field(name="Street Cred", value=str(rep), inline=True)
+    embed.add_field(name="Members", value=str(len(gangs[code]['members'])), inline=True)
     embed.add_field(name="Code", value=f"`{code}`", inline=False)
     embed.set_footer(text="Hold your block. Type: mission <code> | beef <code> | show")
     await message.channel.send(embed=embed)
@@ -203,12 +228,15 @@ async def handle_show(message, args):
             fights_lost = g.get('fights_lost', 0)
             total = fights_won + fights_lost
             win_rate = f"{int((fights_won / total) * 100)}%" if total > 0 else "N/A"
+            members = g.get('members', [g.get('leader', 'Unknown')])
 
             embed.add_field(
                 name=g['name'],
                 value=(
+                    f"Hood: {g.get('hood', 'Unknown')}\n"
                     f"Code: `{g['code']}`\n"
                     f"Shot Caller: {g.get('leader', 'Unknown')}\n"
+                    f"Members: {len(members)}\n"
                     f"Street Cred: {g['rep']}\n"
                     f"Bodies: {g.get('kills', 0)}\n"
                     f"Record: {fights_won}W - {fights_lost}L\n"
@@ -288,28 +316,16 @@ async def handle_mission(message, args):
 
     elif event['type'] == 'recruit':
         new_member = random.choice(STREET_NAMES)
-        new_rep = random.randint(10, 80)
-        new_code = generate_code()
-        prefix = random.choice(GANG_PREFIX)
-        suffix = random.choice(GANG_SUFFIX)
-        new_name = f"{prefix} {suffix}"
-        gangs[new_code] = {
-            "name": new_name,
-            "leader": new_member,
-            "rep": new_rep,
-            "owner_id": message.author.id,
-            "owner_name": message.author.name,
-            "code": new_code,
-            "alive": True,
-            "kills": 0,
-            "fights_won": 0,
-            "fights_lost": 0,
-        }
-        active_gang_owners.add(message.author.id)
-        embed.add_field(name="New Member", value=new_member, inline=True)
-        embed.add_field(name="Their Cred", value=str(new_rep), inline=True)
-        embed.add_field(name="New Set Code", value=f"`{new_code}`", inline=False)
-        embed.set_footer(text="New rider is with the crew.")
+        # Add the new member to the existing gang instead of creating a new one
+        if 'members' not in gang:
+            gang['members'] = [gang.get('leader', 'Unknown')]
+        gang['members'].append(new_member)
+        member_count = len(gang['members'])
+
+        embed.add_field(name="New Member Jumped In", value=new_member, inline=True)
+        embed.add_field(name="Total Members", value=str(member_count), inline=True)
+        embed.add_field(name="Gang", value=f"{name} — {gang.get('hood', '')}", inline=False)
+        embed.set_footer(text="The set is growing.")
 
     await message.channel.send(embed=embed)
 
