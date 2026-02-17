@@ -64,12 +64,12 @@ def get_tier(power):
         return "Primordial", discord.Color.gold()
 
 
-def generate_ai_vampire():
+def generate_ai_vampire(carry_stake=False):
     first = random.choice(FIRST_NAMES)
     last = random.choice(LAST_NAMES)
     name = f"{first} {last}"
     power = generate_power()
-    return {"name": name, "power": power}
+    return {"name": name, "power": power, "has_stake": carry_stake}
 
 
 EVENTS = [
@@ -462,7 +462,24 @@ EVENTS = [
         "value": None,
         "color": discord.Color.teal()
     },
+    # ANCIENT BLOOD — immortality event (rare, only one)
+    {
+        "id": 49,
+        "name": "The Ancient Blood",
+        "description": "{name} descends into the deepest vault beneath a forgotten civilization and finds a sealed obsidian chalice. Inside is blood so old it has turned black. They drink it. Something fundamental shifts. Death itself recoils from them.",
+        "type": "ancient_blood",
+        "value": None,
+        "color": discord.Color.from_rgb(80, 0, 80)
+    },
 ]
+
+# Separate weight pool so ancient_blood is very rare (1 in ~200 chance)
+EVENT_WEIGHTS = []
+for e in EVENTS:
+    if e['type'] == 'ancient_blood':
+        EVENT_WEIGHTS.append(1)
+    else:
+        EVENT_WEIGHTS.append(200)
 
 
 @bot.event
@@ -491,7 +508,8 @@ async def make_vampire(ctx):
         "owner_id": ctx.author.id,
         "owner_name": ctx.author.name,
         "code": code,
-        "alive": True
+        "alive": True,
+        "immortal": False
     }
 
     embed = discord.Embed(
@@ -529,9 +547,10 @@ async def show_vampires(ctx):
     if alive:
         for v in alive:
             tier, _ = get_tier(v['power'])
+            immortal_tag = "  |  IMMORTAL" if v.get('immortal', False) else ""
             embed.add_field(
                 name=v['name'],
-                value=f"Code: `{v['code']}`\nPower: {v['power']}\nTier: {tier}",
+                value=f"Code: `{v['code']}`\nPower: {v['power']}\nTier: {tier}{immortal_tag}",
                 inline=True
             )
     else:
@@ -542,7 +561,6 @@ async def show_vampires(ctx):
         )
 
     embed.set_footer(text="Use ?random <code> to trigger events | ?fight <code> to battle")
-
     await ctx.send(embed=embed)
 
 
@@ -568,7 +586,13 @@ async def random_event(ctx, code: str = None):
         await ctx.send(f"**{vampire['name']}** is dead and cannot experience events anymore.")
         return
 
-    event = random.choice(EVENTS)
+    is_immortal = vampire.get('immortal', False)
+
+    # If already immortal, remove ancient_blood from pool entirely
+    pool = EVENTS if not is_immortal else [e for e in EVENTS if e['type'] != 'ancient_blood']
+    weights = EVENT_WEIGHTS if not is_immortal else [w for e, w in zip(EVENTS, EVENT_WEIGHTS) if e['type'] != 'ancient_blood']
+
+    event = random.choices(pool, weights=weights, k=1)[0]
     name = vampire['name']
     power = vampire['power']
 
@@ -577,7 +601,6 @@ async def random_event(ctx, code: str = None):
         description=event['description'].format(name=name),
         color=event['color']
     )
-
     embed.add_field(name="Vampire", value=name, inline=True)
     embed.add_field(name="Code", value=f"`{code}`", inline=True)
 
@@ -602,9 +625,32 @@ async def random_event(ctx, code: str = None):
         embed.set_footer(text="Your vampire has been weakened...")
 
     elif event['type'] == 'death':
-        vampire['alive'] = False
-        embed.add_field(name="Power at Death", value=str(power), inline=False)
-        embed.set_footer(text="This vampire is gone. Use ?vampire to create a new one.")
+        if is_immortal:
+            # Check if this is a stake-bearer event — for random cmd, roll 5% stake carrier
+            stake_roll = random.randint(1, 100)
+            if stake_roll <= 5:
+                vampire['alive'] = False
+                embed.color = discord.Color.dark_red()
+                embed.add_field(
+                    name="The Undying Stake",
+                    value=f"This was no ordinary enemy. They carried the **Undying Stake** — the one weapon forged to end even immortal vampires. Your immortality meant nothing. {name} is gone.",
+                    inline=False
+                )
+                embed.add_field(name="Power at Death", value=str(power), inline=False)
+                embed.set_footer(text="Even immortality has its end. Use ?vampire to create a new one.")
+            else:
+                embed.color = discord.Color.from_rgb(80, 0, 80)
+                embed.add_field(
+                    name="Immortality Holds",
+                    value=f"Death came for {name} — but could not take them. Their immortality repelled the killing blow. They walk away untouched.",
+                    inline=False
+                )
+                embed.add_field(name="Power", value=str(power), inline=True)
+                embed.set_footer(text="Death itself cannot claim this vampire.")
+        else:
+            vampire['alive'] = False
+            embed.add_field(name="Power at Death", value=str(power), inline=False)
+            embed.set_footer(text="This vampire is gone. Use ?vampire to create a new one.")
 
     elif event['type'] == 'nothing':
         tier, _ = get_tier(power)
@@ -621,7 +667,8 @@ async def random_event(ctx, code: str = None):
             "owner_id": ctx.author.id,
             "owner_name": ctx.author.name,
             "code": new_code,
-            "alive": True
+            "alive": True,
+            "immortal": False
         }
         recruited_tier, _ = get_tier(recruited['power'])
         embed.add_field(name="New Recruit", value=recruited['name'], inline=True)
@@ -629,6 +676,16 @@ async def random_event(ctx, code: str = None):
         embed.add_field(name="Recruit Tier", value=recruited_tier, inline=True)
         embed.add_field(name="Recruit Code", value=f"`{new_code}`", inline=False)
         embed.set_footer(text="A new vampire has joined your ranks. Use their code to command them.")
+
+    elif event['type'] == 'ancient_blood':
+        vampire['immortal'] = True
+        embed.add_field(
+            name="Immortality Unlocked",
+            value=f"{name} is now immune to death by conventional means. Only the Undying Stake — a weapon carried by rare and powerful enemies — can end their existence.",
+            inline=False
+        )
+        embed.add_field(name="Power", value=str(power), inline=True)
+        embed.set_footer(text="Death itself now walks around this vampire.")
 
     await ctx.send(embed=embed)
 
@@ -655,27 +712,34 @@ async def fight(ctx, code: str = None):
         await ctx.send(f"**{vampire['name']}** is dead and cannot fight.")
         return
 
-    enemy = generate_ai_vampire()
+    is_immortal = vampire.get('immortal', False)
+
+    # 5% chance the AI carries the Undying Stake (only meaningful if player is immortal)
+    stake_roll = random.randint(1, 100)
+    enemy_has_stake = stake_roll <= 5
+    enemy = generate_ai_vampire(carry_stake=enemy_has_stake)
+
     player_power = vampire['power']
     enemy_power = enemy['power']
     player_tier, _ = get_tier(player_power)
     enemy_tier, _ = get_tier(enemy_power)
 
     # Battle intro
+    stake_warning = "\n\nThis enemy carries something unusual at their side..." if enemy_has_stake and is_immortal else ""
     intro_embed = discord.Embed(
         title="Blood Battle",
-        description=f"**{vampire['name']}** faces off against **{enemy['name']}** in the darkness...",
+        description=f"**{vampire['name']}** faces off against **{enemy['name']}** in the darkness...{stake_warning}",
         color=discord.Color.dark_red()
     )
-    intro_embed.add_field(name=vampire['name'], value=f"Power: {player_power}\nTier: {player_tier}", inline=True)
+    immortal_tag = "  |  IMMORTAL" if is_immortal else ""
+    intro_embed.add_field(name=vampire['name'], value=f"Power: {player_power}\nTier: {player_tier}{immortal_tag}", inline=True)
     intro_embed.add_field(name="VS", value="\u200b", inline=True)
     intro_embed.add_field(name=enemy['name'], value=f"Power: {enemy_power}\nTier: {enemy_tier}", inline=True)
     intro_embed.set_footer(text="The battle begins...")
     await ctx.send(embed=intro_embed)
     await asyncio.sleep(3)
 
-    # Calculate outcome
-    # Win chance scales with power difference, capped between 10% and 90%
+    # Win chance
     power_diff = player_power - enemy_power
     win_chance = 50 + int((power_diff / 4500) * 80)
     win_chance = max(10, min(90, win_chance))
@@ -683,25 +747,44 @@ async def fight(ctx, code: str = None):
     player_won = roll <= win_chance
 
     if player_won:
-        # Win: gain some power, small death chance
         power_gain = random.randint(50, int(enemy_power * 0.3))
         new_power = min(4500, player_power + power_gain)
         vampire['power'] = new_power
-        new_tier, color = get_tier(new_power)
+        new_tier, _ = get_tier(new_power)
 
-        # Small chance to die even in victory (5-15%)
+        # Small death chance on win — bypassed if immortal (unless enemy has stake)
         death_on_win_roll = random.randint(1, 100)
         if death_on_win_roll <= 10:
-            vampire['alive'] = False
-            result_embed = discord.Embed(
-                title="Pyrrhic Victory",
-                description=f"**{vampire['name']}** defeated **{enemy['name']}** but sustained fatal wounds in the process. They crumble to ash moments after victory.",
-                color=discord.Color.dark_red()
-            )
-            result_embed.add_field(name="Result", value="Won the fight, lost their life", inline=False)
-            result_embed.add_field(name="Enemy Power", value=str(enemy_power), inline=True)
-            result_embed.add_field(name="Power at Death", value=str(player_power), inline=True)
-            result_embed.set_footer(text="Use ?vampire to create a new vampire.")
+            if is_immortal and not enemy_has_stake:
+                # Immortal survives
+                result_embed = discord.Embed(
+                    title="Victory — Immortality Holds",
+                    description=f"**{vampire['name']}** defeated **{enemy['name']}**. A fatal blow landed but their immortality rejected death entirely.",
+                    color=discord.Color.green()
+                )
+                result_embed.add_field(name="Power Gained", value=f"+{new_power - player_power}", inline=True)
+                result_embed.add_field(name="New Power", value=f"{player_power} → **{new_power}**", inline=False)
+                result_embed.add_field(name="New Tier", value=new_tier, inline=True)
+                result_embed.set_footer(text="Death cannot claim this vampire.")
+            elif is_immortal and enemy_has_stake:
+                # Immortal killed by stake even in victory
+                vampire['alive'] = False
+                result_embed = discord.Embed(
+                    title="Victory — But the Stake Found Its Mark",
+                    description=f"**{vampire['name']}** defeated **{enemy['name']}** — but in the final moment the enemy drove the **Undying Stake** through their heart. Immortality shattered. They are gone.",
+                    color=discord.Color.dark_red()
+                )
+                result_embed.add_field(name="Power at Death", value=str(player_power), inline=False)
+                result_embed.set_footer(text="Even immortality has its end. Use ?vampire to create a new one.")
+            else:
+                vampire['alive'] = False
+                result_embed = discord.Embed(
+                    title="Pyrrhic Victory",
+                    description=f"**{vampire['name']}** defeated **{enemy['name']}** but sustained fatal wounds in the process. They crumble to ash moments after victory.",
+                    color=discord.Color.dark_red()
+                )
+                result_embed.add_field(name="Power at Death", value=str(player_power), inline=False)
+                result_embed.set_footer(text="Use ?vampire to create a new vampire.")
         else:
             result_embed = discord.Embed(
                 title="Victory",
@@ -713,25 +796,48 @@ async def fight(ctx, code: str = None):
             result_embed.add_field(name="New Power", value=f"{player_power} → **{new_power}**", inline=False)
             result_embed.add_field(name="New Tier", value=new_tier, inline=True)
             result_embed.set_footer(text="Your vampire grows stronger with each kill.")
-    else:
-        # Loss: lose some power, higher death chance
-        death_roll = random.randint(1, 100)
 
-        # Death chance scales: bigger the power gap, higher the chance (20-65%)
+    else:
         death_chance = 20 + int(abs(power_diff) / 4500 * 45)
         death_chance = max(20, min(65, death_chance))
+        death_roll = random.randint(1, 100)
 
         if death_roll <= death_chance:
-            vampire['alive'] = False
-            result_embed = discord.Embed(
-                title="Defeated",
-                description=f"**{vampire['name']}** was overpowered by **{enemy['name']}** and has been destroyed.",
-                color=discord.Color.dark_red()
-            )
-            result_embed.add_field(name="Enemy Power", value=str(enemy_power), inline=True)
-            result_embed.add_field(name="Your Power", value=str(player_power), inline=True)
-            result_embed.add_field(name="Death Roll", value=f"Rolled {death_roll} — death at {death_chance}% or below", inline=False)
-            result_embed.set_footer(text="Use ?vampire to create a new vampire.")
+            if is_immortal and not enemy_has_stake:
+                # Immortal survives the loss
+                power_loss = random.randint(50, int(player_power * 0.25))
+                new_power = max(10, player_power - power_loss)
+                vampire['power'] = new_power
+                new_tier, _ = get_tier(new_power)
+                result_embed = discord.Embed(
+                    title="Defeated — Immortality Saves Them",
+                    description=f"**{vampire['name']}** was overpowered by **{enemy['name']}**. The killing blow landed — but their immortality rejected death and they crawled away broken but breathing.",
+                    color=discord.Color.orange()
+                )
+                result_embed.add_field(name="Power Lost", value=f"-{player_power - new_power}", inline=True)
+                result_embed.add_field(name="New Power", value=f"{player_power} → **{new_power}**", inline=False)
+                result_embed.add_field(name="New Tier", value=new_tier, inline=True)
+                result_embed.set_footer(text="Immortality held. But barely.")
+            elif is_immortal and enemy_has_stake:
+                # Immortal killed by stake
+                vampire['alive'] = False
+                result_embed = discord.Embed(
+                    title="Defeated — The Undying Stake",
+                    description=f"**{vampire['name']}** was defeated by **{enemy['name']}** who drove the **Undying Stake** through their heart. The one weapon that can kill what cannot die. Your vampire is gone.",
+                    color=discord.Color.dark_red()
+                )
+                result_embed.add_field(name="Power at Death", value=str(player_power), inline=False)
+                result_embed.set_footer(text="Even immortality has its end. Use ?vampire to create a new one.")
+            else:
+                vampire['alive'] = False
+                result_embed = discord.Embed(
+                    title="Defeated",
+                    description=f"**{vampire['name']}** was overpowered by **{enemy['name']}** and has been destroyed.",
+                    color=discord.Color.dark_red()
+                )
+                result_embed.add_field(name="Enemy Power", value=str(enemy_power), inline=True)
+                result_embed.add_field(name="Your Power", value=str(player_power), inline=True)
+                result_embed.set_footer(text="Use ?vampire to create a new vampire.")
         else:
             power_loss = random.randint(50, int(player_power * 0.25))
             new_power = max(10, player_power - power_loss)
@@ -746,7 +852,6 @@ async def fight(ctx, code: str = None):
             result_embed.add_field(name="Power Lost", value=f"-{player_power - new_power}", inline=True)
             result_embed.add_field(name="New Power", value=f"{player_power} → **{new_power}**", inline=False)
             result_embed.add_field(name="New Tier", value=new_tier, inline=True)
-            result_embed.add_field(name="Death Roll", value=f"Rolled {death_roll} — death at {death_chance}% or below — survived", inline=False)
             result_embed.set_footer(text="Your vampire fled into the shadows, wounded.")
 
     await ctx.send(embed=result_embed)
