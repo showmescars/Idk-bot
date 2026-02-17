@@ -21,7 +21,7 @@ FIRST_NAMES = [
 ]
 
 LAST_NAMES = [
-    "Tepes", "Drăculești", "Karnstein", "De Lioncourt", "Enkil", "Romanus", "Corvinus", "Nightshade",
+    "Tepes", "Draculesti", "Karnstein", "De Lioncourt", "Enkil", "Romanus", "Corvinus", "Nightshade",
     "Von Doom", "Bloodworth", "Blackthorn", "Darkmore", "Volturi", "Mikaelson", "Salvatore", "Pierce",
     "Bennett", "Forbes", "Lockwood", "Donovan", "Gilbert", "Fell", "Whitmore", "St. John",
     "Ashford", "Bloodmoon", "Crimson", "Ravencroft", "Shadowend", "Duskbane", "Nocturne", "Grave",
@@ -64,7 +64,6 @@ def get_tier(power):
         return "Primordial", discord.Color.gold()
 
 
-# 25 random events
 EVENTS = [
     {
         "id": 1,
@@ -72,8 +71,7 @@ EVENTS = [
         "description": "{name} stumbles upon a forbidden ancient tome deep in a crumbling castle library. The dark knowledge within surges through their veins.",
         "type": "power_up",
         "value": (50, 150),
-        "color": discord.Color.green(),
-        "emoji": "📖"
+        "color": discord.Color.green()
     },
     {
         "id": 2,
@@ -81,17 +79,15 @@ EVENTS = [
         "description": "{name} is ambushed by a squad of elite vampire hunters armed with holy weapons. They barely escape but are gravely weakened.",
         "type": "power_down",
         "value": (50, 200),
-        "color": discord.Color.orange(),
-        "emoji": "🏹"
+        "color": discord.Color.orange()
     },
     {
         "id": 3,
         "name": "Slain by a Vampire Hunter",
-        "description": "{name} encountered the legendary hunter **Van Hellward** — and lost. A silver stake finds its mark. Your vampire is dead.",
+        "description": "{name} encountered the legendary hunter Van Hellward and lost. A silver stake finds its mark. Your vampire is dead.",
         "type": "death",
         "value": None,
-        "color": discord.Color.dark_red(),
-        "emoji": "💀"
+        "color": discord.Color.dark_red()
     },
     {
         "id": 4,
@@ -99,8 +95,7 @@ EVENTS = [
         "description": "{name} participates in a rare blood moon ritual with elder vampires. The ceremony floods them with primordial energy.",
         "type": "power_up",
         "value": (100, 300),
-        "color": discord.Color.green(),
-        "emoji": "🌕"
+        "color": discord.Color.green()
     },
     {
         "id": 5,
@@ -108,8 +103,7 @@ EVENTS = [
         "description": "{name} crossed into a witch's territory uninvited. She placed a draining curse on them, sapping their strength.",
         "type": "power_down",
         "value": (80, 250),
-        "color": discord.Color.orange(),
-        "emoji": "🧙"
+        "color": discord.Color.orange()
     },
     {
         "id": 6,
@@ -117,8 +111,7 @@ EVENTS = [
         "description": "{name} found a dying ancient vampire and drained them completely. Their power floods into your vampire's body.",
         "type": "power_up",
         "value": (150, 400),
-        "color": discord.Color.green(),
-        "emoji": "🩸"
+        "color": discord.Color.green()
     },
     {
         "id": 7,
@@ -126,8 +119,7 @@ EVENTS = [
         "description": "{name} was trapped outside at dawn by a cunning enemy. The sunlight scorched away a portion of their power before they escaped.",
         "type": "power_down",
         "value": (100, 300),
-        "color": discord.Color.orange(),
-        "emoji": "☀️"
+        "color": discord.Color.orange()
     },
     {
         "id": 8,
@@ -135,8 +127,7 @@ EVENTS = [
         "description": "{name} was captured by a vengeful mob and burned. Not even vampire regeneration could save them from the sacred fire.",
         "type": "death",
         "value": None,
-        "color": discord.Color.dark_red(),
-        "emoji": "🔥"
+        "color": discord.Color.dark_red()
     },
     {
         "id": 9,
@@ -144,8 +135,7 @@ EVENTS = [
         "description": "{name} allied with a powerful vampire coven. Through shared blood rituals, their power has grown significantly.",
         "type": "power_up",
         "value": (80, 200),
-        "color": discord.Color.green(),
-        "emoji": "🤝"
+        "color": discord.Color.green()
     },
     {
         "id": 10,
@@ -153,17 +143,15 @@ EVENTS = [
         "description": "{name}'s most trusted human thrall betrayed them to vampire hunters. In the struggle, they were wounded by holy water.",
         "type": "power_down",
         "value": (60, 180),
-        "color": discord.Color.orange(),
-        "emoji": "🗡️"
+        "color": discord.Color.orange()
     },
     {
         "id": 11,
         "name": "Nothing Happens",
-        "description": "{name} roams the night and finds... nothing. The evening passes without incident. Sometimes darkness is just quiet.",
+        "description": "{name} roams the night and finds nothing. The evening passes without incident. Sometimes darkness is just quiet.",
         "type": "nothing",
         "value": None,
-        "color": discord.Color.greyple(),
-        "emoji": "🌑"
+        "color": discord.Color.greyple()
     },
     {
         "id": 12,
@@ -171,8 +159,7 @@ EVENTS = [
         "description": "{name} discovered a mythical blood spring hidden beneath an old cathedral. Drinking from it restored and amplified their power.",
         "type": "power_up",
         "value": (200, 500),
-        "color": discord.Color.green(),
-        "emoji": "⛲"
+        "color": discord.Color.green()
     },
     {
         "id": 13,
@@ -180,8 +167,7 @@ EVENTS = [
         "description": "{name} lost control to bloodlust and went on a rampage, drawing the attention of every hunter in the region. They barely survived.",
         "type": "power_down",
         "value": (150, 350),
-        "color": discord.Color.orange(),
-        "emoji": "😡"
+        "color": discord.Color.orange()
     },
     {
         "id": 14,
@@ -189,8 +175,7 @@ EVENTS = [
         "description": "{name} wandered into an Elder's feeding ground. The ancient creature showed no mercy. Your vampire has been consumed.",
         "type": "death",
         "value": None,
-        "color": discord.Color.dark_red(),
-        "emoji": "👁️"
+        "color": discord.Color.dark_red()
     },
     {
         "id": 15,
@@ -198,8 +183,7 @@ EVENTS = [
         "description": "{name} spent weeks in isolation practicing dark arts. They have awakened a new supernatural ability, boosting their combat power.",
         "type": "power_up",
         "value": (100, 250),
-        "color": discord.Color.green(),
-        "emoji": "⚡"
+        "color": discord.Color.green()
     },
     {
         "id": 16,
@@ -207,8 +191,7 @@ EVENTS = [
         "description": "{name} was attacked by a rival vampire clan in their own territory. They survived, but the battle drained significant power.",
         "type": "power_down",
         "value": (100, 300),
-        "color": discord.Color.orange(),
-        "emoji": "⚔️"
+        "color": discord.Color.orange()
     },
     {
         "id": 17,
@@ -216,8 +199,7 @@ EVENTS = [
         "description": "{name} underestimated a lone slayer who carried an enchanted blade. One swift strike ends their undead existence permanently.",
         "type": "death",
         "value": None,
-        "color": discord.Color.dark_red(),
-        "emoji": "⚰️"
+        "color": discord.Color.dark_red()
     },
     {
         "id": 18,
@@ -225,8 +207,7 @@ EVENTS = [
         "description": "{name} fed on a powerful blood mage. The magical blood surging through them granted an extraordinary power boost.",
         "type": "power_up",
         "value": (120, 350),
-        "color": discord.Color.green(),
-        "emoji": "🧙‍♂️"
+        "color": discord.Color.green()
     },
     {
         "id": 19,
@@ -234,8 +215,7 @@ EVENTS = [
         "description": "{name} was lured into a silver cage trap. Days of exposure to silver drained their supernatural strength before they escaped.",
         "type": "power_down",
         "value": (120, 280),
-        "color": discord.Color.orange(),
-        "emoji": "🪤"
+        "color": discord.Color.orange()
     },
     {
         "id": 20,
@@ -243,8 +223,7 @@ EVENTS = [
         "description": "{name} experienced a near-death moment that cracked open a dormant power deep within their bloodline. They emerge transformed.",
         "type": "power_up",
         "value": (300, 600),
-        "color": discord.Color.green(),
-        "emoji": "💥"
+        "color": discord.Color.green()
     },
     {
         "id": 21,
@@ -252,8 +231,7 @@ EVENTS = [
         "description": "{name} was caught in the crossfire of a massive exorcism ritual. The holy energy tore through them, stripping away their power.",
         "type": "power_down",
         "value": (200, 450),
-        "color": discord.Color.orange(),
-        "emoji": "✝️"
+        "color": discord.Color.orange()
     },
     {
         "id": 22,
@@ -261,8 +239,7 @@ EVENTS = [
         "description": "{name} challenged an Ancient vampire to a duel and paid the ultimate price. Their heart was ripped from their chest.",
         "type": "death",
         "value": None,
-        "color": discord.Color.dark_red(),
-        "emoji": "🖤"
+        "color": discord.Color.dark_red()
     },
     {
         "id": 23,
@@ -270,8 +247,7 @@ EVENTS = [
         "description": "{name} bonded with a powerful supernatural familiar that enhances their senses and combat abilities beyond normal limits.",
         "type": "power_up",
         "value": (70, 180),
-        "color": discord.Color.green(),
-        "emoji": "🦇"
+        "color": discord.Color.green()
     },
     {
         "id": 24,
@@ -279,8 +255,7 @@ EVENTS = [
         "description": "{name} was poisoned with a concentrated wolfsbane and mountain ash mixture slipped into their blood supply. Recovery cost them dearly.",
         "type": "power_down",
         "value": (80, 220),
-        "color": discord.Color.orange(),
-        "emoji": "🌿"
+        "color": discord.Color.orange()
     },
     {
         "id": 25,
@@ -288,8 +263,7 @@ EVENTS = [
         "description": "{name} was the last to find a dying vampire bloodline and absorbed their entire lineage's power in a single night.",
         "type": "power_up",
         "value": (250, 550),
-        "color": discord.Color.green(),
-        "emoji": "🌀"
+        "color": discord.Color.green()
     },
 ]
 
@@ -337,6 +311,48 @@ async def make_vampire(ctx):
     await ctx.send(embed=embed)
 
 
+@bot.command(name='show')
+async def show_vampires(ctx):
+    user_id = ctx.author.id
+
+    user_vampires = [v for v in vampires.values() if v['owner_id'] == user_id]
+
+    if not user_vampires:
+        await ctx.send("You have no vampires. Use `?vampire` to create one.")
+        return
+
+    alive = [v for v in user_vampires if v['alive']]
+    dead = [v for v in user_vampires if not v['alive']]
+
+    embed = discord.Embed(
+        title=f"{ctx.author.name}'s Vampires",
+        description=f"Total: {len(user_vampires)}  |  Alive: {len(alive)}  |  Dead: {len(dead)}",
+        color=discord.Color.dark_purple()
+    )
+
+    if alive:
+        for v in alive:
+            tier, _ = get_tier(v['power'])
+            embed.add_field(
+                name=v['name'],
+                value=f"Code: `{v['code']}`\nPower: {v['power']}\nTier: {tier}\nStatus: Alive",
+                inline=True
+            )
+
+    if dead:
+        for v in dead:
+            tier, _ = get_tier(v['power'])
+            embed.add_field(
+                name=v['name'],
+                value=f"Code: `{v['code']}`\nPower: {v['power']}\nTier: {tier}\nStatus: Dead",
+                inline=True
+            )
+
+    embed.set_footer(text="Use ?random <code> to trigger events for your vampires")
+
+    await ctx.send(embed=embed)
+
+
 @bot.command(name='random')
 async def random_event(ctx, code: str = None):
     if code is None:
@@ -356,7 +372,7 @@ async def random_event(ctx, code: str = None):
         return
 
     if not vampire['alive']:
-        await ctx.send(f"**{vampire['name']}** is dead. They cannot experience events anymore.")
+        await ctx.send(f"**{vampire['name']}** is dead and cannot experience events anymore.")
         return
 
     event = random.choice(EVENTS)
@@ -364,7 +380,7 @@ async def random_event(ctx, code: str = None):
     power = vampire['power']
 
     embed = discord.Embed(
-        title=f"{event['emoji']} {event['name']}",
+        title=event['name'],
         description=event['description'].format(name=name),
         color=event['color']
     )
@@ -396,9 +412,8 @@ async def random_event(ctx, code: str = None):
 
     elif event['type'] == 'death':
         vampire['alive'] = False
-        embed.add_field(name="Power", value=f"~~{power}~~ — DEAD", inline=False)
-        embed.add_field(name="Final Record", value=f"Power at death: {power}", inline=False)
-        embed.set_footer(text="This vampire is gone forever. Use ?vampire to create a new one.")
+        embed.add_field(name="Power at Death", value=str(power), inline=False)
+        embed.set_footer(text="This vampire is gone. Use ?vampire to create a new one.")
 
     elif event['type'] == 'nothing':
         tier, _ = get_tier(power)
