@@ -124,7 +124,6 @@ def get_alive_members(gang):
 
 
 def get_free_members(gang):
-    """Members who are alive and not in jail."""
     now = time.time()
     return [
         m for m in gang.get('members', [])
@@ -175,8 +174,7 @@ def format_member_list(members):
     for m in members:
         status = get_member_status(m)
         kills = m.get('kills', 0)
-        deaths = m.get('deaths', 0)
-        lines.append(f"{m['name']}  —  {kills} kills  |  {deaths} deaths  |  {status}")
+        lines.append(f"{m['name']}  —  {kills} kills  |  {status}")
     return "\n".join(lines)
 
 
@@ -358,7 +356,6 @@ async def handle_mission(message, args):
         new_rep = rep + gain
         gang['rep'] = new_rep
 
-        # Small chance member gets a kill on a rep_up mission
         if random.randint(1, 100) <= 20:
             featured_member['kills'] = featured_member.get('kills', 0) + 1
             embed.add_field(name="\u200b", value="\u200b", inline=True)
@@ -378,12 +375,10 @@ async def handle_mission(message, args):
 
         extra_info = []
 
-        # Chance member dies
         if random.randint(1, 100) <= 15 and len(get_alive_members(gang)) > 1:
             featured_member['alive'] = False
             featured_member['deaths'] = featured_member.get('deaths', 0) + 1
             extra_info.append(f"{featured_member['name']} was killed")
-        # Chance member goes to jail (only if still alive)
         elif random.randint(1, 100) <= 25:
             sentence = send_to_jail(featured_member)
             extra_info.append(f"{featured_member['name']} got knocked — {sentence} sentence")
@@ -532,8 +527,6 @@ async def handle_beef(message, args):
             m['kills'] = m.get('kills', 0) + 1
             outcome_lines.append(f"{m['name']} caught a body")
 
-        # Possible casualty on a win
-        current_free = get_free_members(gang)
         if len(get_alive_members(gang)) > 1 and random.randint(1, 100) <= 20:
             still_alive_rollers = [m for m in rolling_members if m['alive']]
             if still_alive_rollers:
@@ -542,7 +535,6 @@ async def handle_beef(message, args):
                 casualty['deaths'] = casualty.get('deaths', 0) + 1
                 outcome_lines.append(f"{casualty['name']} got hit and didn't make it back")
 
-        # Possible jail on a win
         if random.randint(1, 100) <= 15:
             still_free_rollers = [m for m in rolling_members if m['alive'] and (m.get('jail_until') is None or time.time() >= m['jail_until'])]
             if still_free_rollers:
@@ -576,7 +568,6 @@ async def handle_beef(message, args):
                 m['deaths'] = m.get('deaths', 0) + 1
                 outcome_lines.append(f"{m['name']} got bodied")
             else:
-                # Chance of jail on a loss
                 if random.randint(1, 100) <= 30 and m['alive']:
                     sentence = send_to_jail(m)
                     outcome_lines.append(f"{m['name']} took a hit and got knocked — {sentence} sentence")
