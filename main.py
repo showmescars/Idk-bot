@@ -4,88 +4,92 @@ import random
 from dotenv import load_dotenv
 import os
 
-# Load token
 load_dotenv()
-TOKEN = os.getenv("DISCORD_TOKEN")
 
-# Bot setup
 intents = discord.Intents.default()
 intents.message_content = True
-bot = commands.Bot(command_prefix="?", intents=intents)
+bot = commands.Bot(command_prefix='?', intents=intents)
 
-# Name pools
 FIRST_NAMES = [
-    "Dracula","Vlad","Carmilla","Lestat","Akasha",
-    "Armand","Selene","Lucian","Sonja","Aro",
-    "Elijah","Klaus","Damon","Stefan","Katherine"
+    "Dracula", "Vladislav", "Carmilla", "Lestat", "Akasha", "Armand", "Blade", "Selene",
+    "Viktor", "Marcus", "Lucian", "Sonja", "Aro", "Caius", "Demetri", "Jane",
+    "Alec", "Elijah", "Klaus", "Rebekah", "Kol", "Finn", "Alaric", "Damon",
+    "Stefan", "Katherine", "Silas", "Qetsiyah", "Amara", "Niklaus", "Mikael", "Esther",
+    "Freya", "Dahlia", "Lucien", "Tristan", "Aurora", "Rayna", "Julian", "Lily",
+    "Valerie", "Nora", "Mary", "Beau", "Oscar", "Malcolm", "Sage", "Maddox",
+    "Atticus", "Greta", "Antoinette", "Cassandra", "Ezra", "Morgana", "Dorian"
 ]
 
 LAST_NAMES = [
-    "Tepes","Karnstein","Nightshade","Bloodworth",
-    "Blackthorn","Darkmore","Grimwood",
-    "Shadowend","Nocturne","Draven",
-    "Sanguine","Mortis","Duskbane"
+    "Tepes", "Drăculești", "Karnstein", "De Lioncourt", "Enkil", "Romanus", "Corvinus", "Nightshade",
+    "Von Doom", "Bloodworth", "Blackthorn", "Darkmore", "Volturi", "Mikaelson", "Salvatore", "Pierce",
+    "Bennett", "Forbes", "Lockwood", "Donovan", "Gilbert", "Fell", "Whitmore", "St. John",
+    "Ashford", "Bloodmoon", "Crimson", "Ravencroft", "Shadowend", "Duskbane", "Nocturne", "Grave",
+    "Morningstar", "Hellsing", "Alucard", "Belmont", "Blackwood", "Von Carstein", "Draken",
+    "Mourning", "Eclipse", "Eventide", "Twilight", "Sanguine", "Hemlock", "Mortis", "Grimwood",
+    "Nightfall", "Darkholm"
 ]
 
-# Random vampire events
-EVENTS = [
-    "A blood moon rises over the vampire council.",
-    "Hunters have entered the city searching for vampires.",
-    "An ancient vampire awakens from centuries of sleep.",
-    "A secret vampire gathering is held at midnight.",
-    "A rival clan challenges your lineage.",
-    "A forbidden ritual is being performed in the catacombs.",
-    "A powerful relic has been discovered.",
-    "A vampire lord declares a new rule.",
-    "A shadow war begins between covens.",
-    "A newly turned vampire loses control."
-]
+
+def generate_power():
+    roll = random.randint(1, 100)
+    if roll <= 45:
+        return random.randint(10, 400)
+    elif roll <= 75:
+        return random.randint(401, 1000)
+    elif roll <= 90:
+        return random.randint(1001, 1600)
+    else:
+        return random.randint(1601, 2000)
+
 
 @bot.event
 async def on_ready():
-    print(f"{bot.user} is online")
+    print(f'{bot.user} is online')
 
-# MAKE COMMAND
-@bot.command()
-async def make(ctx):
-    first = random.choice(FIRST_NAMES)
-    last = random.choice(LAST_NAMES)
 
-    name = f"{first} {last}"
-    char_id = random.randint(1000, 9999)
+@bot.check
+async def globally_block_dms(ctx):
+    if ctx.guild is None:
+        await ctx.send("Commands can only be used in servers, not DMs.")
+        return False
+    return True
+
+
+@bot.command(name='vampire')
+async def make_vampire(ctx):
+    name = f"{random.choice(FIRST_NAMES)} {random.choice(LAST_NAMES)}"
+    power = generate_power()
+
+    if power <= 400:
+        tier = "Fledgling"
+        color = discord.Color.dark_grey()
+    elif power <= 1000:
+        tier = "Experienced"
+        color = discord.Color.blue()
+    elif power <= 1600:
+        tier = "Ancient"
+        color = discord.Color.purple()
+    else:
+        tier = "Primordial"
+        color = discord.Color.gold()
 
     embed = discord.Embed(
-        title="Vampire Created",
-        color=discord.Color.dark_purple()
+        title="A Vampire Has Risen",
+        description=f"**{name}**",
+        color=color
     )
-
-    embed.add_field(
-        name="Name",
-        value=f"`{name}`",
-        inline=False
-    )
-
-    embed.add_field(
-        name="ID",
-        value=f"`{char_id}`",
-        inline=False
-    )
-
-    embed.set_footer(text="A new vampire walks the night")
+    embed.add_field(name="Owner", value=ctx.author.name, inline=True)
+    embed.add_field(name="Power Level", value=str(power), inline=True)
+    embed.add_field(name="Tier", value=tier, inline=True)
+    embed.set_footer(text="A new vampire emerges from the darkness...")
 
     await ctx.send(embed=embed)
 
-# RANDOM EVENT COMMAND
-@bot.command()
-async def random(ctx):
-    event = random.choice(EVENTS)
 
-    embed = discord.Embed(
-        title="Random Vampire Event",
-        description=f"`{event}`",
-        color=discord.Color.dark_red()
-    )
-
-    await ctx.send(embed=embed)
-
-bot.run(TOKEN)
+if __name__ == "__main__":
+    TOKEN = os.getenv('DISCORD_TOKEN')
+    if not TOKEN:
+        print("ERROR: DISCORD_TOKEN not found in .env")
+    else:
+        bot.run(TOKEN)
