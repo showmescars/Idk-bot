@@ -18,7 +18,6 @@ bot = commands.Bot(command_prefix='?', intents=intents)
 # Files
 CHARACTERS_FILE = 'characters.json'
 GRAVEYARD_FILE = 'graveyard.json'
-STATS_FILE = 'game_stats.json'
 
 # LA Gang Member Names (First Names)
 FIRST_NAMES = [
@@ -136,143 +135,6 @@ def save_graveyard(graveyard):
     with open(GRAVEYARD_FILE, 'w') as f:
         json.dump(graveyard, f, indent=4)
 
-# Load game stats
-def load_game_stats():
-    if os.path.exists(STATS_FILE):
-        with open(STATS_FILE, 'r') as f:
-            return json.load(f)
-    return {
-        "total_characters_created": 0,
-        "total_deaths": 0,
-        "total_kills": 0,
-        "total_money_earned": 0,
-        "total_robberies": 0,
-        "successful_robberies": 0,
-        "failed_robberies": 0,
-        "total_arrests": 0,
-        "total_work_shifts": 0,
-        "total_slides": 0,
-        "total_revenge_missions": 0,
-        "successful_revenge": 0,
-        "failed_revenge": 0,
-        "total_block_parties": 0,
-        "block_party_shootings": 0,
-        "block_party_deaths": 0,
-        "gang_stats": {
-            "Crips": {"kills": 0, "deaths": 0},
-            "Bloods": {"kills": 0, "deaths": 0},
-            "Sureños": {"kills": 0, "deaths": 0},
-            "Norteños": {"kills": 0, "deaths": 0}
-        },
-        "ai_kills": [],
-        "player_kills": [],
-        "recent_deaths": []
-    }
-
-# Save game stats
-def save_game_stats(stats):
-    with open(STATS_FILE, 'w') as f:
-        json.dump(stats, f, indent=4)
-
-# Update stats for character creation
-def update_stats_character_created():
-    stats = load_game_stats()
-    stats['total_characters_created'] += 1
-    save_game_stats(stats)
-
-# Update stats for death
-def update_stats_death(victim_name, victim_gang, killer_name, killer_gang, death_type, is_ai_kill=False):
-    stats = load_game_stats()
-    stats['total_deaths'] += 1
-    
-    # Update gang stats
-    if victim_gang in stats['gang_stats']:
-        stats['gang_stats'][victim_gang]['deaths'] += 1
-    if killer_gang and killer_gang in stats['gang_stats']:
-        stats['gang_stats'][killer_gang]['kills'] += 1
-    
-    # Track death
-    death_record = {
-        'victim': victim_name,
-        'victim_gang': victim_gang,
-        'killer': killer_name,
-        'killer_gang': killer_gang,
-        'type': death_type,
-        'timestamp': datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-    }
-    
-    stats['recent_deaths'].insert(0, death_record)
-    if len(stats['recent_deaths']) > 50:
-        stats['recent_deaths'] = stats['recent_deaths'][:50]
-    
-    # Track AI kills vs player kills
-    if is_ai_kill:
-        stats['ai_kills'].insert(0, death_record)
-        if len(stats['ai_kills']) > 50:
-            stats['ai_kills'] = stats['ai_kills'][:50]
-    else:
-        stats['player_kills'].insert(0, death_record)
-        if len(stats['player_kills']) > 50:
-            stats['player_kills'] = stats['player_kills'][:50]
-    
-    save_game_stats(stats)
-
-# Update stats for kill
-def update_stats_kill():
-    stats = load_game_stats()
-    stats['total_kills'] += 1
-    save_game_stats(stats)
-
-# Update stats for robbery
-def update_stats_robbery(success, money_earned=0):
-    stats = load_game_stats()
-    stats['total_robberies'] += 1
-    if success:
-        stats['successful_robberies'] += 1
-        stats['total_money_earned'] += money_earned
-    else:
-        stats['failed_robberies'] += 1
-    save_game_stats(stats)
-
-# Update stats for arrest
-def update_stats_arrest():
-    stats = load_game_stats()
-    stats['total_arrests'] += 1
-    save_game_stats(stats)
-
-# Update stats for work
-def update_stats_work(money_earned):
-    stats = load_game_stats()
-    stats['total_work_shifts'] += 1
-    stats['total_money_earned'] += money_earned
-    save_game_stats(stats)
-
-# Update stats for slide
-def update_stats_slide():
-    stats = load_game_stats()
-    stats['total_slides'] += 1
-    save_game_stats(stats)
-
-# Update stats for revenge
-def update_stats_revenge(success):
-    stats = load_game_stats()
-    stats['total_revenge_missions'] += 1
-    if success:
-        stats['successful_revenge'] += 1
-    else:
-        stats['failed_revenge'] += 1
-    save_game_stats(stats)
-
-# Update stats for block party
-def update_stats_block_party(shooting_occurred, death_occurred):
-    stats = load_game_stats()
-    stats['total_block_parties'] += 1
-    if shooting_occurred:
-        stats['block_party_shootings'] += 1
-    if death_occurred:
-        stats['block_party_deaths'] += 1
-    save_game_stats(stats)
-
 # Generate unique 6-digit ID
 def generate_unique_id():
     characters = load_characters()
@@ -362,202 +224,6 @@ async def on_command_error(ctx, error):
         # Print error for debugging
         print(f"Error: {error}")
 
-# View command - Display all game statistics
-@bot.command(name='view')
-@commands.cooldown(1, 10, commands.BucketType.user)
-async def view_stats(ctx):
-    """Display comprehensive game statistics"""
-    
-    # Reset cooldown for admins
-    if is_admin(ctx):
-        ctx.command.reset_cooldown(ctx)
-    
-    stats = load_game_stats()
-    current_characters = load_characters()
-    current_graveyard = load_graveyard()
-    
-    # Main stats embed
-    main_embed = discord.Embed(
-        title="LA GANG BATTLE STATISTICS",
-        description="Complete overview of all game activity",
-        color=discord.Color.gold()
-    )
-    
-    # General Stats
-    main_embed.add_field(
-        name="Character Stats",
-        value=f"Created: {stats['total_characters_created']}\nAlive: {len(current_characters)}\nDead: {len(current_graveyard)}",
-        inline=True
-    )
-    
-    main_embed.add_field(
-        name="Death Stats",
-        value=f"Total Deaths: {stats['total_deaths']}\nTotal Kills: {stats['total_kills']}\nBlock Party Deaths: {stats['block_party_deaths']}",
-        inline=True
-    )
-    
-    main_embed.add_field(
-        name="Money Stats",
-        value=f"Total Earned: ${stats['total_money_earned']:,}\nWork Shifts: {stats['total_work_shifts']}\nRobberies: {stats['total_robberies']}",
-        inline=True
-    )
-    
-    # Action Stats
-    main_embed.add_field(
-        name="Combat Stats",
-        value=f"Slides: {stats['total_slides']}\nRevenge Missions: {stats['total_revenge_missions']}\nSuccessful Revenge: {stats['successful_revenge']}",
-        inline=True
-    )
-    
-    main_embed.add_field(
-        name="Robbery Stats",
-        value=f"Successful: {stats['successful_robberies']}\nFailed: {stats['failed_robberies']}\nSuccess Rate: {(stats['successful_robberies'] / max(stats['total_robberies'], 1) * 100):.1f}%",
-        inline=True
-    )
-    
-    main_embed.add_field(
-        name="Law Enforcement",
-        value=f"Total Arrests: {stats['total_arrests']}\nCurrently Jailed: {sum(1 for c in current_characters.values() if is_in_jail(c))}",
-        inline=True
-    )
-    
-    # Block Party Stats
-    main_embed.add_field(
-        name="Block Party Stats",
-        value=f"Total Parties: {stats['total_block_parties']}\nShootings: {stats['block_party_shootings']}\nDeaths: {stats['block_party_deaths']}",
-        inline=True
-    )
-    
-    # Gang War Stats
-    gang_stats_text = ""
-    for gang, data in stats['gang_stats'].items():
-        gang_stats_text += f"**{gang}**\nKills: {data['kills']} | Deaths: {data['deaths']}\n"
-    
-    main_embed.add_field(
-        name="Gang Statistics",
-        value=gang_stats_text if gang_stats_text else "No gang activity yet",
-        inline=False
-    )
-    
-    await ctx.send(embed=main_embed)
-    
-    # Recent Deaths Embed
-    if stats['recent_deaths']:
-        deaths_embed = discord.Embed(
-            title="RECENT DEATHS (Last 10)",
-            color=discord.Color.dark_red()
-        )
-        
-        for idx, death in enumerate(stats['recent_deaths'][:10]):
-            field_value = f"**Victim:** {death['victim']} ({death['victim_gang']})\n"
-            field_value += f"**Killer:** {death['killer']}\n"
-            if death['killer_gang']:
-                field_value += f"**Gang:** {death['killer_gang']}\n"
-            field_value += f"**Type:** {death['type']}\n"
-            field_value += f"**Time:** {death['timestamp']}"
-            
-            deaths_embed.add_field(
-                name=f"Death #{idx + 1}",
-                value=field_value,
-                inline=True
-            )
-        
-        await ctx.send(embed=deaths_embed)
-    
-    # AI Kills vs Player Kills
-    kills_embed = discord.Embed(
-        title="KILL BREAKDOWN",
-        color=discord.Color.purple()
-    )
-    
-    kills_embed.add_field(
-        name="AI Kills",
-        value=f"Total: {len(stats['ai_kills'])}\nPercentage: {(len(stats['ai_kills']) / max(stats['total_deaths'], 1) * 100):.1f}%",
-        inline=True
-    )
-    
-    kills_embed.add_field(
-        name="Player Kills",
-        value=f"Total: {len(stats['player_kills'])}\nPercentage: {(len(stats['player_kills']) / max(stats['total_deaths'], 1) * 100):.1f}%",
-        inline=True
-    )
-    
-    await ctx.send(embed=kills_embed)
-    
-    # Recent AI Kills
-    if stats['ai_kills']:
-        ai_kills_embed = discord.Embed(
-            title="RECENT AI KILLS (Last 5)",
-            description="Deaths caused by AI-controlled rivals",
-            color=discord.Color.orange()
-        )
-        
-        for idx, kill in enumerate(stats['ai_kills'][:5]):
-            field_value = f"**Victim:** {kill['victim']} ({kill['victim_gang']})\n"
-            field_value += f"**AI Killer:** {kill['killer']}\n"
-            if kill['killer_gang']:
-                field_value += f"**Gang:** {kill['killer_gang']}\n"
-            field_value += f"**Type:** {kill['type']}\n"
-            field_value += f"**Time:** {kill['timestamp']}"
-            
-            ai_kills_embed.add_field(
-                name=f"AI Kill #{idx + 1}",
-                value=field_value,
-                inline=True
-            )
-        
-        await ctx.send(embed=ai_kills_embed)
-    
-    # Top Killers (from alive characters)
-    top_killers = sorted(current_characters.values(), key=lambda x: x.get('kills', 0), reverse=True)[:5]
-    
-    if top_killers:
-        killers_embed = discord.Embed(
-            title="TOP KILLERS (Alive)",
-            color=discord.Color.red()
-        )
-        
-        for idx, killer in enumerate(top_killers):
-            if killer.get('kills', 0) > 0:
-                field_value = f"**Gang:** {killer.get('gang_affiliation', 'Unknown')}\n"
-                field_value += f"**Set:** {killer.get('set_name', 'Unknown')}\n"
-                field_value += f"**Bodies:** {killer.get('kills', 0)}\n"
-                field_value += f"**Money:** ${killer.get('money', 0):,}"
-                
-                killers_embed.add_field(
-                    name=f"#{idx + 1} - {killer['name']}",
-                    value=field_value,
-                    inline=True
-                )
-        
-        if killers_embed.fields:
-            await ctx.send(embed=killers_embed)
-    
-    # Richest Players (from alive characters)
-    richest = sorted(current_characters.values(), key=lambda x: x.get('money', 0), reverse=True)[:5]
-    
-    if richest:
-        money_embed = discord.Embed(
-            title="RICHEST PLAYERS (Alive)",
-            color=discord.Color.green()
-        )
-        
-        for idx, rich_player in enumerate(richest):
-            if rich_player.get('money', 0) > 0:
-                field_value = f"**Gang:** {rich_player.get('gang_affiliation', 'Unknown')}\n"
-                field_value += f"**Set:** {rich_player.get('set_name', 'Unknown')}\n"
-                field_value += f"**Money:** ${rich_player.get('money', 0):,}\n"
-                field_value += f"**Bodies:** {rich_player.get('kills', 0)}"
-                
-                money_embed.add_field(
-                    name=f"#{idx + 1} - {rich_player['name']}",
-                    value=field_value,
-                    inline=True
-                )
-        
-        if money_embed.fields:
-            await ctx.send(embed=money_embed)
-
 # Make command - Creates a gang member
 @bot.command(name='make')
 @commands.cooldown(1, 10, commands.BucketType.user)
@@ -610,9 +276,6 @@ async def make_character(ctx):
     # Save gang member
     characters[character_id] = character_data
     save_characters(characters)
-    
-    # Update stats
-    update_stats_character_created()
     
     # Get gang color
     gang_color = LA_GANGS[gang_affiliation]['color']
@@ -880,9 +543,6 @@ async def work_job(ctx, character_id: str = None):
     # Add money to character
     player_char['money'] = player_char.get('money', 0) + earnings
     
-    # Update stats
-    update_stats_work(earnings)
-    
     # Work outcomes (flavor text)
     work_outcomes = [
         f"{player_char['name']} put in a solid shift and earned their pay",
@@ -1035,12 +695,6 @@ async def rob_store(ctx, character_id: str = None):
             else:
                 # 5-10 minutes without witnesses
                 jail_time = random.randint(5, 10)
-            
-            # Update stats for arrest
-            update_stats_arrest()
-    
-    # Update robbery stats
-    update_stats_robbery(robbery_success and not caught_by_police, money_stolen if not caught_by_police else 0)
     
     # Outcome embed
     if robbery_success:
@@ -1261,9 +915,6 @@ async def block_party(ctx, character_id: str = None):
         
         outcome_embed.set_footer(text="Good vibes only")
         
-        # Update stats
-        update_stats_block_party(False, False)
-        
         await ctx.send(embed=outcome_embed)
     else:
         # Rival gang drives by
@@ -1360,17 +1011,6 @@ async def block_party(ctx, character_id: str = None):
                 inline=False
             )
             
-            # Update stats - AI kill
-            update_stats_death(
-                player_char['name'],
-                char_gang,
-                f"{rival_set} Drive-By Shooting",
-                rival_gang,
-                "block_party",
-                is_ai_kill=True
-            )
-            update_stats_block_party(True, True)
-            
             # Add to graveyard
             dead_member = player_char.copy()
             dead_member['death_date'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
@@ -1398,9 +1038,6 @@ async def block_party(ctx, character_id: str = None):
                 value=f"{player_char['name']} hit the ground and avoided getting hit",
                 inline=False
             )
-            
-            # Update stats
-            update_stats_block_party(True, False)
             
             await ctx.send(embed=survive_embed)
             await asyncio.sleep(2)
@@ -1449,6 +1086,358 @@ async def block_party(ctx, character_id: str = None):
                 await ctx.send(embed=final_embed)
             
             # Save character (no changes needed, just survived)
+            characters[character_id] = player_char
+            save_characters(characters)
+
+# Hoodday command - Massive hood celebration with very small chance of violence
+@bot.command(name='hoodday')
+@commands.cooldown(1, 10, commands.BucketType.user)
+async def hoodday(ctx, character_id: str = None):
+    """Throw a massive hood celebration. Usage: ?hoodday <character_id>"""
+    
+    # Reset cooldown for admins
+    if is_admin(ctx):
+        ctx.command.reset_cooldown(ctx)
+    
+    if character_id is None:
+        await ctx.send("Usage: `?hoodday <character_id>`\nExample: `?hoodday 123456`")
+        return
+    
+    if character_id not in characters:
+        await ctx.send(f"Gang member ID `{character_id}` not found!")
+        return
+    
+    player_char = characters[character_id]
+    user_id = str(ctx.author.id)
+    
+    if player_char.get('user_id') != user_id:
+        await ctx.send("You don't own this gang member!")
+        return
+    
+    # Check if member is in jail
+    if is_in_jail(player_char):
+        remaining = get_jail_time_remaining(player_char)
+        if remaining:
+            minutes = int(remaining.total_seconds() // 60)
+            seconds = int(remaining.total_seconds() % 60)
+            await ctx.send(f"{player_char['name']} is currently locked up and will be released in {minutes}m {seconds}s")
+            return
+    
+    # Get character's gang info
+    char_gang = player_char.get('gang_affiliation', 'Unknown')
+    char_set = player_char.get('set_name', 'Unknown')
+    gang_color = LA_GANGS.get(char_gang, {}).get('color', discord.Color.purple())
+    
+    # Generate random gang members from the same gang (10-20 members)
+    num_members = random.randint(10, 20)
+    gang_members = []
+    for _ in range(num_members):
+        member_first = random.choice(FIRST_NAMES)
+        member_last = random.choice(LAST_NAMES)
+        gang_members.append(f"{member_first} {member_last}")
+    
+    # Intro embed
+    intro_embed = discord.Embed(
+        title="HOOD DAY CELEBRATION",
+        description=f"{player_char['name']} has organized a massive hood celebration bringing the whole {char_set} together!",
+        color=gang_color
+    )
+    
+    intro_embed.add_field(
+        name="Organizer",
+        value=f"{player_char['name']}",
+        inline=True
+    )
+    
+    intro_embed.add_field(
+        name="Gang",
+        value=f"{char_gang}",
+        inline=True
+    )
+    
+    intro_embed.add_field(
+        name="\u200b",
+        value="\u200b",
+        inline=False
+    )
+    
+    intro_embed.add_field(
+        name="Location",
+        value=f"{char_set} territory - The whole hood is out",
+        inline=True
+    )
+    
+    intro_embed.add_field(
+        name="Attendance",
+        value=f"{num_members} gang members present",
+        inline=True
+    )
+    
+    intro_embed.add_field(
+        name="\u200b",
+        value="\u200b",
+        inline=False
+    )
+    
+    intro_embed.add_field(
+        name="The Celebration",
+        value="The whole hood is lit! DJ spinning, grills fired up, kids playing, OGs telling stories, lowriders cruising, everyone representing the set with pride",
+        inline=False
+    )
+    
+    intro_embed.set_footer(text="The entire hood is celebrating...")
+    
+    await ctx.send(embed=intro_embed)
+    await asyncio.sleep(4)
+    
+    # Very small chance of trouble (10% chance total)
+    trouble_roll = random.randint(1, 100)
+    trouble_occurs = trouble_roll <= 10
+    
+    if not trouble_occurs:
+        # Peaceful celebration
+        success_embed = discord.Embed(
+            title="HOOD DAY SUCCESS",
+            description=f"The hood day celebration was a massive success! The whole {char_set} came together for an unforgettable day",
+            color=discord.Color.green()
+        )
+        
+        success_embed.add_field(
+            name="Celebration Status",
+            value="Peace throughout the hood, everybody had a great time, no drama all day",
+            inline=False
+        )
+        
+        success_embed.add_field(
+            name="Hood Unity",
+            value=f"The {char_set} showed the whole city what unity looks like - {num_members} members strong",
+            inline=False
+        )
+        
+        success_embed.add_field(
+            name=f"{player_char['name']}",
+            value="Organized a legendary hood day that will be remembered for years to come",
+            inline=False
+        )
+        
+        success_embed.set_footer(text="Hood day for the books")
+        
+        await ctx.send(embed=success_embed)
+    else:
+        # Trouble occurs - determine type (50% rival gang, 50% police)
+        trouble_type_roll = random.randint(1, 100)
+        rival_attack = trouble_type_roll <= 50
+        
+        if rival_attack:
+            # Rival gang attack
+            # Generate rival gang (different from player's gang)
+            available_gangs = [g for g in LA_GANGS.keys() if g != char_gang]
+            if not available_gangs:
+                available_gangs = list(LA_GANGS.keys())
+            
+            rival_gang = random.choice(available_gangs)
+            rival_sets = LA_GANGS[rival_gang]['sets']
+            rival_set = random.choice(rival_sets)
+            
+            # Generate 5-8 rival shooters (bigger attack)
+            num_shooters = random.randint(5, 8)
+            rival_names = []
+            for _ in range(num_shooters):
+                rival_first = random.choice(FIRST_NAMES)
+                rival_last = random.choice(LAST_NAMES)
+                rival_names.append(f"{rival_first} {rival_last}")
+            
+            # Rival alert
+            rival_embed = discord.Embed(
+                title="RIVAL GANG ATTACK",
+                description=f"Multiple cars full of {rival_set} members just pulled up on the hood day celebration!",
+                color=discord.Color.red()
+            )
+            
+            rival_embed.add_field(
+                name="Rival Gang",
+                value=f"{rival_gang}",
+                inline=True
+            )
+            
+            rival_embed.add_field(
+                name="Rival Set",
+                value=f"{rival_set}",
+                inline=True
+            )
+            
+            rival_embed.add_field(
+                name="\u200b",
+                value="\u200b",
+                inline=False
+            )
+            
+            rival_embed.add_field(
+                name="ATTACKERS SPOTTED",
+                value="\n".join(rival_names[:5]) + (f"\n+ {len(rival_names) - 5} more..." if len(rival_names) > 5 else ""),
+                inline=False
+            )
+            
+            rival_embed.set_footer(text="This is a major attack...")
+            
+            await ctx.send(embed=rival_embed)
+            await asyncio.sleep(3)
+            
+            # Massive shooting
+            shooting_embed = discord.Embed(
+                title="MASSIVE SHOOTOUT!",
+                description=f"The {rival_set} opened fire on the hood day! The {char_set} is firing back!",
+                color=discord.Color.dark_red()
+            )
+            
+            shooting_embed.add_field(
+                name="All-Out War",
+                value="Gunfire erupting from all directions, the entire celebration turned into a warzone",
+                inline=False
+            )
+            
+            await ctx.send(embed=shooting_embed)
+            await asyncio.sleep(3)
+            
+            # 25% chance player gets hit (lower than block party)
+            bullet_roll = random.randint(1, 100)
+            player_hit = bullet_roll <= 25
+            
+            if player_hit:
+                # Player dies
+                death_embed = discord.Embed(
+                    title="FALLEN IN THE BATTLE",
+                    description=f"{player_char['name']} was struck down during the massive shootout",
+                    color=discord.Color.dark_red()
+                )
+                
+                death_embed.add_field(
+                    name="Fatal Outcome",
+                    value=f"{player_char['name']} was hit during the chaos and didn't survive",
+                    inline=False
+                )
+                
+                death_embed.add_field(
+                    name="Final Stats",
+                    value=f"Body Count: {player_char.get('kills', 0)}\nMoney: ${player_char.get('money', 0):,}\nStatus: DECEASED",
+                    inline=False
+                )
+                
+                # Add to graveyard
+                dead_member = player_char.copy()
+                dead_member['death_date'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+                dead_member['killed_by'] = f"{rival_set} Attack (Hood Day Massacre)"
+                graveyard.append(dead_member)
+                save_graveyard(graveyard)
+                
+                # Remove from characters
+                del characters[character_id]
+                save_characters(characters)
+                
+                death_embed.set_footer(text="The hood day turned tragic")
+                
+                await ctx.send(embed=death_embed)
+            else:
+                # Player survives
+                survive_embed = discord.Embed(
+                    title="SURVIVED THE WAR",
+                    description=f"{player_char['name']} made it through the massive shootout alive",
+                    color=discord.Color.orange()
+                )
+                
+                survive_embed.add_field(
+                    name="Battle Outcome",
+                    value=f"The {char_set} held their ground and the {rival_set} was driven off",
+                    inline=False
+                )
+                
+                survive_embed.add_field(
+                    name=f"{player_char['name']} Status",
+                    value="Survived the attack but the hood day was ruined by the violence",
+                    inline=False
+                )
+                
+                survive_embed.set_footer(text="Hood defended but at what cost")
+                
+                await ctx.send(embed=survive_embed)
+                
+                # Save character
+                characters[character_id] = player_char
+                save_characters(characters)
+        
+        else:
+            # Police raid
+            police_embed = discord.Embed(
+                title="POLICE RAID",
+                description="LAPD task force rolled up on the hood day celebration in force!",
+                color=discord.Color.blue()
+            )
+            
+            police_embed.add_field(
+                name="Police Response",
+                value="Multiple units, helicopters overhead, they're shutting down the whole celebration",
+                inline=False
+            )
+            
+            police_embed.add_field(
+                name="The Scene",
+                value="Cops are everywhere, people scattering, chaos as the party gets broken up",
+                inline=False
+            )
+            
+            await ctx.send(embed=police_embed)
+            await asyncio.sleep(3)
+            
+            # 30% chance of arrest (just harassment, not actual jail time)
+            arrest_roll = random.randint(1, 100)
+            gets_arrested = arrest_roll <= 30
+            
+            if gets_arrested:
+                arrest_embed = discord.Embed(
+                    title="DETAINED BY POLICE",
+                    description=f"{player_char['name']} was detained during the raid",
+                    color=discord.Color.orange()
+                )
+                
+                arrest_embed.add_field(
+                    name="Police Harassment",
+                    value=f"{player_char['name']} was questioned and searched but released after a few hours - no charges filed",
+                    inline=False
+                )
+                
+                arrest_embed.add_field(
+                    name="Hood Day Outcome",
+                    value="The celebration was shut down but everyone made it home safe",
+                    inline=False
+                )
+                
+                arrest_embed.set_footer(text="Hood day ended early")
+                
+                await ctx.send(embed=arrest_embed)
+            else:
+                escape_embed = discord.Embed(
+                    title="ESCAPED THE RAID",
+                    description=f"{player_char['name']} and most of the hood got away clean",
+                    color=discord.Color.green()
+                )
+                
+                escape_embed.add_field(
+                    name="Quick Escape",
+                    value=f"{player_char['name']} slipped away before police could lock anyone down",
+                    inline=False
+                )
+                
+                escape_embed.add_field(
+                    name="Hood Day Outcome",
+                    value="Police broke up the party but everyone avoided arrest and made it home",
+                    inline=False
+                )
+                
+                escape_embed.set_footer(text="Hood day shut down but no arrests")
+                
+                await ctx.send(embed=escape_embed)
+            
+            # Save character (no jail time, just ended the party)
             characters[character_id] = player_char
             save_characters(characters)
 
@@ -1517,9 +1506,6 @@ async def slide_on_opps(ctx, *character_ids):
     for idx, player_char in enumerate(valid_members):
         character_id = player_char['character_id']
         
-        # Update slide stats
-        update_stats_slide()
-        
         # Generate rival
         rival_first_name = random.choice(FIRST_NAMES)
         rival_last_name = random.choice(LAST_NAMES)
@@ -1578,9 +1564,6 @@ async def slide_on_opps(ctx, *character_ids):
             # Increment kill count
             player_char['kills'] = player_char.get('kills', 0) + 1
             
-            # Update kill stats
-            update_stats_kill()
-            
             # Add to kill list
             if 'kill_list' not in player_char:
                 player_char['kill_list'] = []
@@ -1593,16 +1576,6 @@ async def slide_on_opps(ctx, *character_ids):
                 'type': 'slide'
             })
             
-            # Record this as a player kill (not AI)
-            update_stats_death(
-                rival_name,
-                rival_gang,
-                player_char['name'],
-                player_char.get('gang_affiliation'),
-                'slide',
-                is_ai_kill=False
-            )
-            
             # 30% chance of getting caught after killing someone
             jail_chance = 30
             goes_to_jail = jail_roll <= jail_chance
@@ -1610,7 +1583,6 @@ async def slide_on_opps(ctx, *character_ids):
             if goes_to_jail:
                 # Jail time = number of kills in minutes
                 jail_minutes = player_char['kills']
-                update_stats_arrest()
         
         # Outcome embed
         if player_won:
@@ -1631,16 +1603,6 @@ async def slide_on_opps(ctx, *character_ids):
                     name="Final Stats",
                     value=f"Body Count: {player_char.get('kills', 0)}\nMoney: ${player_char.get('money', 0):,}\nStatus: DECEASED",
                     inline=False
-                )
-                
-                # Update death stats - AI kill
-                update_stats_death(
-                    player_char['name'],
-                    player_char.get('gang_affiliation'),
-                    f"{rival_name} ({rival_set})",
-                    rival_gang,
-                    'slide_fatal_wounds',
-                    is_ai_kill=True
                 )
                 
                 dead_member = player_char.copy()
@@ -1710,16 +1672,6 @@ async def slide_on_opps(ctx, *character_ids):
                     name="Final Stats",
                     value=f"Body Count: {player_char.get('kills', 0)}\nMoney: ${player_char.get('money', 0):,}\nStatus: DECEASED",
                     inline=False
-                )
-                
-                # Update death stats - AI kill
-                update_stats_death(
-                    player_char['name'],
-                    player_char.get('gang_affiliation'),
-                    f"{rival_name} ({rival_set})",
-                    rival_gang,
-                    'slide_loss',
-                    is_ai_kill=True
                 )
                 
                 dead_member = player_char.copy()
@@ -1899,9 +1851,6 @@ async def revenge_battle(ctx, dead_character_id: str = None, avenger_character_i
         # Increment kill count
         avenger_char['kills'] = avenger_char.get('kills', 0) + 1
         
-        # Update kill stats
-        update_stats_kill()
-        
         # Add to kill list
         if 'kill_list' not in avenger_char:
             avenger_char['kill_list'] = []
@@ -1914,16 +1863,6 @@ async def revenge_battle(ctx, dead_character_id: str = None, avenger_character_i
             'type': 'revenge'
         })
         
-        # Record as player kill
-        update_stats_death(
-            killer_name,
-            rival_gang,
-            avenger_char['name'],
-            avenger_char.get('gang_affiliation'),
-            'revenge',
-            is_ai_kill=False
-        )
-        
         # 30% chance of getting caught
         jail_chance = 30
         goes_to_jail = jail_roll <= jail_chance
@@ -1931,10 +1870,6 @@ async def revenge_battle(ctx, dead_character_id: str = None, avenger_character_i
         if goes_to_jail:
             # Jail time = number of kills in minutes
             jail_minutes = avenger_char['kills']
-            update_stats_arrest()
-    
-    # Update revenge stats
-    update_stats_revenge(player_won and not member_dies)
     
     # Outcome embed
     if player_won:
@@ -1955,16 +1890,6 @@ async def revenge_battle(ctx, dead_character_id: str = None, avenger_character_i
                 name="Final Stats",
                 value=f"Body Count: {avenger_char.get('kills', 0)}\nMoney: ${avenger_char.get('money', 0):,}\nStatus: DECEASED",
                 inline=False
-            )
-            
-            # Update death stats - AI kill
-            update_stats_death(
-                avenger_char['name'],
-                avenger_char.get('gang_affiliation'),
-                f"{killer_name}",
-                rival_gang,
-                'revenge_fatal_wounds',
-                is_ai_kill=True
             )
             
             dead_avenger = avenger_char.copy()
@@ -2039,16 +1964,6 @@ async def revenge_battle(ctx, dead_character_id: str = None, avenger_character_i
                 name="Final Stats",
                 value=f"Body Count: {avenger_char.get('kills', 0)}\nMoney: ${avenger_char.get('money', 0):,}\nStatus: DECEASED",
                 inline=False
-            )
-            
-            # Update death stats - AI kill
-            update_stats_death(
-                avenger_char['name'],
-                avenger_char.get('gang_affiliation'),
-                f"{killer_name}",
-                rival_gang,
-                'revenge_failed',
-                is_ai_kill=True
             )
             
             dead_avenger = avenger_char.copy()
