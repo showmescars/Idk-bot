@@ -30,20 +30,19 @@ LAST_NAMES = [
     "Nightfall", "Darkholm"
 ]
 
-# Stored vampires: code -> vampire data
 vampires = {}
 
 
 def generate_power():
     roll = random.randint(1, 100)
     if roll <= 45:
-        return random.randint(10, 400)
+        return random.randint(10, 900)
     elif roll <= 75:
-        return random.randint(401, 1000)
+        return random.randint(901, 2200)
     elif roll <= 90:
-        return random.randint(1001, 1600)
+        return random.randint(2201, 3600)
     else:
-        return random.randint(1601, 2000)
+        return random.randint(3601, 4500)
 
 
 def generate_code():
@@ -54,11 +53,11 @@ def generate_code():
 
 
 def get_tier(power):
-    if power <= 400:
+    if power <= 900:
         return "Fledgling", discord.Color.dark_grey()
-    elif power <= 1000:
+    elif power <= 2200:
         return "Experienced", discord.Color.blue()
-    elif power <= 1600:
+    elif power <= 3600:
         return "Ancient", discord.Color.purple()
     else:
         return "Primordial", discord.Color.gold()
@@ -70,7 +69,7 @@ EVENTS = [
         "name": "Ancient Tome Discovered",
         "description": "{name} stumbles upon a forbidden ancient tome deep in a crumbling castle library. The dark knowledge within surges through their veins.",
         "type": "power_up",
-        "value": (50, 150),
+        "value": (100, 300),
         "color": discord.Color.green()
     },
     {
@@ -78,7 +77,7 @@ EVENTS = [
         "name": "Ambushed by Hunters",
         "description": "{name} is ambushed by a squad of elite vampire hunters armed with holy weapons. They barely escape but are gravely weakened.",
         "type": "power_down",
-        "value": (50, 200),
+        "value": (100, 400),
         "color": discord.Color.orange()
     },
     {
@@ -94,7 +93,7 @@ EVENTS = [
         "name": "Blood Moon Ritual",
         "description": "{name} participates in a rare blood moon ritual with elder vampires. The ceremony floods them with primordial energy.",
         "type": "power_up",
-        "value": (100, 300),
+        "value": (200, 600),
         "color": discord.Color.green()
     },
     {
@@ -102,7 +101,7 @@ EVENTS = [
         "name": "Cursed by a Witch",
         "description": "{name} crossed into a witch's territory uninvited. She placed a draining curse on them, sapping their strength.",
         "type": "power_down",
-        "value": (80, 250),
+        "value": (150, 500),
         "color": discord.Color.orange()
     },
     {
@@ -110,7 +109,7 @@ EVENTS = [
         "name": "Consumed an Ancient's Blood",
         "description": "{name} found a dying ancient vampire and drained them completely. Their power floods into your vampire's body.",
         "type": "power_up",
-        "value": (150, 400),
+        "value": (300, 800),
         "color": discord.Color.green()
     },
     {
@@ -118,7 +117,7 @@ EVENTS = [
         "name": "Exposed to Sunlight",
         "description": "{name} was trapped outside at dawn by a cunning enemy. The sunlight scorched away a portion of their power before they escaped.",
         "type": "power_down",
-        "value": (100, 300),
+        "value": (200, 600),
         "color": discord.Color.orange()
     },
     {
@@ -134,7 +133,7 @@ EVENTS = [
         "name": "Formed a Dark Alliance",
         "description": "{name} allied with a powerful vampire coven. Through shared blood rituals, their power has grown significantly.",
         "type": "power_up",
-        "value": (80, 200),
+        "value": (150, 400),
         "color": discord.Color.green()
     },
     {
@@ -142,7 +141,7 @@ EVENTS = [
         "name": "Betrayed by a Thrall",
         "description": "{name}'s most trusted human thrall betrayed them to vampire hunters. In the struggle, they were wounded by holy water.",
         "type": "power_down",
-        "value": (60, 180),
+        "value": (100, 350),
         "color": discord.Color.orange()
     },
     {
@@ -158,7 +157,7 @@ EVENTS = [
         "name": "Discovered a Blood Spring",
         "description": "{name} discovered a mythical blood spring hidden beneath an old cathedral. Drinking from it restored and amplified their power.",
         "type": "power_up",
-        "value": (200, 500),
+        "value": (400, 1000),
         "color": discord.Color.green()
     },
     {
@@ -166,7 +165,7 @@ EVENTS = [
         "name": "Afflicted with Bloodlust Madness",
         "description": "{name} lost control to bloodlust and went on a rampage, drawing the attention of every hunter in the region. They barely survived.",
         "type": "power_down",
-        "value": (150, 350),
+        "value": (300, 700),
         "color": discord.Color.orange()
     },
     {
@@ -182,7 +181,7 @@ EVENTS = [
         "name": "Mastered a New Ability",
         "description": "{name} spent weeks in isolation practicing dark arts. They have awakened a new supernatural ability, boosting their combat power.",
         "type": "power_up",
-        "value": (100, 250),
+        "value": (200, 500),
         "color": discord.Color.green()
     },
     {
@@ -190,7 +189,7 @@ EVENTS = [
         "name": "Rival Vampire Attack",
         "description": "{name} was attacked by a rival vampire clan in their own territory. They survived, but the battle drained significant power.",
         "type": "power_down",
-        "value": (100, 300),
+        "value": (200, 600),
         "color": discord.Color.orange()
     },
     {
@@ -206,7 +205,7 @@ EVENTS = [
         "name": "Fed on a Powerful Mage",
         "description": "{name} fed on a powerful blood mage. The magical blood surging through them granted an extraordinary power boost.",
         "type": "power_up",
-        "value": (120, 350),
+        "value": (250, 700),
         "color": discord.Color.green()
     },
     {
@@ -214,7 +213,7 @@ EVENTS = [
         "name": "Trapped in a Silver Cage",
         "description": "{name} was lured into a silver cage trap. Days of exposure to silver drained their supernatural strength before they escaped.",
         "type": "power_down",
-        "value": (120, 280),
+        "value": (250, 550),
         "color": discord.Color.orange()
     },
     {
@@ -222,7 +221,7 @@ EVENTS = [
         "name": "Awakened Dormant Powers",
         "description": "{name} experienced a near-death moment that cracked open a dormant power deep within their bloodline. They emerge transformed.",
         "type": "power_up",
-        "value": (300, 600),
+        "value": (600, 1200),
         "color": discord.Color.green()
     },
     {
@@ -230,7 +229,7 @@ EVENTS = [
         "name": "Exorcism Ritual Performed",
         "description": "{name} was caught in the crossfire of a massive exorcism ritual. The holy energy tore through them, stripping away their power.",
         "type": "power_down",
-        "value": (200, 450),
+        "value": (400, 900),
         "color": discord.Color.orange()
     },
     {
@@ -246,7 +245,7 @@ EVENTS = [
         "name": "Bonded with a Familiar",
         "description": "{name} bonded with a powerful supernatural familiar that enhances their senses and combat abilities beyond normal limits.",
         "type": "power_up",
-        "value": (70, 180),
+        "value": (150, 400),
         "color": discord.Color.green()
     },
     {
@@ -254,7 +253,7 @@ EVENTS = [
         "name": "Poisoned with Wolfsbane",
         "description": "{name} was poisoned with a concentrated wolfsbane and mountain ash mixture slipped into their blood supply. Recovery cost them dearly.",
         "type": "power_down",
-        "value": (80, 220),
+        "value": (150, 450),
         "color": discord.Color.orange()
     },
     {
@@ -262,7 +261,7 @@ EVENTS = [
         "name": "Absorbed a Dying Bloodline",
         "description": "{name} was the last to find a dying vampire bloodline and absorbed their entire lineage's power in a single night.",
         "type": "power_up",
-        "value": (250, 550),
+        "value": (500, 1100),
         "color": discord.Color.green()
     },
 ]
@@ -322,11 +321,11 @@ async def show_vampires(ctx):
         return
 
     alive = [v for v in user_vampires if v['alive']]
-    dead = [v for v in user_vampires if not v['alive']]
+    dead_count = len([v for v in user_vampires if not v['alive']])
 
     embed = discord.Embed(
         title=f"{ctx.author.name}'s Vampires",
-        description=f"Total: {len(user_vampires)}  |  Alive: {len(alive)}  |  Dead: {len(dead)}",
+        description=f"Alive: {len(alive)}  |  Dead: {dead_count}",
         color=discord.Color.dark_purple()
     )
 
@@ -335,18 +334,15 @@ async def show_vampires(ctx):
             tier, _ = get_tier(v['power'])
             embed.add_field(
                 name=v['name'],
-                value=f"Code: `{v['code']}`\nPower: {v['power']}\nTier: {tier}\nStatus: Alive",
+                value=f"Code: `{v['code']}`\nPower: {v['power']}\nTier: {tier}",
                 inline=True
             )
-
-    if dead:
-        for v in dead:
-            tier, _ = get_tier(v['power'])
-            embed.add_field(
-                name=v['name'],
-                value=f"Code: `{v['code']}`\nPower: {v['power']}\nTier: {tier}\nStatus: Dead",
-                inline=True
-            )
+    else:
+        embed.add_field(
+            name="No Alive Vampires",
+            value="All your vampires have perished. Use `?vampire` to create a new one.",
+            inline=False
+        )
 
     embed.set_footer(text="Use ?random <code> to trigger events for your vampires")
 
@@ -390,7 +386,7 @@ async def random_event(ctx, code: str = None):
 
     if event['type'] == 'power_up':
         gain = random.randint(*event['value'])
-        new_power = min(2000, power + gain)
+        new_power = min(4500, power + gain)
         actual_gain = new_power - power
         vampire['power'] = new_power
         tier, _ = get_tier(new_power)
