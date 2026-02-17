@@ -43,6 +43,10 @@ def generate_power():
         return random.randint(1601, 2000)
 
 
+def generate_code():
+    return ''.join(random.choices('ABCDEFGHIJKLMNOPQRSTUVWXYZ', k=4))
+
+
 @bot.event
 async def on_ready():
     print(f'{bot.user} is online')
@@ -60,6 +64,7 @@ async def globally_block_dms(ctx):
 async def make_vampire(ctx):
     name = f"{random.choice(FIRST_NAMES)} {random.choice(LAST_NAMES)}"
     power = generate_power()
+    code = generate_code()
 
     if power <= 400:
         tier = "Fledgling"
@@ -82,7 +87,8 @@ async def make_vampire(ctx):
     embed.add_field(name="Owner", value=ctx.author.name, inline=True)
     embed.add_field(name="Power Level", value=str(power), inline=True)
     embed.add_field(name="Tier", value=tier, inline=True)
-    embed.set_footer(text="A new vampire emerges from the darkness...")
+    embed.add_field(name="Code", value=f"`{code}`", inline=False)
+    embed.set_footer(text="Use your code to perform actions with this vampire")
 
     await ctx.send(embed=embed)
 
