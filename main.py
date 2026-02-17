@@ -378,52 +378,52 @@ async def view_stats(ctx):
     
     # Main stats embed
     main_embed = discord.Embed(
-        title="📊 LA GANG BATTLE STATISTICS",
+        title="LA GANG BATTLE STATISTICS",
         description="Complete overview of all game activity",
         color=discord.Color.gold()
     )
     
     # General Stats
     main_embed.add_field(
-        name="👥 Character Stats",
+        name="Character Stats",
         value=f"Created: {stats['total_characters_created']}\nAlive: {len(current_characters)}\nDead: {len(current_graveyard)}",
         inline=True
     )
     
     main_embed.add_field(
-        name="💀 Death Stats",
+        name="Death Stats",
         value=f"Total Deaths: {stats['total_deaths']}\nTotal Kills: {stats['total_kills']}\nBlock Party Deaths: {stats['block_party_deaths']}",
         inline=True
     )
     
     main_embed.add_field(
-        name="💰 Money Stats",
+        name="Money Stats",
         value=f"Total Earned: ${stats['total_money_earned']:,}\nWork Shifts: {stats['total_work_shifts']}\nRobberies: {stats['total_robberies']}",
         inline=True
     )
     
     # Action Stats
     main_embed.add_field(
-        name="🔫 Combat Stats",
+        name="Combat Stats",
         value=f"Slides: {stats['total_slides']}\nRevenge Missions: {stats['total_revenge_missions']}\nSuccessful Revenge: {stats['successful_revenge']}",
         inline=True
     )
     
     main_embed.add_field(
-        name="🏪 Robbery Stats",
+        name="Robbery Stats",
         value=f"Successful: {stats['successful_robberies']}\nFailed: {stats['failed_robberies']}\nSuccess Rate: {(stats['successful_robberies'] / max(stats['total_robberies'], 1) * 100):.1f}%",
         inline=True
     )
     
     main_embed.add_field(
-        name="👮 Law Enforcement",
+        name="Law Enforcement",
         value=f"Total Arrests: {stats['total_arrests']}\nCurrently Jailed: {sum(1 for c in current_characters.values() if is_in_jail(c))}",
         inline=True
     )
     
     # Block Party Stats
     main_embed.add_field(
-        name="🎉 Block Party Stats",
+        name="Block Party Stats",
         value=f"Total Parties: {stats['total_block_parties']}\nShootings: {stats['block_party_shootings']}\nDeaths: {stats['block_party_deaths']}",
         inline=True
     )
@@ -434,7 +434,7 @@ async def view_stats(ctx):
         gang_stats_text += f"**{gang}**\nKills: {data['kills']} | Deaths: {data['deaths']}\n"
     
     main_embed.add_field(
-        name="🏴 Gang Statistics",
+        name="Gang Statistics",
         value=gang_stats_text if gang_stats_text else "No gang activity yet",
         inline=False
     )
@@ -444,7 +444,7 @@ async def view_stats(ctx):
     # Recent Deaths Embed
     if stats['recent_deaths']:
         deaths_embed = discord.Embed(
-            title="💀 RECENT DEATHS (Last 10)",
+            title="RECENT DEATHS (Last 10)",
             color=discord.Color.dark_red()
         )
         
@@ -466,7 +466,7 @@ async def view_stats(ctx):
     
     # AI Kills vs Player Kills
     kills_embed = discord.Embed(
-        title="🎯 KILL BREAKDOWN",
+        title="KILL BREAKDOWN",
         color=discord.Color.purple()
     )
     
@@ -487,7 +487,7 @@ async def view_stats(ctx):
     # Recent AI Kills
     if stats['ai_kills']:
         ai_kills_embed = discord.Embed(
-            title="🤖 RECENT AI KILLS (Last 5)",
+            title="RECENT AI KILLS (Last 5)",
             description="Deaths caused by AI-controlled rivals",
             color=discord.Color.orange()
         )
@@ -513,7 +513,7 @@ async def view_stats(ctx):
     
     if top_killers:
         killers_embed = discord.Embed(
-            title="🔝 TOP KILLERS (Alive)",
+            title="TOP KILLERS (Alive)",
             color=discord.Color.red()
         )
         
@@ -538,7 +538,7 @@ async def view_stats(ctx):
     
     if richest:
         money_embed = discord.Embed(
-            title="💵 RICHEST PLAYERS (Alive)",
+            title="RICHEST PLAYERS (Alive)",
             color=discord.Color.green()
         )
         
