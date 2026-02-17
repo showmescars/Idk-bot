@@ -11,28 +11,32 @@ intents = discord.Intents.default()
 intents.message_content = True
 bot = commands.Bot(command_prefix='?', intents=intents)
 
-FIRST_NAMES = [
-    "Dracula", "Vladislav", "Carmilla", "Lestat", "Akasha", "Armand", "Blade", "Selene",
-    "Viktor", "Marcus", "Lucian", "Sonja", "Aro", "Caius", "Demetri", "Jane",
-    "Alec", "Elijah", "Klaus", "Rebekah", "Kol", "Finn", "Alaric", "Damon",
-    "Stefan", "Katherine", "Silas", "Qetsiyah", "Amara", "Niklaus", "Mikael", "Esther",
-    "Freya", "Dahlia", "Lucien", "Tristan", "Aurora", "Rayna", "Julian", "Lily",
-    "Valerie", "Nora", "Mary", "Beau", "Oscar", "Malcolm", "Sage", "Maddox",
-    "Atticus", "Greta", "Antoinette", "Cassandra", "Ezra", "Morgana", "Dorian"
+# Real LA gangs
+LA_GANGS = [
+    "Rollin 60s Crips", "Grape Street Watts Crips", "East Coast Crips",
+    "Compton Crips", "Long Beach Insane Crips", "Hoover Criminals",
+    "Bloods of Piru", "Bounty Hunter Bloods", "Fruit Town Brims",
+    "Inglewood Family Bloods", "Van Ness Gangster Bloods", "Denver Lane Bloods",
+    "18th Street", "MS-13", "White Fence", "Florencia 13",
+    "East LA 13", "Barrio Van Nuys", "Harpys", "Avenues",
+    "Mara Salvatrucha", "South Side Compton Crips", "Watts Varrio Grape",
+    "Shotgun Crips", "Raymond Avenue Crips"
 ]
 
-LAST_NAMES = [
-    "Tepes", "Draculesti", "Karnstein", "De Lioncourt", "Enkil", "Romanus", "Corvinus", "Nightshade",
-    "Von Doom", "Bloodworth", "Blackthorn", "Darkmore", "Volturi", "Mikaelson", "Salvatore", "Pierce",
-    "Bennett", "Forbes", "Lockwood", "Donovan", "Gilbert", "Fell", "Whitmore", "St. John",
-    "Ashford", "Bloodmoon", "Crimson", "Ravencroft", "Shadowend", "Duskbane", "Nocturne", "Grave",
-    "Morningstar", "Hellsing", "Alucard", "Belmont", "Blackwood", "Von Carstein", "Draken",
-    "Mourning", "Eclipse", "Eventide", "Twilight", "Sanguine", "Hemlock", "Mortis", "Grimwood",
-    "Nightfall", "Darkholm"
+# Gang name parts for user gangs
+GANG_PREFIX = [
+    "Eastside", "Westside", "Northside", "Southside", "Original",
+    "Young", "Tiny", "Big", "Street", "Block",
+    "Project", "Avenue", "Hillside", "Valley", "Harbor"
 ]
 
-vampires = {}
-active_vampire_owners = set()
+GANG_SUFFIX = [
+    "Boys", "Gang", "Mob", "Squad", "Crew",
+    "Family", "Nation", "Click", "Set", "Mafia"
+]
+
+gangs = {}
+active_gang_owners = set()
 
 
 def is_admin(message):
@@ -42,185 +46,147 @@ def is_admin(message):
     return False
 
 
-def user_has_living_vampire(user_id):
-    return any(v['owner_id'] == user_id and v['alive'] for v in vampires.values())
-
-
-def generate_power():
-    roll = random.randint(1, 100)
-    if roll <= 45:
-        return random.randint(10, 900)
-    elif roll <= 75:
-        return random.randint(901, 2200)
-    elif roll <= 90:
-        return random.randint(2201, 3600)
-    else:
-        return random.randint(3601, 4500)
+def user_has_active_gang(user_id):
+    return any(g['owner_id'] == user_id and g['alive'] for g in gangs.values())
 
 
 def generate_code():
     while True:
         code = ''.join(random.choices('ABCDEFGHIJKLMNOPQRSTUVWXYZ', k=4))
-        if code not in vampires:
+        if code not in gangs:
             return code
 
 
-def get_tier(power):
-    if power <= 900:
-        return "Fledgling", discord.Color.dark_grey()
-    elif power <= 2200:
-        return "Experienced", discord.Color.blue()
-    elif power <= 3600:
-        return "Ancient", discord.Color.purple()
-    else:
-        return "Primordial", discord.Color.gold()
+def generate_ai_gang():
+    name = random.choice(LA_GANGS)
+    rep = random.randint(10, 500)
+    return {"name": name, "rep": rep}
 
 
-def generate_ai_vampire(carry_stake=False):
-    first = random.choice(FIRST_NAMES)
-    last = random.choice(LAST_NAMES)
-    name = f"{first} {last}"
-    power = generate_power()
-    return {"name": name, "power": power, "has_stake": carry_stake}
-
-
-def mark_vampire_dead(code):
-    if code in vampires:
-        vampires[code]['alive'] = False
-        owner_id = vampires[code]['owner_id']
-        if not user_has_living_vampire(owner_id):
-            active_vampire_owners.discard(owner_id)
+def mark_gang_dead(code):
+    if code in gangs:
+        gangs[code]['alive'] = False
+        owner_id = gangs[code]['owner_id']
+        if not user_has_active_gang(owner_id):
+            active_gang_owners.discard(owner_id)
 
 
 EVENTS = [
-    {"id": 1, "name": "Ancient Tome Discovered", "description": "{name} stumbles upon a forbidden ancient tome deep in a crumbling castle library. The dark knowledge within surges through their veins.", "type": "power_up", "value": (100, 300), "color": discord.Color.green()},
-    {"id": 4, "name": "Blood Moon Ritual", "description": "{name} participates in a rare blood moon ritual with elder vampires. The ceremony floods them with primordial energy.", "type": "power_up", "value": (200, 600), "color": discord.Color.green()},
-    {"id": 6, "name": "Consumed an Ancient's Blood", "description": "{name} found a dying ancient vampire and drained them completely. Their power floods into your vampire's body.", "type": "power_up", "value": (300, 800), "color": discord.Color.green()},
-    {"id": 9, "name": "Formed a Dark Alliance", "description": "{name} allied with a powerful vampire coven. Through shared blood rituals, their power has grown significantly.", "type": "power_up", "value": (150, 400), "color": discord.Color.green()},
-    {"id": 12, "name": "Discovered a Blood Spring", "description": "{name} discovered a mythical blood spring hidden beneath an old cathedral. Drinking from it restored and amplified their power.", "type": "power_up", "value": (400, 1000), "color": discord.Color.green()},
-    {"id": 15, "name": "Mastered a New Ability", "description": "{name} spent weeks in isolation practicing dark arts. They have awakened a new supernatural ability, boosting their combat power.", "type": "power_up", "value": (200, 500), "color": discord.Color.green()},
-    {"id": 18, "name": "Fed on a Powerful Mage", "description": "{name} fed on a powerful blood mage. The magical blood surging through them granted an extraordinary power boost.", "type": "power_up", "value": (250, 700), "color": discord.Color.green()},
-    {"id": 20, "name": "Awakened Dormant Powers", "description": "{name} experienced a near-death moment that cracked open a dormant power deep within their bloodline. They emerge transformed.", "type": "power_up", "value": (600, 1200), "color": discord.Color.green()},
-    {"id": 23, "name": "Bonded with a Familiar", "description": "{name} bonded with a powerful supernatural familiar that enhances their senses and combat abilities beyond normal limits.", "type": "power_up", "value": (150, 400), "color": discord.Color.green()},
-    {"id": 25, "name": "Absorbed a Dying Bloodline", "description": "{name} was the last to find a dying vampire bloodline and absorbed their entire lineage's power in a single night.", "type": "power_up", "value": (500, 1100), "color": discord.Color.green()},
-    {"id": 26, "name": "Bathed in Dragon's Blood", "description": "{name} discovered a slain dragon deep in a mountain cave and bathed in its still-warm blood. Ancient power unlike anything vampiric courses through them.", "type": "power_up", "value": (700, 1500), "color": discord.Color.green()},
-    {"id": 27, "name": "Consumed a Fallen Angel", "description": "{name} found a dying fallen angel and drained it completely. Divine and dark power merge within them creating something terrifying.", "type": "power_up", "value": (800, 1800), "color": discord.Color.green()},
-    {"id": 28, "name": "Eclipse Empowerment", "description": "{name} stood beneath a full solar eclipse and absorbed the rare dark energy that only surfaces during total darkness. They feel limitless.", "type": "power_up", "value": (400, 900), "color": discord.Color.green()},
-    {"id": 29, "name": "Unlocked Blood Memory", "description": "{name} fell into a trance and unlocked centuries of suppressed blood memory from their sire's lineage. Every ancestor's power is now accessible.", "type": "power_up", "value": (350, 800), "color": discord.Color.green()},
-    {"id": 30, "name": "Feasted on a God's Champion", "description": "{name} hunted down a mortal chosen by the gods themselves and drained them dry. The divine energy within the blood supercharged everything.", "type": "power_up", "value": (600, 1300), "color": discord.Color.green()},
-    {"id": 31, "name": "Discovered a Vampire Vault", "description": "{name} broke into an ancient sealed vault beneath a ruined city and consumed vials of preserved blood from long-dead primordial vampires.", "type": "power_up", "value": (500, 1000), "color": discord.Color.green()},
-    {"id": 32, "name": "Survived a Holy Weapon", "description": "{name} was struck by a holy weapon and should have died but did not. Surviving the wound caused their body to adapt and grow exponentially stronger.", "type": "power_up", "value": (300, 700), "color": discord.Color.green()},
-    {"id": 2, "name": "Ambushed by Hunters", "description": "{name} is ambushed by a squad of elite vampire hunters armed with holy weapons. They barely escape but are gravely weakened.", "type": "power_down", "value": (100, 400), "color": discord.Color.orange()},
-    {"id": 5, "name": "Cursed by a Witch", "description": "{name} crossed into a witch's territory uninvited. She placed a draining curse on them, sapping their strength.", "type": "power_down", "value": (150, 500), "color": discord.Color.orange()},
-    {"id": 7, "name": "Exposed to Sunlight", "description": "{name} was trapped outside at dawn by a cunning enemy. The sunlight scorched away a portion of their power before they escaped.", "type": "power_down", "value": (200, 600), "color": discord.Color.orange()},
-    {"id": 10, "name": "Betrayed by a Thrall", "description": "{name}'s most trusted human thrall betrayed them to vampire hunters. In the struggle, they were wounded by holy water.", "type": "power_down", "value": (100, 350), "color": discord.Color.orange()},
-    {"id": 13, "name": "Afflicted with Bloodlust Madness", "description": "{name} lost control to bloodlust and went on a rampage, drawing the attention of every hunter in the region. They barely survived.", "type": "power_down", "value": (300, 700), "color": discord.Color.orange()},
-    {"id": 16, "name": "Rival Vampire Attack", "description": "{name} was attacked by a rival vampire clan in their own territory. They survived, but the battle drained significant power.", "type": "power_down", "value": (200, 600), "color": discord.Color.orange()},
-    {"id": 19, "name": "Trapped in a Silver Cage", "description": "{name} was lured into a silver cage trap. Days of exposure to silver drained their supernatural strength before they escaped.", "type": "power_down", "value": (250, 550), "color": discord.Color.orange()},
-    {"id": 21, "name": "Exorcism Ritual Performed", "description": "{name} was caught in the crossfire of a massive exorcism ritual. The holy energy tore through them, stripping away their power.", "type": "power_down", "value": (400, 900), "color": discord.Color.orange()},
-    {"id": 24, "name": "Poisoned with Wolfsbane", "description": "{name} was poisoned with a concentrated wolfsbane and mountain ash mixture slipped into their blood supply. Recovery cost them dearly.", "type": "power_down", "value": (150, 450), "color": discord.Color.orange()},
-    {"id": 33, "name": "Drained by a Succubus", "description": "{name} was lured into the lair of a succubus who fed on their supernatural energy throughout the night. They awoke hollow and weakened.", "type": "power_down", "value": (300, 750), "color": discord.Color.orange()},
-    {"id": 34, "name": "Ancient Seal Triggered", "description": "{name} broke into a sealed tomb and triggered a powerful ancient ward. The magical backlash tore through their body and drained their power.", "type": "power_down", "value": (350, 800), "color": discord.Color.orange()},
-    {"id": 35, "name": "Blood Starved for Weeks", "description": "{name} was hunted so relentlessly they could not feed for weeks. The starvation withered their power to a fraction of what it was.", "type": "power_down", "value": (200, 600), "color": discord.Color.orange()},
-    {"id": 36, "name": "Cursed Relic Touched", "description": "{name} picked up a cursed relic designed to weaken vampires. By the time they realized the trap it had already siphoned a great deal of their strength.", "type": "power_down", "value": (250, 650), "color": discord.Color.orange()},
-    {"id": 37, "name": "Forced into Torpor", "description": "{name} was overwhelmed and forced into an involuntary torpor by a group of elder vampires. They awoke days later drained and disoriented.", "type": "power_down", "value": (400, 1000), "color": discord.Color.orange()},
-    {"id": 3, "name": "Slain by a Vampire Hunter", "description": "{name} encountered the legendary hunter Van Hellward and lost. A silver stake finds its mark. Your vampire is dead.", "type": "death", "value": None, "color": discord.Color.dark_red()},
-    {"id": 8, "name": "Burned at the Stake", "description": "{name} was captured by a vengeful mob and burned. Not even vampire regeneration could save them from the sacred fire.", "type": "death", "value": None, "color": discord.Color.dark_red()},
-    {"id": 14, "name": "Devoured by an Elder", "description": "{name} wandered into an Elder's feeding ground. The ancient creature showed no mercy. Your vampire has been consumed.", "type": "death", "value": None, "color": discord.Color.dark_red()},
-    {"id": 17, "name": "Decapitated by a Slayer", "description": "{name} underestimated a lone slayer who carried an enchanted blade. One swift strike ends their undead existence permanently.", "type": "death", "value": None, "color": discord.Color.dark_red()},
-    {"id": 22, "name": "Heart Ripped Out by an Ancient", "description": "{name} challenged an Ancient vampire to a duel and paid the ultimate price. Their heart was ripped from their chest.", "type": "death", "value": None, "color": discord.Color.dark_red()},
-    {"id": 38, "name": "Consumed by a Hellfire Trap", "description": "{name} walked into a hunter compound rigged with hellfire. The sacred flames engulfed them entirely leaving nothing but ash.", "type": "death", "value": None, "color": discord.Color.dark_red()},
-    {"id": 39, "name": "Destroyed by a Vampire Lord", "description": "{name} trespassed in the domain of an ancient Vampire Lord who crushed them without effort. Their remains were scattered to the winds.", "type": "death", "value": None, "color": discord.Color.dark_red()},
-    {"id": 40, "name": "Drowned in Holy Water", "description": "{name} was ambushed and submerged in a massive reservoir of blessed holy water by a cult of hunters. They could not escape.", "type": "death", "value": None, "color": discord.Color.dark_red()},
-    {"id": 41, "name": "Obliterated by a Witch Coven", "description": "{name} made an enemy of an entire witch coven. They gathered and unleashed a combined spell that unmade your vampire at a molecular level.", "type": "death", "value": None, "color": discord.Color.dark_red()},
-    {"id": 42, "name": "Sealed Away Forever", "description": "{name} was trapped in an enchanted iron coffin sealed with a thousand spells and buried a mile underground. Effectively dead. Gone forever.", "type": "death", "value": None, "color": discord.Color.dark_red()},
-    {"id": 11, "name": "Nothing Happens", "description": "{name} roams the night and finds nothing. The evening passes without incident. Sometimes darkness is just quiet.", "type": "nothing", "value": None, "color": discord.Color.greyple()},
-    {"id": 43, "name": "A Quiet Night", "description": "{name} stalks the city rooftops for hours but finds no prey, no enemies, no events. The world sleeps undisturbed.", "type": "nothing", "value": None, "color": discord.Color.greyple()},
-    {"id": 44, "name": "A Wandering Vampire Appears", "description": "{name} encounters a lone vampire wandering without a coven. After a tense standoff, the stranger offers to join forces.", "type": "recruit", "value": None, "color": discord.Color.teal()},
-    {"id": 45, "name": "Rescued a Captured Vampire", "description": "{name} stumbled upon a vampire being held captive by hunters. After freeing them, the grateful vampire swears loyalty.", "type": "recruit", "value": None, "color": discord.Color.teal()},
-    {"id": 46, "name": "Survivor of a Destroyed Coven", "description": "{name} finds the sole survivor of a coven that was wiped out by hunters. With nowhere left to go, they pledge themselves to your cause.", "type": "recruit", "value": None, "color": discord.Color.teal()},
-    {"id": 47, "name": "A Fledgling Seeks a Sire", "description": "{name} encounters a newly turned vampire alone and confused. Recognizing {name}'s power they beg to follow them.", "type": "recruit", "value": None, "color": discord.Color.teal()},
-    {"id": 48, "name": "Impressed a Rival", "description": "{name} crossed paths with a rival vampire who challenged them to a show of strength. Impressed by what they saw, the rival defects and joins willingly.", "type": "recruit", "value": None, "color": discord.Color.teal()},
-    {"id": 49, "name": "The Ancient Blood", "description": "{name} descends into the deepest vault beneath a forgotten civilization and finds a sealed obsidian chalice. Inside is blood so old it has turned black. They drink it. Something fundamental shifts. Death itself recoils from them.", "type": "ancient_blood", "value": None, "color": discord.Color.from_rgb(80, 0, 80)},
+    # REP UPS
+    {"name": "Drug Spot Takeover", "description": "{name} muscled out a rival crew and took over a profitable corner on Figueroa. Word spreads fast.", "type": "rep_up", "value": (20, 80), "color": discord.Color.green()},
+    {"name": "Successful Lick", "description": "{name} pulled off a clean job and everyone on the block heard about it. Rep climbing.", "type": "rep_up", "value": (30, 100), "color": discord.Color.green()},
+    {"name": "Street Fight Victory", "description": "{name} ran up on a crew from the other side and sent them packing. Block is locked down.", "type": "rep_up", "value": (20, 60), "color": discord.Color.green()},
+    {"name": "Territory Claimed", "description": "{name} planted their flag on a new block nobody dared touch. Territory expanding.", "type": "rep_up", "value": (40, 120), "color": discord.Color.green()},
+    {"name": "Big Homie Vouched", "description": "A respected OG from the neighborhood publicly backed {name}. That name now carries weight.", "type": "rep_up", "value": (50, 150), "color": discord.Color.green()},
+    {"name": "Retaliation Hit", "description": "{name} answered disrespect with action. Nobody on the streets is laughing now.", "type": "rep_up", "value": (60, 180), "color": discord.Color.green()},
+    {"name": "Prison Connections Made", "description": "{name} linked up with connects inside. The reach just got longer.", "type": "rep_up", "value": (40, 100), "color": discord.Color.green()},
+    {"name": "Rival Crew Scattered", "description": "A rival set got hit so hard they stopped showing up. {name} owns that side now.", "type": "rep_up", "value": (80, 200), "color": discord.Color.green()},
+    {"name": "Hood Documentary", "description": "A street doc filmmaker put {name} on camera. The streets are watching.", "type": "rep_up", "value": (30, 90), "color": discord.Color.green()},
+    {"name": "Rapper Shoutout", "description": "A local rapper dropped a track shouting out {name} by name. Everyone knows who they are now.", "type": "rep_up", "value": (50, 130), "color": discord.Color.green()},
+    {"name": "Block Party Respect", "description": "{name} threw a block party and fed the whole neighborhood. Community loyalty locked in.", "type": "rep_up", "value": (25, 70), "color": discord.Color.green()},
+    {"name": "Jumped In New Members", "description": "{name} grew their numbers after a wave of young bloods wanted in. Strength in numbers.", "type": "rep_up", "value": (35, 95), "color": discord.Color.green()},
+    # REP DOWNS
+    {"name": "Snitch in the Ranks", "description": "Word got out that someone in {name} is talking to the feds. Trust is broken and rep is taking a hit.", "type": "rep_down", "value": (30, 100), "color": discord.Color.orange()},
+    {"name": "Botched Mission", "description": "{name} tried to make a move and it went sideways. The streets are talking.", "type": "rep_down", "value": (20, 80), "color": discord.Color.orange()},
+    {"name": "Key Member Arrested", "description": "One of {name}'s most important members got knocked by the LAPD. Operations are hurting.", "type": "rep_down", "value": (40, 120), "color": discord.Color.orange()},
+    {"name": "Ran Off the Block", "description": "A rival crew rolled through deep and {name} had to fall back. That block is gone.", "type": "rep_down", "value": (50, 150), "color": discord.Color.orange()},
+    {"name": "Internal Beef", "description": "Two members of {name} got into it publicly. The whole hood saw the disorganization.", "type": "rep_down", "value": (25, 75), "color": discord.Color.orange()},
+    {"name": "LAPD Raid", "description": "The feds ran up on {name}'s spot. Product gone, members scattered.", "type": "rep_down", "value": (60, 180), "color": discord.Color.orange()},
+    {"name": "Disrespected Publicly", "description": "A rival crew talked crazy about {name} in public and nobody did anything about it. Soft energy.", "type": "rep_down", "value": (30, 90), "color": discord.Color.orange()},
+    {"name": "Lost a Shipment", "description": "{name} lost a major package on the way in. Money and rep both took a hit.", "type": "rep_down", "value": (45, 130), "color": discord.Color.orange()},
+    {"name": "Member Flipped", "description": "Someone from {name} switched sides and took connects with them. Deep betrayal.", "type": "rep_down", "value": (50, 160), "color": discord.Color.orange()},
+    {"name": "Jumped by Rivals", "description": "{name} got caught slipping and took an L in broad daylight. Everybody saw.", "type": "rep_down", "value": (35, 110), "color": discord.Color.orange()},
+    # DEATHS
+    {"name": "LAPD Task Force", "description": "A specialized LAPD task force built a case on {name} for months. Every member got swept up in a RICO charge. The gang is finished.", "type": "death", "color": discord.Color.dark_red()},
+    {"name": "Wiped Out by Rivals", "description": "A massive coordinated hit by a rival gang left {name} with nothing. No members, no territory, no future.", "type": "death", "color": discord.Color.dark_red()},
+    {"name": "Federal RICO Case", "description": "The feds finally dropped a RICO case on {name}. Leadership gone, members flipped, operation dissolved.", "type": "death", "color": discord.Color.dark_red()},
+    {"name": "Gang War Annihilation", "description": "{name} got pulled into a full scale gang war they couldn't survive. The last members scattered or got buried.", "type": "death", "color": discord.Color.dark_red()},
+    {"name": "Leadership Assassinated", "description": "Every shot caller in {name} got hit in a single night. With no leadership the gang crumbled overnight.", "type": "death", "color": discord.Color.dark_red()},
+    # NOTHING
+    {"name": "Quiet Night", "description": "{name} held down the block but nothing major went down tonight. Sometimes the streets are still.", "type": "nothing", "color": discord.Color.greyple()},
+    {"name": "Laying Low", "description": "{name} kept it low key. Heat was in the area so everybody stayed off the corners.", "type": "nothing", "color": discord.Color.greyple()},
+    # RECRUIT
+    {"name": "New Blood Walks In", "description": "A group of young guys from the neighborhood approached {name} looking to get put on. Crew just got bigger.", "type": "recruit", "color": discord.Color.teal()},
+    {"name": "Rival Set Defected", "description": "A small crew from a rival gang got tired of their leadership and switched over to {name}. Bringing connects with them.", "type": "recruit", "color": discord.Color.teal()},
+    {"name": "OG Came Home", "description": "A respected OG just got out of Pelican Bay and linked back up with {name}. Brings wisdom and old school connects.", "type": "recruit", "color": discord.Color.teal()},
 ]
 
-EVENT_WEIGHTS = [1 if e['type'] == 'ancient_blood' else 200 for e in EVENTS]
+EVENT_WEIGHTS = [200 for _ in EVENTS]
 
 
-async def handle_vampire(message, args):
+async def handle_gang(message, args):
     user_id = message.author.id
 
     if not is_admin(message):
-        if user_has_living_vampire(user_id):
+        if user_has_active_gang(user_id):
             await message.channel.send(
-                "You already have a living vampire. You can only create a new one once all your current vampires have fallen. Type `show` to see them."
+                "You already have an active gang. Type `show` to see them."
             )
             return
 
-    name = f"{random.choice(FIRST_NAMES)} {random.choice(LAST_NAMES)}"
-    power = generate_power()
+    prefix = random.choice(GANG_PREFIX)
+    suffix = random.choice(GANG_SUFFIX)
+    name = f"{prefix} {suffix}"
     code = generate_code()
-    tier, color = get_tier(power)
+    rep = random.randint(10, 100)
 
-    vampires[code] = {
+    gangs[code] = {
         "name": name,
-        "power": power,
+        "rep": rep,
         "owner_id": user_id,
         "owner_name": message.author.name,
         "code": code,
         "alive": True,
-        "immortal": False,
         "kills": 0,
         "fights_won": 0,
         "fights_lost": 0,
     }
 
     if not is_admin(message):
-        active_vampire_owners.add(user_id)
+        active_gang_owners.add(user_id)
 
-    embed = discord.Embed(title="A Vampire Has Risen", description=f"**{name}**", color=color)
+    embed = discord.Embed(
+        title="Gang Created",
+        description=f"**{name}** is now on the streets.",
+        color=discord.Color.dark_grey()
+    )
     embed.add_field(name="Owner", value=message.author.name, inline=True)
-    embed.add_field(name="Power Level", value=str(power), inline=True)
-    embed.add_field(name="Tier", value=tier, inline=True)
+    embed.add_field(name="Street Cred", value=str(rep), inline=True)
     embed.add_field(name="Code", value=f"`{code}`", inline=False)
-    embed.set_footer(text="Protect them. When they fall, you may rise again.")
+    embed.set_footer(text="Hold your block. Type: mission <code> | beef <code> | show")
     await message.channel.send(embed=embed)
 
 
 async def handle_show(message, args):
     user_id = message.author.id
-    user_vampires = [v for v in vampires.values() if v['owner_id'] == user_id]
+    user_gangs = [g for g in gangs.values() if g['owner_id'] == user_id]
 
-    if not user_vampires:
-        await message.channel.send("You have no vampires. Type `vampire` to create one.")
+    if not user_gangs:
+        await message.channel.send("You have no gang. Type `gang` to start one.")
         return
 
-    alive = [v for v in user_vampires if v['alive']]
-    dead_count = len(user_vampires) - len(alive)
+    alive = [g for g in user_gangs if g['alive']]
+    dead_count = len(user_gangs) - len(alive)
 
     embed = discord.Embed(
-        title=f"{message.author.name}'s Vampires",
-        description=f"Alive: {len(alive)}  |  Dead: {dead_count}",
-        color=discord.Color.dark_purple()
+        title=f"{message.author.name}'s Gang",
+        description=f"Active: {len(alive)}  |  Disbanded: {dead_count}",
+        color=discord.Color.dark_grey()
     )
 
     if alive:
-        for v in alive:
-            tier, _ = get_tier(v['power'])
-            immortal_tag = "  |  IMMORTAL" if v.get('immortal', False) else ""
-            kills = v.get('kills', 0)
-            fights_won = v.get('fights_won', 0)
-            fights_lost = v.get('fights_lost', 0)
-            total_fights = fights_won + fights_lost
-            win_rate = f"{int((fights_won / total_fights) * 100)}%" if total_fights > 0 else "N/A"
+        for g in alive:
+            fights_won = g.get('fights_won', 0)
+            fights_lost = g.get('fights_lost', 0)
+            total = fights_won + fights_lost
+            win_rate = f"{int((fights_won / total) * 100)}%" if total > 0 else "N/A"
 
             embed.add_field(
-                name=f"{v['name']}{immortal_tag}",
+                name=g['name'],
                 value=(
-                    f"Code: `{v['code']}`\n"
-                    f"Power: {v['power']}\n"
-                    f"Tier: {tier}\n"
-                    f"Kills: {kills}\n"
+                    f"Code: `{g['code']}`\n"
+                    f"Street Cred: {g['rep']}\n"
+                    f"Kills: {g.get('kills', 0)}\n"
                     f"Record: {fights_won}W - {fights_lost}L\n"
                     f"Win Rate: {win_rate}"
                 ),
@@ -228,272 +194,211 @@ async def handle_show(message, args):
             )
     else:
         embed.add_field(
-            name="No Alive Vampires",
-            value="All your vampires have fallen. Type `vampire` to rise again.",
+            name="No Active Gang",
+            value="Your gang has been disbanded. Type `gang` to start fresh.",
             inline=False
         )
 
-    embed.set_footer(text="Type: random <code> | fight <code> | show")
+    embed.set_footer(text="Type: mission <code> | beef <code> | show")
     await message.channel.send(embed=embed)
 
 
-async def handle_random(message, args):
+async def handle_mission(message, args):
     if not args:
-        await message.channel.send("Usage: `random <code>`\nExample: `random XKRV`")
+        await message.channel.send("Usage: `mission <code>`\nExample: `mission XKRV`")
         return
 
     code = args[0].upper()
 
-    if code not in vampires:
-        await message.channel.send(f"No vampire found with code `{code}`.")
+    if code not in gangs:
+        await message.channel.send(f"No gang found with code `{code}`.")
         return
 
-    vampire = vampires[code]
+    gang = gangs[code]
 
-    if vampire['owner_id'] != message.author.id:
-        await message.channel.send("You don't own this vampire!")
+    if gang['owner_id'] != message.author.id:
+        await message.channel.send("That's not your gang.")
         return
 
-    if not vampire['alive']:
-        await message.channel.send(f"**{vampire['name']}** is dead and cannot experience events anymore.")
+    if not gang['alive']:
+        await message.channel.send(f"**{gang['name']}** has been disbanded.")
         return
 
-    is_immortal = vampire.get('immortal', False)
-    pool = EVENTS if not is_immortal else [e for e in EVENTS if e['type'] != 'ancient_blood']
-    weights = EVENT_WEIGHTS if not is_immortal else [w for e, w in zip(EVENTS, EVENT_WEIGHTS) if e['type'] != 'ancient_blood']
+    event = random.choices(EVENTS, weights=EVENT_WEIGHTS, k=1)[0]
+    name = gang['name']
+    rep = gang['rep']
 
-    event = random.choices(pool, weights=weights, k=1)[0]
-    name = vampire['name']
-    power = vampire['power']
-
-    embed = discord.Embed(title=event['name'], description=event['description'].format(name=name), color=event['color'])
-    embed.add_field(name="Vampire", value=name, inline=True)
+    embed = discord.Embed(
+        title=event['name'],
+        description=event['description'].format(name=name),
+        color=event['color']
+    )
+    embed.add_field(name="Gang", value=name, inline=True)
     embed.add_field(name="Code", value=f"`{code}`", inline=True)
 
-    if event['type'] == 'power_up':
+    if event['type'] == 'rep_up':
         gain = random.randint(*event['value'])
-        new_power = min(4500, power + gain)
-        actual_gain = new_power - power
-        vampire['power'] = new_power
-        tier, _ = get_tier(new_power)
-        embed.add_field(name="Power Change", value=f"{power} → **{new_power}** (+{actual_gain})", inline=False)
-        embed.add_field(name="New Tier", value=tier, inline=True)
-        embed.set_footer(text="Your vampire grows stronger...")
+        new_rep = rep + gain
+        gang['rep'] = new_rep
+        embed.add_field(name="Street Cred", value=f"{rep} → **{new_rep}** (+{gain})", inline=False)
+        embed.set_footer(text="Reputation rising on the streets...")
 
-    elif event['type'] == 'power_down':
+    elif event['type'] == 'rep_down':
         loss = random.randint(*event['value'])
-        new_power = max(10, power - loss)
-        actual_loss = power - new_power
-        vampire['power'] = new_power
-        tier, _ = get_tier(new_power)
-        embed.add_field(name="Power Change", value=f"{power} → **{new_power}** (-{actual_loss})", inline=False)
-        embed.add_field(name="New Tier", value=tier, inline=True)
-        embed.set_footer(text="Your vampire has been weakened...")
+        new_rep = max(1, rep - loss)
+        actual_loss = rep - new_rep
+        gang['rep'] = new_rep
+        embed.add_field(name="Street Cred", value=f"{rep} → **{new_rep}** (-{actual_loss})", inline=False)
+        embed.set_footer(text="Taking an L on the streets...")
 
     elif event['type'] == 'death':
-        if is_immortal:
-            stake_roll = random.randint(1, 100)
-            if stake_roll <= 5:
-                mark_vampire_dead(code)
-                embed.color = discord.Color.dark_red()
-                embed.add_field(name="The Undying Stake", value=f"This was no ordinary enemy. They carried the **Undying Stake** — the one weapon forged to end even immortal vampires. Your immortality meant nothing. {name} is gone.", inline=False)
-                embed.add_field(name="Power at Death", value=str(power), inline=False)
-                embed.set_footer(text="Even immortality has its end. Type vampire to rise again when all are gone.")
-            else:
-                embed.color = discord.Color.from_rgb(80, 0, 80)
-                embed.add_field(name="Immortality Holds", value=f"Death came for {name} — but could not take them. Their immortality repelled the killing blow. They walk away untouched.", inline=False)
-                embed.add_field(name="Power", value=str(power), inline=True)
-                embed.set_footer(text="Death itself cannot claim this vampire.")
-        else:
-            mark_vampire_dead(code)
-            embed.add_field(name="Power at Death", value=str(power), inline=False)
-            embed.set_footer(text="This vampire is gone. Type vampire to rise again when all are gone.")
+        mark_gang_dead(code)
+        embed.add_field(name="Street Cred at Disbandment", value=str(rep), inline=False)
+        embed.add_field(name="Final Record", value=f"{gang.get('fights_won', 0)}W - {gang.get('fights_lost', 0)}L", inline=True)
+        embed.set_footer(text="Gang is done. Type gang to start over.")
 
     elif event['type'] == 'nothing':
-        tier, _ = get_tier(power)
-        embed.add_field(name="Power", value=str(power), inline=True)
-        embed.add_field(name="Tier", value=tier, inline=True)
-        embed.set_footer(text="The night was uneventful...")
+        embed.add_field(name="Street Cred", value=str(rep), inline=True)
+        embed.set_footer(text="Nothing popped off tonight.")
 
     elif event['type'] == 'recruit':
-        recruited = generate_ai_vampire()
         new_code = generate_code()
-        vampires[new_code] = {
-            "name": recruited['name'],
-            "power": recruited['power'],
+        new_rep = random.randint(10, 80)
+        prefix = random.choice(GANG_PREFIX)
+        suffix = random.choice(GANG_SUFFIX)
+        new_name = f"{prefix} {suffix}"
+        gangs[new_code] = {
+            "name": new_name,
+            "rep": new_rep,
             "owner_id": message.author.id,
             "owner_name": message.author.name,
             "code": new_code,
             "alive": True,
-            "immortal": False,
             "kills": 0,
             "fights_won": 0,
             "fights_lost": 0,
         }
-        active_vampire_owners.add(message.author.id)
-        recruited_tier, _ = get_tier(recruited['power'])
-        embed.add_field(name="New Recruit", value=recruited['name'], inline=True)
-        embed.add_field(name="Recruit Power", value=str(recruited['power']), inline=True)
-        embed.add_field(name="Recruit Tier", value=recruited_tier, inline=True)
-        embed.add_field(name="Recruit Code", value=f"`{new_code}`", inline=False)
-        embed.set_footer(text="A new vampire has joined your ranks.")
-
-    elif event['type'] == 'ancient_blood':
-        vampire['immortal'] = True
-        embed.add_field(name="Immortality Unlocked", value=f"{name} is now immune to death by conventional means. Only the Undying Stake can end their existence.", inline=False)
-        embed.add_field(name="Power", value=str(power), inline=True)
-        embed.set_footer(text="Death itself now walks around this vampire.")
+        active_gang_owners.add(message.author.id)
+        embed.add_field(name="New Set", value=new_name, inline=True)
+        embed.add_field(name="Their Cred", value=str(new_rep), inline=True)
+        embed.add_field(name="Code", value=f"`{new_code}`", inline=False)
+        embed.set_footer(text="A new set is under your umbrella.")
 
     await message.channel.send(embed=embed)
 
 
-async def handle_fight(message, args):
+async def handle_beef(message, args):
     if not args:
-        await message.channel.send("Usage: `fight <code>`\nExample: `fight XKRV`")
+        await message.channel.send("Usage: `beef <code>`\nExample: `beef XKRV`")
         return
 
     code = args[0].upper()
 
-    if code not in vampires:
-        await message.channel.send(f"No vampire found with code `{code}`.")
+    if code not in gangs:
+        await message.channel.send(f"No gang found with code `{code}`.")
         return
 
-    vampire = vampires[code]
+    gang = gangs[code]
 
-    if vampire['owner_id'] != message.author.id:
-        await message.channel.send("You don't own this vampire!")
+    if gang['owner_id'] != message.author.id:
+        await message.channel.send("That's not your gang.")
         return
 
-    if not vampire['alive']:
-        await message.channel.send(f"**{vampire['name']}** is dead and cannot fight.")
+    if not gang['alive']:
+        await message.channel.send(f"**{gang['name']}** has been disbanded.")
         return
 
-    is_immortal = vampire.get('immortal', False)
-    stake_roll = random.randint(1, 100)
-    enemy_has_stake = stake_roll <= 5
-    enemy = generate_ai_vampire(carry_stake=enemy_has_stake)
+    enemy = generate_ai_gang()
+    player_rep = gang['rep']
+    enemy_rep = enemy['rep']
 
-    player_power = vampire['power']
-    enemy_power = enemy['power']
-    player_tier, _ = get_tier(player_power)
-    enemy_tier, _ = get_tier(enemy_power)
-
-    stake_warning = "\n\nThis enemy carries something unusual at their side..." if enemy_has_stake and is_immortal else ""
     intro_embed = discord.Embed(
-        title="Blood Battle",
-        description=f"**{vampire['name']}** faces off against **{enemy['name']}** in the darkness...{stake_warning}",
+        title="Beef",
+        description=f"**{gang['name']}** is going to war with **{enemy['name']}**...",
         color=discord.Color.dark_red()
     )
-    immortal_tag = "  |  IMMORTAL" if is_immortal else ""
-    intro_embed.add_field(name=vampire['name'], value=f"Power: {player_power}\nTier: {player_tier}{immortal_tag}", inline=True)
+    intro_embed.add_field(name=gang['name'], value=f"Street Cred: {player_rep}", inline=True)
     intro_embed.add_field(name="VS", value="\u200b", inline=True)
-    intro_embed.add_field(name=enemy['name'], value=f"Power: {enemy_power}\nTier: {enemy_tier}", inline=True)
-    intro_embed.set_footer(text="The battle begins...")
+    intro_embed.add_field(name=enemy['name'], value=f"Street Cred: {enemy_rep}", inline=True)
+    intro_embed.set_footer(text="It's on...")
     await message.channel.send(embed=intro_embed)
     await asyncio.sleep(3)
 
-    power_diff = player_power - enemy_power
-    win_chance = 50 + int((power_diff / 4500) * 80)
+    rep_diff = player_rep - enemy_rep
+    win_chance = 50 + int((rep_diff / 500) * 40)
     win_chance = max(10, min(90, win_chance))
     roll = random.randint(1, 100)
     player_won = roll <= win_chance
 
     if player_won:
-        power_gain = random.randint(50, int(enemy_power * 0.3))
-        new_power = min(4500, player_power + power_gain)
-        vampire['power'] = new_power
-        new_tier, _ = get_tier(new_power)
+        rep_gain = random.randint(20, int(max(1, enemy_rep * 0.4)))
+        new_rep = player_rep + rep_gain
+        gang['rep'] = new_rep
+        gang['kills'] = gang.get('kills', 0) + 1
+        gang['fights_won'] = gang.get('fights_won', 0) + 1
 
-        death_on_win_roll = random.randint(1, 100)
-        if death_on_win_roll <= 10:
-            if is_immortal and not enemy_has_stake:
-                vampire['kills'] = vampire.get('kills', 0) + 1
-                vampire['fights_won'] = vampire.get('fights_won', 0) + 1
-                result_embed = discord.Embed(title="Victory — Immortality Holds", description=f"**{vampire['name']}** defeated **{enemy['name']}**. A fatal blow landed but their immortality rejected death entirely.", color=discord.Color.green())
-                result_embed.add_field(name="Power Gained", value=f"+{new_power - player_power}", inline=True)
-                result_embed.add_field(name="New Power", value=f"{player_power} → **{new_power}**", inline=False)
-                result_embed.add_field(name="New Tier", value=new_tier, inline=True)
-                result_embed.add_field(name="Total Kills", value=str(vampire['kills']), inline=True)
-                result_embed.set_footer(text="Death cannot claim this vampire.")
-            elif is_immortal and enemy_has_stake:
-                vampire['kills'] = vampire.get('kills', 0) + 1
-                vampire['fights_won'] = vampire.get('fights_won', 0) + 1
-                mark_vampire_dead(code)
-                result_embed = discord.Embed(title="Victory — But the Stake Found Its Mark", description=f"**{vampire['name']}** defeated **{enemy['name']}** — but in the final moment the enemy drove the **Undying Stake** through their heart. Immortality shattered. They are gone.", color=discord.Color.dark_red())
-                result_embed.add_field(name="Power at Death", value=str(player_power), inline=False)
-                result_embed.add_field(name="Final Kills", value=str(vampire['kills']), inline=True)
-                result_embed.set_footer(text="Even immortality has its end. Type vampire to rise again when all are gone.")
-            else:
-                vampire['kills'] = vampire.get('kills', 0) + 1
-                vampire['fights_won'] = vampire.get('fights_won', 0) + 1
-                mark_vampire_dead(code)
-                result_embed = discord.Embed(title="Pyrrhic Victory", description=f"**{vampire['name']}** defeated **{enemy['name']}** but sustained fatal wounds in the process. They crumble to ash moments after victory.", color=discord.Color.dark_red())
-                result_embed.add_field(name="Power at Death", value=str(player_power), inline=False)
-                result_embed.add_field(name="Final Kills", value=str(vampire['kills']), inline=True)
-                result_embed.set_footer(text="Type vampire to rise again when all are gone.")
+        death_roll = random.randint(1, 100)
+        if death_roll <= 8:
+            mark_gang_dead(code)
+            result_embed = discord.Embed(
+                title="Won the Beef — But Lost Everything",
+                description=f"**{gang['name']}** beat **{enemy['name']}** but the retaliation that followed was too much. The gang didn't survive the aftermath.",
+                color=discord.Color.dark_red()
+            )
+            result_embed.add_field(name="Final Street Cred", value=str(player_rep), inline=True)
+            result_embed.add_field(name="Final Kills", value=str(gang['kills']), inline=True)
+            result_embed.set_footer(text="Type gang to start over.")
         else:
-            vampire['kills'] = vampire.get('kills', 0) + 1
-            vampire['fights_won'] = vampire.get('fights_won', 0) + 1
-            result_embed = discord.Embed(title="Victory", description=f"**{vampire['name']}** has defeated **{enemy['name']}** and drained their power!", color=discord.Color.green())
-            result_embed.add_field(name="Enemy Power", value=str(enemy_power), inline=True)
-            result_embed.add_field(name="Power Gained", value=f"+{new_power - player_power}", inline=True)
-            result_embed.add_field(name="New Power", value=f"{player_power} → **{new_power}**", inline=False)
-            result_embed.add_field(name="New Tier", value=new_tier, inline=True)
-            result_embed.add_field(name="Total Kills", value=str(vampire['kills']), inline=True)
-            result_embed.set_footer(text="Your vampire grows stronger with each kill.")
+            result_embed = discord.Embed(
+                title="Won the Beef",
+                description=f"**{gang['name']}** ran **{enemy['name']}** off the block. Streets know who runs it now.",
+                color=discord.Color.green()
+            )
+            result_embed.add_field(name="Enemy Cred", value=str(enemy_rep), inline=True)
+            result_embed.add_field(name="Cred Gained", value=f"+{rep_gain}", inline=True)
+            result_embed.add_field(name="New Street Cred", value=f"{player_rep} → **{new_rep}**", inline=False)
+            result_embed.add_field(name="Total Kills", value=str(gang['kills']), inline=True)
+            result_embed.set_footer(text="Hold that block.")
     else:
-        death_chance = 20 + int(abs(power_diff) / 4500 * 45)
-        death_chance = max(20, min(65, death_chance))
+        death_chance = 20 + int(abs(rep_diff) / 500 * 40)
+        death_chance = max(20, min(60, death_chance))
         death_roll = random.randint(1, 100)
 
         if death_roll <= death_chance:
-            if is_immortal and not enemy_has_stake:
-                vampire['fights_lost'] = vampire.get('fights_lost', 0) + 1
-                power_loss = random.randint(50, int(player_power * 0.25))
-                new_power = max(10, player_power - power_loss)
-                vampire['power'] = new_power
-                new_tier, _ = get_tier(new_power)
-                result_embed = discord.Embed(title="Defeated — Immortality Saves Them", description=f"**{vampire['name']}** was overpowered by **{enemy['name']}**. The killing blow landed — but their immortality rejected death and they crawled away broken but breathing.", color=discord.Color.orange())
-                result_embed.add_field(name="Power Lost", value=f"-{player_power - new_power}", inline=True)
-                result_embed.add_field(name="New Power", value=f"{player_power} → **{new_power}**", inline=False)
-                result_embed.add_field(name="New Tier", value=new_tier, inline=True)
-                result_embed.set_footer(text="Immortality held. But barely.")
-            elif is_immortal and enemy_has_stake:
-                vampire['fights_lost'] = vampire.get('fights_lost', 0) + 1
-                mark_vampire_dead(code)
-                result_embed = discord.Embed(title="Defeated — The Undying Stake", description=f"**{vampire['name']}** was defeated by **{enemy['name']}** who drove the **Undying Stake** through their heart. The one weapon that can kill what cannot die. Your vampire is gone.", color=discord.Color.dark_red())
-                result_embed.add_field(name="Power at Death", value=str(player_power), inline=False)
-                result_embed.add_field(name="Final Kills", value=str(vampire.get('kills', 0)), inline=True)
-                result_embed.set_footer(text="Even immortality has its end. Type vampire to rise again when all are gone.")
-            else:
-                vampire['fights_lost'] = vampire.get('fights_lost', 0) + 1
-                mark_vampire_dead(code)
-                result_embed = discord.Embed(title="Defeated", description=f"**{vampire['name']}** was overpowered by **{enemy['name']}** and has been destroyed.", color=discord.Color.dark_red())
-                result_embed.add_field(name="Enemy Power", value=str(enemy_power), inline=True)
-                result_embed.add_field(name="Your Power", value=str(player_power), inline=True)
-                result_embed.add_field(name="Final Kills", value=str(vampire.get('kills', 0)), inline=True)
-                result_embed.set_footer(text="Type vampire to rise again when all are gone.")
+            gang['fights_lost'] = gang.get('fights_lost', 0) + 1
+            mark_gang_dead(code)
+            result_embed = discord.Embed(
+                title="Lost the Beef — Gang Disbanded",
+                description=f"**{gang['name']}** got wiped out by **{enemy['name']}**. No members, no block, no future.",
+                color=discord.Color.dark_red()
+            )
+            result_embed.add_field(name="Enemy Cred", value=str(enemy_rep), inline=True)
+            result_embed.add_field(name="Your Cred", value=str(player_rep), inline=True)
+            result_embed.add_field(name="Final Kills", value=str(gang.get('kills', 0)), inline=True)
+            result_embed.set_footer(text="Type gang to start over.")
         else:
-            vampire['fights_lost'] = vampire.get('fights_lost', 0) + 1
-            power_loss = random.randint(50, int(player_power * 0.25))
-            new_power = max(10, player_power - power_loss)
-            vampire['power'] = new_power
-            new_tier, _ = get_tier(new_power)
-            result_embed = discord.Embed(title="Defeated — But Alive", description=f"**{vampire['name']}** was beaten by **{enemy['name']}** and barely escaped with their life.", color=discord.Color.orange())
-            result_embed.add_field(name="Enemy Power", value=str(enemy_power), inline=True)
-            result_embed.add_field(name="Power Lost", value=f"-{player_power - new_power}", inline=True)
-            result_embed.add_field(name="New Power", value=f"{player_power} → **{new_power}**", inline=False)
-            result_embed.add_field(name="New Tier", value=new_tier, inline=True)
-            result_embed.set_footer(text="Your vampire fled into the shadows, wounded.")
+            rep_loss = random.randint(20, int(max(1, player_rep * 0.25)))
+            new_rep = max(1, player_rep - rep_loss)
+            gang['rep'] = new_rep
+            gang['fights_lost'] = gang.get('fights_lost', 0) + 1
+            result_embed = discord.Embed(
+                title="Lost the Beef — Still Standing",
+                description=f"**{gang['name']}** took an L against **{enemy['name']}** but lived to fight another day.",
+                color=discord.Color.orange()
+            )
+            result_embed.add_field(name="Enemy Cred", value=str(enemy_rep), inline=True)
+            result_embed.add_field(name="Cred Lost", value=f"-{player_rep - new_rep}", inline=True)
+            result_embed.add_field(name="New Street Cred", value=f"{player_rep} → **{new_rep}**", inline=False)
+            result_embed.set_footer(text="Regroup and come back stronger.")
 
     await message.channel.send(embed=result_embed)
 
 
 COMMANDS = {
-    "vampire": handle_vampire,
+    "gang": handle_gang,
     "show": handle_show,
-    "random": handle_random,
-    "fight": handle_fight,
+    "mission": handle_mission,
+    "beef": handle_beef,
 }
 
 
