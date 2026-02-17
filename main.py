@@ -160,10 +160,7 @@ def get_member_status(m):
         return "Dead"
     now = time.time()
     if m.get('jail_until') and now < m['jail_until']:
-        remaining_secs = m['jail_until'] - now
-        remaining_mins = int(remaining_secs / 60)
-        remaining_secs_part = int(remaining_secs % 60)
-        return f"Locked Up ({m['jail_sentence']} — {remaining_mins}m {remaining_secs_part}s left)"
+        return f"Locked Up ({m['jail_sentence']})"
     return "Free"
 
 
