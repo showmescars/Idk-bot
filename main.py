@@ -11,16 +11,28 @@ intents = discord.Intents.default()
 intents.message_content = True
 bot = commands.Bot(command_prefix='?', intents=intents)
 
-# Real LA gangs
-LA_GANGS = [
-    "Rollin 60s Crips", "Grape Street Watts Crips", "East Coast Crips",
-    "Compton Crips", "Long Beach Insane Crips", "Hoover Criminals",
-    "Bloods of Piru", "Bounty Hunter Bloods", "Fruit Town Brims",
-    "Inglewood Family Bloods", "Van Ness Gangster Bloods", "Denver Lane Bloods",
-    "18th Street", "MS-13", "White Fence", "Florencia 13",
-    "East LA 13", "Barrio Van Nuys", "Harpys", "Avenues",
-    "Mara Salvatrucha", "South Side Compton Crips", "Watts Varrio Grape",
-    "Shotgun Crips", "Raymond Avenue Crips"
+# Street member nicknames
+STREET_NAMES = [
+    "Lil Menace", "Big Loc", "Joker", "Tiny", "Demon", "Ghost", "Lil Creep",
+    "Youngsta", "Lil Caps", "Big Hurt", "Shadow", "Lil Diablo", "Cisco",
+    "Drowsy", "Spanky", "Lil Wicked", "Chuco", "Travieso", "Sleepy",
+    "Lil Payaso", "Boxer", "Dopey", "Scrappy", "Sinner", "Lil Evil",
+    "Big Trigg", "Lil Trigg", "Cartoon", "Psycho", "Lil Psycho",
+    "Big Psycho", "Casper", "Lil Casper", "Smiley", "Lil Smiley",
+    "Big Smiley", "Termite", "Lil Monster", "Big Monster", "Lil Lobo",
+    "Big Lobo", "Pnut", "Lil Pnut", "Wino", "Lil Wino", "Coyote",
+    "Lil Coyote", "Grumpy", "Lil Grumpy", "Chino", "Lil Chino",
+    "Big Chino", "Stomper", "Lil Stomper", "Danger", "Lil Danger",
+    "Vicious", "Lil Vicious", "Puppet", "Lil Puppet", "Sad Eyes",
+    "Lil Sad Eyes", "Trigger", "Lil Trigger", "Mosco", "Lil Mosco",
+    "Huero", "Lil Huero", "Big Huero", "Flaco", "Lil Flaco",
+    "Gordo", "Lil Gordo", "Speedy", "Lil Speedy", "Terminator",
+    "Lil Terminator", "Mugsy", "Lil Mugsy", "Sniper", "Lil Sniper",
+    "Looney", "Lil Looney", "Big Looney", "Crazy", "Lil Crazy",
+    "Big Crazy", "Silent", "Lil Silent", "Savage", "Lil Savage",
+    "Big Savage", "Bandit", "Lil Bandit", "Sinister", "Lil Sinister",
+    "Diablo", "Big Diablo", "Capone", "Lil Capone", "Scarface",
+    "Lil Scarface", "Hitman", "Lil Hitman", "Naughty", "Lil Naughty"
 ]
 
 # Gang name parts for user gangs
@@ -57,8 +69,8 @@ def generate_code():
             return code
 
 
-def generate_ai_gang():
-    name = random.choice(LA_GANGS)
+def generate_ai_member():
+    name = random.choice(STREET_NAMES)
     rep = random.randint(10, 500)
     return {"name": name, "rep": rep}
 
@@ -73,42 +85,49 @@ def mark_gang_dead(code):
 
 EVENTS = [
     # REP UPS
-    {"name": "Drug Spot Takeover", "description": "{name} muscled out a rival crew and took over a profitable corner on Figueroa. Word spreads fast.", "type": "rep_up", "value": (20, 80), "color": discord.Color.green()},
+    {"name": "Corner Locked Down", "description": "{name} and the crew muscled out the competition and took over a profitable corner on Figueroa. Word spreads fast.", "type": "rep_up", "value": (20, 80), "color": discord.Color.green()},
     {"name": "Successful Lick", "description": "{name} pulled off a clean job and everyone on the block heard about it. Rep climbing.", "type": "rep_up", "value": (30, 100), "color": discord.Color.green()},
-    {"name": "Street Fight Victory", "description": "{name} ran up on a crew from the other side and sent them packing. Block is locked down.", "type": "rep_up", "value": (20, 60), "color": discord.Color.green()},
-    {"name": "Territory Claimed", "description": "{name} planted their flag on a new block nobody dared touch. Territory expanding.", "type": "rep_up", "value": (40, 120), "color": discord.Color.green()},
-    {"name": "Big Homie Vouched", "description": "A respected OG from the neighborhood publicly backed {name}. That name now carries weight.", "type": "rep_up", "value": (50, 150), "color": discord.Color.green()},
+    {"name": "Street Fight Victory", "description": "{name} ran up on the opposition and sent them running. Block is locked down.", "type": "rep_up", "value": (20, 60), "color": discord.Color.green()},
+    {"name": "Territory Claimed", "description": "{name} planted the flag on a new block nobody dared touch. Territory expanding.", "type": "rep_up", "value": (40, 120), "color": discord.Color.green()},
+    {"name": "OG Vouched", "description": "A respected OG from the neighborhood publicly backed {name}. That name now carries weight.", "type": "rep_up", "value": (50, 150), "color": discord.Color.green()},
     {"name": "Retaliation Hit", "description": "{name} answered disrespect with action. Nobody on the streets is laughing now.", "type": "rep_up", "value": (60, 180), "color": discord.Color.green()},
-    {"name": "Prison Connections Made", "description": "{name} linked up with connects inside. The reach just got longer.", "type": "rep_up", "value": (40, 100), "color": discord.Color.green()},
-    {"name": "Rival Crew Scattered", "description": "A rival set got hit so hard they stopped showing up. {name} owns that side now.", "type": "rep_up", "value": (80, 200), "color": discord.Color.green()},
+    {"name": "Prison Connects Made", "description": "{name} linked up with connects inside. The reach just got longer.", "type": "rep_up", "value": (40, 100), "color": discord.Color.green()},
+    {"name": "Rival Scattered", "description": "The opposition got hit so hard they stopped showing up. {name} owns that side now.", "type": "rep_up", "value": (80, 200), "color": discord.Color.green()},
     {"name": "Hood Documentary", "description": "A street doc filmmaker put {name} on camera. The streets are watching.", "type": "rep_up", "value": (30, 90), "color": discord.Color.green()},
     {"name": "Rapper Shoutout", "description": "A local rapper dropped a track shouting out {name} by name. Everyone knows who they are now.", "type": "rep_up", "value": (50, 130), "color": discord.Color.green()},
-    {"name": "Block Party Respect", "description": "{name} threw a block party and fed the whole neighborhood. Community loyalty locked in.", "type": "rep_up", "value": (25, 70), "color": discord.Color.green()},
-    {"name": "Jumped In New Members", "description": "{name} grew their numbers after a wave of young bloods wanted in. Strength in numbers.", "type": "rep_up", "value": (35, 95), "color": discord.Color.green()},
+    {"name": "Fed the Block", "description": "{name} threw a block party and fed the whole neighborhood. Community loyalty locked in.", "type": "rep_up", "value": (25, 70), "color": discord.Color.green()},
+    {"name": "New Homies Jumped In", "description": "{name} grew the crew after a wave of young bloods wanted in. Strength in numbers.", "type": "rep_up", "value": (35, 95), "color": discord.Color.green()},
+    {"name": "Big Score", "description": "{name} came up on a major score that set the whole crew right. Money and respect flowing.", "type": "rep_up", "value": (60, 160), "color": discord.Color.green()},
+    {"name": "Took the Block Back", "description": "{name} reclaimed territory that was lost and made it clear who runs it.", "type": "rep_up", "value": (70, 170), "color": discord.Color.green()},
+    {"name": "Put in Work", "description": "{name} handled business that needed handling. No questions asked. Respect earned.", "type": "rep_up", "value": (80, 200), "color": discord.Color.green()},
     # REP DOWNS
-    {"name": "Snitch in the Ranks", "description": "Word got out that someone in {name} is talking to the feds. Trust is broken and rep is taking a hit.", "type": "rep_down", "value": (30, 100), "color": discord.Color.orange()},
+    {"name": "Snitch in the Ranks", "description": "Word got out that someone around {name} is talking to the feds. Trust is broken and rep is taking a hit.", "type": "rep_down", "value": (30, 100), "color": discord.Color.orange()},
     {"name": "Botched Mission", "description": "{name} tried to make a move and it went sideways. The streets are talking.", "type": "rep_down", "value": (20, 80), "color": discord.Color.orange()},
-    {"name": "Key Member Arrested", "description": "One of {name}'s most important members got knocked by the LAPD. Operations are hurting.", "type": "rep_down", "value": (40, 120), "color": discord.Color.orange()},
-    {"name": "Ran Off the Block", "description": "A rival crew rolled through deep and {name} had to fall back. That block is gone.", "type": "rep_down", "value": (50, 150), "color": discord.Color.orange()},
-    {"name": "Internal Beef", "description": "Two members of {name} got into it publicly. The whole hood saw the disorganization.", "type": "rep_down", "value": (25, 75), "color": discord.Color.orange()},
-    {"name": "LAPD Raid", "description": "The feds ran up on {name}'s spot. Product gone, members scattered.", "type": "rep_down", "value": (60, 180), "color": discord.Color.orange()},
-    {"name": "Disrespected Publicly", "description": "A rival crew talked crazy about {name} in public and nobody did anything about it. Soft energy.", "type": "rep_down", "value": (30, 90), "color": discord.Color.orange()},
-    {"name": "Lost a Shipment", "description": "{name} lost a major package on the way in. Money and rep both took a hit.", "type": "rep_down", "value": (45, 130), "color": discord.Color.orange()},
-    {"name": "Member Flipped", "description": "Someone from {name} switched sides and took connects with them. Deep betrayal.", "type": "rep_down", "value": (50, 160), "color": discord.Color.orange()},
-    {"name": "Jumped by Rivals", "description": "{name} got caught slipping and took an L in broad daylight. Everybody saw.", "type": "rep_down", "value": (35, 110), "color": discord.Color.orange()},
+    {"name": "Homie Got Knocked", "description": "One of {name}'s most trusted people got picked up by LAPD. Operations are hurting.", "type": "rep_down", "value": (40, 120), "color": discord.Color.orange()},
+    {"name": "Ran Off the Block", "description": "Opps rolled through deep and {name} had to fall back. That block is gone.", "type": "rep_down", "value": (50, 150), "color": discord.Color.orange()},
+    {"name": "Internal Beef", "description": "Two people in {name}'s crew got into it publicly. The whole hood saw the disorganization.", "type": "rep_down", "value": (25, 75), "color": discord.Color.orange()},
+    {"name": "LAPD Raid", "description": "Task force ran up on {name}'s spot. Everything gone, crew scattered.", "type": "rep_down", "value": (60, 180), "color": discord.Color.orange()},
+    {"name": "Caught Lacking", "description": "Opps caught {name} slipping in public and nothing got done about it. Soft energy on the street.", "type": "rep_down", "value": (30, 90), "color": discord.Color.orange()},
+    {"name": "Lost the Package", "description": "{name} lost a major package on the way in. Money and rep both took a hit.", "type": "rep_down", "value": (45, 130), "color": discord.Color.orange()},
+    {"name": "Homie Flipped", "description": "Someone close to {name} switched sides and took connects with them. Deep betrayal.", "type": "rep_down", "value": (50, 160), "color": discord.Color.orange()},
+    {"name": "Jumped by Opps", "description": "{name} got caught slipping and took an L in broad daylight. Everybody saw.", "type": "rep_down", "value": (35, 110), "color": discord.Color.orange()},
+    {"name": "Dry Snitching", "description": "Someone around {name} been running their mouth indirectly. Word got back. Trust is shot.", "type": "rep_down", "value": (25, 80), "color": discord.Color.orange()},
+    {"name": "Fronted and Folded", "description": "{name} made a big threat publicly and didn't follow through. The streets remember.", "type": "rep_down", "value": (40, 100), "color": discord.Color.orange()},
     # DEATHS
-    {"name": "LAPD Task Force", "description": "A specialized LAPD task force built a case on {name} for months. Every member got swept up in a RICO charge. The gang is finished.", "type": "death", "color": discord.Color.dark_red()},
-    {"name": "Wiped Out by Rivals", "description": "A massive coordinated hit by a rival gang left {name} with nothing. No members, no territory, no future.", "type": "death", "color": discord.Color.dark_red()},
-    {"name": "Federal RICO Case", "description": "The feds finally dropped a RICO case on {name}. Leadership gone, members flipped, operation dissolved.", "type": "death", "color": discord.Color.dark_red()},
-    {"name": "Gang War Annihilation", "description": "{name} got pulled into a full scale gang war they couldn't survive. The last members scattered or got buried.", "type": "death", "color": discord.Color.dark_red()},
-    {"name": "Leadership Assassinated", "description": "Every shot caller in {name} got hit in a single night. With no leadership the gang crumbled overnight.", "type": "death", "color": discord.Color.dark_red()},
+    {"name": "LAPD Task Force Sweep", "description": "A specialized LAPD task force had been watching {name} for months. Every connect got swept up in one night. It's over.", "type": "death", "color": discord.Color.dark_red()},
+    {"name": "Wiped Out by Opps", "description": "A coordinated hit by the opposition left {name} with nothing. No crew, no block, no future.", "type": "death", "color": discord.Color.dark_red()},
+    {"name": "Federal RICO Case", "description": "The feds dropped a RICO on {name}. Leadership gone, homies flipped, operation dissolved.", "type": "death", "color": discord.Color.dark_red()},
+    {"name": "All Out War", "description": "{name} got pulled into a full scale war they couldn't survive. The last of the crew scattered or got buried.", "type": "death", "color": discord.Color.dark_red()},
+    {"name": "Shot Callers Taken Out", "description": "Everyone holding it down for {name} got hit in a single week. With no leadership the crew fell apart overnight.", "type": "death", "color": discord.Color.dark_red()},
     # NOTHING
     {"name": "Quiet Night", "description": "{name} held down the block but nothing major went down tonight. Sometimes the streets are still.", "type": "nothing", "color": discord.Color.greyple()},
-    {"name": "Laying Low", "description": "{name} kept it low key. Heat was in the area so everybody stayed off the corners.", "type": "nothing", "color": discord.Color.greyple()},
+    {"name": "Laying Low", "description": "{name} kept it low key. Too much heat in the area so everybody stayed off the corners.", "type": "nothing", "color": discord.Color.greyple()},
     # RECRUIT
-    {"name": "New Blood Walks In", "description": "A group of young guys from the neighborhood approached {name} looking to get put on. Crew just got bigger.", "type": "recruit", "color": discord.Color.teal()},
-    {"name": "Rival Set Defected", "description": "A small crew from a rival gang got tired of their leadership and switched over to {name}. Bringing connects with them.", "type": "recruit", "color": discord.Color.teal()},
-    {"name": "OG Came Home", "description": "A respected OG just got out of Pelican Bay and linked back up with {name}. Brings wisdom and old school connects.", "type": "recruit", "color": discord.Color.teal()},
+    {"name": "Young Blood Walks Up", "description": "A young guy from the neighborhood approached {name} looking to get put on. Crew just got a new member.", "type": "recruit", "color": discord.Color.teal()},
+    {"name": "Opp Defected", "description": "A guy from the other side got tired of his people and came over to {name}. Bringing info and connects with him.", "type": "recruit", "color": discord.Color.teal()},
+    {"name": "OG Came Home", "description": "A respected OG just touched down from Pelican Bay and linked back up with {name}. Old school connects and wisdom.", "type": "recruit", "color": discord.Color.teal()},
+    {"name": "Rider Found", "description": "{name} met someone at the right time who proved themselves immediately. Solid addition to the crew.", "type": "recruit", "color": discord.Color.teal()},
+    {"name": "Cousin Came Through", "description": "A cousin from out of town with serious street credentials linked up with {name}. Family ties run deep.", "type": "recruit", "color": discord.Color.teal()},
 ]
 
 EVENT_WEIGHTS = [200 for _ in EVENTS]
@@ -120,18 +139,22 @@ async def handle_gang(message, args):
     if not is_admin(message):
         if user_has_active_gang(user_id):
             await message.channel.send(
-                "You already have an active gang. Type `show` to see them."
+                "You already got a crew running. Type `show` to see them."
             )
             return
 
     prefix = random.choice(GANG_PREFIX)
     suffix = random.choice(GANG_SUFFIX)
-    name = f"{prefix} {suffix}"
+    gang_name = f"{prefix} {suffix}"
     code = generate_code()
     rep = random.randint(10, 100)
 
+    # Pick a street name for the leader
+    leader = random.choice(STREET_NAMES)
+
     gangs[code] = {
-        "name": name,
+        "name": gang_name,
+        "leader": leader,
         "rep": rep,
         "owner_id": user_id,
         "owner_name": message.author.name,
@@ -146,10 +169,11 @@ async def handle_gang(message, args):
         active_gang_owners.add(user_id)
 
     embed = discord.Embed(
-        title="Gang Created",
-        description=f"**{name}** is now on the streets.",
+        title="Crew Created",
+        description=f"**{gang_name}** is now on the streets.",
         color=discord.Color.dark_grey()
     )
+    embed.add_field(name="Shot Caller", value=leader, inline=True)
     embed.add_field(name="Owner", value=message.author.name, inline=True)
     embed.add_field(name="Street Cred", value=str(rep), inline=True)
     embed.add_field(name="Code", value=f"`{code}`", inline=False)
@@ -162,14 +186,14 @@ async def handle_show(message, args):
     user_gangs = [g for g in gangs.values() if g['owner_id'] == user_id]
 
     if not user_gangs:
-        await message.channel.send("You have no gang. Type `gang` to start one.")
+        await message.channel.send("You got no crew. Type `gang` to start one.")
         return
 
     alive = [g for g in user_gangs if g['alive']]
     dead_count = len(user_gangs) - len(alive)
 
     embed = discord.Embed(
-        title=f"{message.author.name}'s Gang",
+        title=f"{message.author.name}'s Crew",
         description=f"Active: {len(alive)}  |  Disbanded: {dead_count}",
         color=discord.Color.dark_grey()
     )
@@ -185,8 +209,9 @@ async def handle_show(message, args):
                 name=g['name'],
                 value=(
                     f"Code: `{g['code']}`\n"
+                    f"Shot Caller: {g.get('leader', 'Unknown')}\n"
                     f"Street Cred: {g['rep']}\n"
-                    f"Kills: {g.get('kills', 0)}\n"
+                    f"Bodies: {g.get('kills', 0)}\n"
                     f"Record: {fights_won}W - {fights_lost}L\n"
                     f"Win Rate: {win_rate}"
                 ),
@@ -194,8 +219,8 @@ async def handle_show(message, args):
             )
     else:
         embed.add_field(
-            name="No Active Gang",
-            value="Your gang has been disbanded. Type `gang` to start fresh.",
+            name="No Active Crew",
+            value="Your crew got disbanded. Type `gang` to start fresh.",
             inline=False
         )
 
@@ -211,13 +236,13 @@ async def handle_mission(message, args):
     code = args[0].upper()
 
     if code not in gangs:
-        await message.channel.send(f"No gang found with code `{code}`.")
+        await message.channel.send(f"No crew found with code `{code}`.")
         return
 
     gang = gangs[code]
 
     if gang['owner_id'] != message.author.id:
-        await message.channel.send("That's not your gang.")
+        await message.channel.send("That ain't your crew.")
         return
 
     if not gang['alive']:
@@ -233,7 +258,7 @@ async def handle_mission(message, args):
         description=event['description'].format(name=name),
         color=event['color']
     )
-    embed.add_field(name="Gang", value=name, inline=True)
+    embed.add_field(name="Crew", value=name, inline=True)
     embed.add_field(name="Code", value=f"`{code}`", inline=True)
 
     if event['type'] == 'rep_up':
@@ -241,7 +266,7 @@ async def handle_mission(message, args):
         new_rep = rep + gain
         gang['rep'] = new_rep
         embed.add_field(name="Street Cred", value=f"{rep} → **{new_rep}** (+{gain})", inline=False)
-        embed.set_footer(text="Reputation rising on the streets...")
+        embed.set_footer(text="Rep rising on the streets...")
 
     elif event['type'] == 'rep_down':
         loss = random.randint(*event['value'])
@@ -253,22 +278,25 @@ async def handle_mission(message, args):
 
     elif event['type'] == 'death':
         mark_gang_dead(code)
-        embed.add_field(name="Street Cred at Disbandment", value=str(rep), inline=False)
+        embed.add_field(name="Final Street Cred", value=str(rep), inline=False)
         embed.add_field(name="Final Record", value=f"{gang.get('fights_won', 0)}W - {gang.get('fights_lost', 0)}L", inline=True)
-        embed.set_footer(text="Gang is done. Type gang to start over.")
+        embed.add_field(name="Bodies", value=str(gang.get('kills', 0)), inline=True)
+        embed.set_footer(text="Crew is done. Type gang to start over.")
 
     elif event['type'] == 'nothing':
         embed.add_field(name="Street Cred", value=str(rep), inline=True)
         embed.set_footer(text="Nothing popped off tonight.")
 
     elif event['type'] == 'recruit':
-        new_code = generate_code()
+        new_member = random.choice(STREET_NAMES)
         new_rep = random.randint(10, 80)
+        new_code = generate_code()
         prefix = random.choice(GANG_PREFIX)
         suffix = random.choice(GANG_SUFFIX)
         new_name = f"{prefix} {suffix}"
         gangs[new_code] = {
             "name": new_name,
+            "leader": new_member,
             "rep": new_rep,
             "owner_id": message.author.id,
             "owner_name": message.author.name,
@@ -279,10 +307,10 @@ async def handle_mission(message, args):
             "fights_lost": 0,
         }
         active_gang_owners.add(message.author.id)
-        embed.add_field(name="New Set", value=new_name, inline=True)
+        embed.add_field(name="New Member", value=new_member, inline=True)
         embed.add_field(name="Their Cred", value=str(new_rep), inline=True)
-        embed.add_field(name="Code", value=f"`{new_code}`", inline=False)
-        embed.set_footer(text="A new set is under your umbrella.")
+        embed.add_field(name="New Set Code", value=f"`{new_code}`", inline=False)
+        embed.set_footer(text="New rider is with the crew.")
 
     await message.channel.send(embed=embed)
 
@@ -295,26 +323,26 @@ async def handle_beef(message, args):
     code = args[0].upper()
 
     if code not in gangs:
-        await message.channel.send(f"No gang found with code `{code}`.")
+        await message.channel.send(f"No crew found with code `{code}`.")
         return
 
     gang = gangs[code]
 
     if gang['owner_id'] != message.author.id:
-        await message.channel.send("That's not your gang.")
+        await message.channel.send("That ain't your crew.")
         return
 
     if not gang['alive']:
         await message.channel.send(f"**{gang['name']}** has been disbanded.")
         return
 
-    enemy = generate_ai_gang()
+    enemy = generate_ai_member()
     player_rep = gang['rep']
     enemy_rep = enemy['rep']
 
     intro_embed = discord.Embed(
         title="Beef",
-        description=f"**{gang['name']}** is going to war with **{enemy['name']}**...",
+        description=f"**{gang['name']}** is going to war with **{enemy['name']}** and his crew...",
         color=discord.Color.dark_red()
     )
     intro_embed.add_field(name=gang['name'], value=f"Street Cred: {player_rep}", inline=True)
@@ -341,23 +369,23 @@ async def handle_beef(message, args):
         if death_roll <= 8:
             mark_gang_dead(code)
             result_embed = discord.Embed(
-                title="Won the Beef — But Lost Everything",
-                description=f"**{gang['name']}** beat **{enemy['name']}** but the retaliation that followed was too much. The gang didn't survive the aftermath.",
+                title="Won — But the Retaliation Was Too Much",
+                description=f"**{gang['name']}** smoked **{enemy['name']}** but the blowback that followed was too heavy. Crew didn't survive.",
                 color=discord.Color.dark_red()
             )
             result_embed.add_field(name="Final Street Cred", value=str(player_rep), inline=True)
-            result_embed.add_field(name="Final Kills", value=str(gang['kills']), inline=True)
+            result_embed.add_field(name="Final Bodies", value=str(gang['kills']), inline=True)
             result_embed.set_footer(text="Type gang to start over.")
         else:
             result_embed = discord.Embed(
                 title="Won the Beef",
-                description=f"**{gang['name']}** ran **{enemy['name']}** off the block. Streets know who runs it now.",
+                description=f"**{gang['name']}** ran **{enemy['name']}** and his crew off the block. Streets know who runs it now.",
                 color=discord.Color.green()
             )
-            result_embed.add_field(name="Enemy Cred", value=str(enemy_rep), inline=True)
+            result_embed.add_field(name="Opp Cred", value=str(enemy_rep), inline=True)
             result_embed.add_field(name="Cred Gained", value=f"+{rep_gain}", inline=True)
             result_embed.add_field(name="New Street Cred", value=f"{player_rep} → **{new_rep}**", inline=False)
-            result_embed.add_field(name="Total Kills", value=str(gang['kills']), inline=True)
+            result_embed.add_field(name="Total Bodies", value=str(gang['kills']), inline=True)
             result_embed.set_footer(text="Hold that block.")
     else:
         death_chance = 20 + int(abs(rep_diff) / 500 * 40)
@@ -368,13 +396,13 @@ async def handle_beef(message, args):
             gang['fights_lost'] = gang.get('fights_lost', 0) + 1
             mark_gang_dead(code)
             result_embed = discord.Embed(
-                title="Lost the Beef — Gang Disbanded",
-                description=f"**{gang['name']}** got wiped out by **{enemy['name']}**. No members, no block, no future.",
+                title="Lost the Beef — Crew Disbanded",
+                description=f"**{gang['name']}** got wiped out by **{enemy['name']}** and his crew. Nothing left.",
                 color=discord.Color.dark_red()
             )
-            result_embed.add_field(name="Enemy Cred", value=str(enemy_rep), inline=True)
+            result_embed.add_field(name="Opp Cred", value=str(enemy_rep), inline=True)
             result_embed.add_field(name="Your Cred", value=str(player_rep), inline=True)
-            result_embed.add_field(name="Final Kills", value=str(gang.get('kills', 0)), inline=True)
+            result_embed.add_field(name="Final Bodies", value=str(gang.get('kills', 0)), inline=True)
             result_embed.set_footer(text="Type gang to start over.")
         else:
             rep_loss = random.randint(20, int(max(1, player_rep * 0.25)))
@@ -386,10 +414,10 @@ async def handle_beef(message, args):
                 description=f"**{gang['name']}** took an L against **{enemy['name']}** but lived to fight another day.",
                 color=discord.Color.orange()
             )
-            result_embed.add_field(name="Enemy Cred", value=str(enemy_rep), inline=True)
+            result_embed.add_field(name="Opp Cred", value=str(enemy_rep), inline=True)
             result_embed.add_field(name="Cred Lost", value=f"-{player_rep - new_rep}", inline=True)
             result_embed.add_field(name="New Street Cred", value=f"{player_rep} → **{new_rep}**", inline=False)
-            result_embed.set_footer(text="Regroup and come back stronger.")
+            result_embed.set_footer(text="Regroup and come back.")
 
     await message.channel.send(embed=result_embed)
 
