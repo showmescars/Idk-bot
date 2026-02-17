@@ -149,7 +149,6 @@ async def handle_gang(message, args):
     code = generate_code()
     rep = random.randint(10, 100)
 
-    # Pick a street name for the leader
     leader = random.choice(STREET_NAMES)
 
     gangs[code] = {
@@ -350,6 +349,7 @@ async def handle_beef(message, args):
     intro_embed.add_field(name=enemy['name'], value=f"Street Cred: {enemy_rep}", inline=True)
     intro_embed.set_footer(text="It's on...")
     await message.channel.send(embed=intro_embed)
+
     await asyncio.sleep(3)
 
     rep_diff = player_rep - enemy_rep
@@ -357,6 +357,8 @@ async def handle_beef(message, args):
     win_chance = max(10, min(90, win_chance))
     roll = random.randint(1, 100)
     player_won = roll <= win_chance
+
+    result_embed = None
 
     if player_won:
         rep_gain = random.randint(20, int(max(1, enemy_rep * 0.4)))
@@ -419,7 +421,10 @@ async def handle_beef(message, args):
             result_embed.add_field(name="New Street Cred", value=f"{player_rep} → **{new_rep}**", inline=False)
             result_embed.set_footer(text="Regroup and come back.")
 
-    await message.channel.send(embed=result_embed)
+    if result_embed:
+        await message.channel.send(embed=result_embed)
+    else:
+        await message.channel.send("Something went wrong with the beef. Try again.")
 
 
 COMMANDS = {
