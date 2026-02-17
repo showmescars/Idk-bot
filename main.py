@@ -73,430 +73,61 @@ def generate_ai_vampire(carry_stake=False):
 
 
 EVENTS = [
-    # POWER UPS
-    {
-        "id": 1,
-        "name": "Ancient Tome Discovered",
-        "description": "{name} stumbles upon a forbidden ancient tome deep in a crumbling castle library. The dark knowledge within surges through their veins.",
-        "type": "power_up",
-        "value": (100, 300),
-        "color": discord.Color.green()
-    },
-    {
-        "id": 4,
-        "name": "Blood Moon Ritual",
-        "description": "{name} participates in a rare blood moon ritual with elder vampires. The ceremony floods them with primordial energy.",
-        "type": "power_up",
-        "value": (200, 600),
-        "color": discord.Color.green()
-    },
-    {
-        "id": 6,
-        "name": "Consumed an Ancient's Blood",
-        "description": "{name} found a dying ancient vampire and drained them completely. Their power floods into your vampire's body.",
-        "type": "power_up",
-        "value": (300, 800),
-        "color": discord.Color.green()
-    },
-    {
-        "id": 9,
-        "name": "Formed a Dark Alliance",
-        "description": "{name} allied with a powerful vampire coven. Through shared blood rituals, their power has grown significantly.",
-        "type": "power_up",
-        "value": (150, 400),
-        "color": discord.Color.green()
-    },
-    {
-        "id": 12,
-        "name": "Discovered a Blood Spring",
-        "description": "{name} discovered a mythical blood spring hidden beneath an old cathedral. Drinking from it restored and amplified their power.",
-        "type": "power_up",
-        "value": (400, 1000),
-        "color": discord.Color.green()
-    },
-    {
-        "id": 15,
-        "name": "Mastered a New Ability",
-        "description": "{name} spent weeks in isolation practicing dark arts. They have awakened a new supernatural ability, boosting their combat power.",
-        "type": "power_up",
-        "value": (200, 500),
-        "color": discord.Color.green()
-    },
-    {
-        "id": 18,
-        "name": "Fed on a Powerful Mage",
-        "description": "{name} fed on a powerful blood mage. The magical blood surging through them granted an extraordinary power boost.",
-        "type": "power_up",
-        "value": (250, 700),
-        "color": discord.Color.green()
-    },
-    {
-        "id": 20,
-        "name": "Awakened Dormant Powers",
-        "description": "{name} experienced a near-death moment that cracked open a dormant power deep within their bloodline. They emerge transformed.",
-        "type": "power_up",
-        "value": (600, 1200),
-        "color": discord.Color.green()
-    },
-    {
-        "id": 23,
-        "name": "Bonded with a Familiar",
-        "description": "{name} bonded with a powerful supernatural familiar that enhances their senses and combat abilities beyond normal limits.",
-        "type": "power_up",
-        "value": (150, 400),
-        "color": discord.Color.green()
-    },
-    {
-        "id": 25,
-        "name": "Absorbed a Dying Bloodline",
-        "description": "{name} was the last to find a dying vampire bloodline and absorbed their entire lineage's power in a single night.",
-        "type": "power_up",
-        "value": (500, 1100),
-        "color": discord.Color.green()
-    },
-    {
-        "id": 26,
-        "name": "Bathed in Dragon's Blood",
-        "description": "{name} discovered a slain dragon deep in a mountain cave and bathed in its still-warm blood. Ancient power unlike anything vampiric courses through them.",
-        "type": "power_up",
-        "value": (700, 1500),
-        "color": discord.Color.green()
-    },
-    {
-        "id": 27,
-        "name": "Consumed a Fallen Angel",
-        "description": "{name} found a dying fallen angel and drained it completely. Divine and dark power merge within them creating something terrifying.",
-        "type": "power_up",
-        "value": (800, 1800),
-        "color": discord.Color.green()
-    },
-    {
-        "id": 28,
-        "name": "Eclipse Empowerment",
-        "description": "{name} stood beneath a full solar eclipse and absorbed the rare dark energy that only surfaces during total darkness. They feel limitless.",
-        "type": "power_up",
-        "value": (400, 900),
-        "color": discord.Color.green()
-    },
-    {
-        "id": 29,
-        "name": "Unlocked Blood Memory",
-        "description": "{name} fell into a trance and unlocked centuries of suppressed blood memory from their sire's lineage. Every ancestor's power is now accessible.",
-        "type": "power_up",
-        "value": (350, 800),
-        "color": discord.Color.green()
-    },
-    {
-        "id": 30,
-        "name": "Feasted on a God's Champion",
-        "description": "{name} hunted down a mortal chosen by the gods themselves and drained them dry. The divine energy within the blood supercharged everything.",
-        "type": "power_up",
-        "value": (600, 1300),
-        "color": discord.Color.green()
-    },
-    {
-        "id": 31,
-        "name": "Discovered a Vampire Vault",
-        "description": "{name} broke into an ancient sealed vault beneath a ruined city and consumed vials of preserved blood from long-dead primordial vampires.",
-        "type": "power_up",
-        "value": (500, 1000),
-        "color": discord.Color.green()
-    },
-    {
-        "id": 32,
-        "name": "Survived a Holy Weapon",
-        "description": "{name} was struck by a holy weapon and should have died but did not. Surviving the wound caused their body to adapt and grow exponentially stronger.",
-        "type": "power_up",
-        "value": (300, 700),
-        "color": discord.Color.green()
-    },
-    # POWER DOWNS
-    {
-        "id": 2,
-        "name": "Ambushed by Hunters",
-        "description": "{name} is ambushed by a squad of elite vampire hunters armed with holy weapons. They barely escape but are gravely weakened.",
-        "type": "power_down",
-        "value": (100, 400),
-        "color": discord.Color.orange()
-    },
-    {
-        "id": 5,
-        "name": "Cursed by a Witch",
-        "description": "{name} crossed into a witch's territory uninvited. She placed a draining curse on them, sapping their strength.",
-        "type": "power_down",
-        "value": (150, 500),
-        "color": discord.Color.orange()
-    },
-    {
-        "id": 7,
-        "name": "Exposed to Sunlight",
-        "description": "{name} was trapped outside at dawn by a cunning enemy. The sunlight scorched away a portion of their power before they escaped.",
-        "type": "power_down",
-        "value": (200, 600),
-        "color": discord.Color.orange()
-    },
-    {
-        "id": 10,
-        "name": "Betrayed by a Thrall",
-        "description": "{name}'s most trusted human thrall betrayed them to vampire hunters. In the struggle, they were wounded by holy water.",
-        "type": "power_down",
-        "value": (100, 350),
-        "color": discord.Color.orange()
-    },
-    {
-        "id": 13,
-        "name": "Afflicted with Bloodlust Madness",
-        "description": "{name} lost control to bloodlust and went on a rampage, drawing the attention of every hunter in the region. They barely survived.",
-        "type": "power_down",
-        "value": (300, 700),
-        "color": discord.Color.orange()
-    },
-    {
-        "id": 16,
-        "name": "Rival Vampire Attack",
-        "description": "{name} was attacked by a rival vampire clan in their own territory. They survived, but the battle drained significant power.",
-        "type": "power_down",
-        "value": (200, 600),
-        "color": discord.Color.orange()
-    },
-    {
-        "id": 19,
-        "name": "Trapped in a Silver Cage",
-        "description": "{name} was lured into a silver cage trap. Days of exposure to silver drained their supernatural strength before they escaped.",
-        "type": "power_down",
-        "value": (250, 550),
-        "color": discord.Color.orange()
-    },
-    {
-        "id": 21,
-        "name": "Exorcism Ritual Performed",
-        "description": "{name} was caught in the crossfire of a massive exorcism ritual. The holy energy tore through them, stripping away their power.",
-        "type": "power_down",
-        "value": (400, 900),
-        "color": discord.Color.orange()
-    },
-    {
-        "id": 24,
-        "name": "Poisoned with Wolfsbane",
-        "description": "{name} was poisoned with a concentrated wolfsbane and mountain ash mixture slipped into their blood supply. Recovery cost them dearly.",
-        "type": "power_down",
-        "value": (150, 450),
-        "color": discord.Color.orange()
-    },
-    {
-        "id": 33,
-        "name": "Drained by a Succubus",
-        "description": "{name} was lured into the lair of a succubus who fed on their supernatural energy throughout the night. They awoke hollow and weakened.",
-        "type": "power_down",
-        "value": (300, 750),
-        "color": discord.Color.orange()
-    },
-    {
-        "id": 34,
-        "name": "Ancient Seal Triggered",
-        "description": "{name} broke into a sealed tomb and triggered a powerful ancient ward. The magical backlash tore through their body and drained their power.",
-        "type": "power_down",
-        "value": (350, 800),
-        "color": discord.Color.orange()
-    },
-    {
-        "id": 35,
-        "name": "Blood Starved for Weeks",
-        "description": "{name} was hunted so relentlessly they could not feed for weeks. The starvation withered their power to a fraction of what it was.",
-        "type": "power_down",
-        "value": (200, 600),
-        "color": discord.Color.orange()
-    },
-    {
-        "id": 36,
-        "name": "Cursed Relic Touched",
-        "description": "{name} picked up a cursed relic designed to weaken vampires. By the time they realized the trap it had already siphoned a great deal of their strength.",
-        "type": "power_down",
-        "value": (250, 650),
-        "color": discord.Color.orange()
-    },
-    {
-        "id": 37,
-        "name": "Forced into Torpor",
-        "description": "{name} was overwhelmed and forced into an involuntary torpor by a group of elder vampires. They awoke days later drained and disoriented.",
-        "type": "power_down",
-        "value": (400, 1000),
-        "color": discord.Color.orange()
-    },
-    # DEATHS
-    {
-        "id": 3,
-        "name": "Slain by a Vampire Hunter",
-        "description": "{name} encountered the legendary hunter Van Hellward and lost. A silver stake finds its mark. Your vampire is dead.",
-        "type": "death",
-        "value": None,
-        "color": discord.Color.dark_red()
-    },
-    {
-        "id": 8,
-        "name": "Burned at the Stake",
-        "description": "{name} was captured by a vengeful mob and burned. Not even vampire regeneration could save them from the sacred fire.",
-        "type": "death",
-        "value": None,
-        "color": discord.Color.dark_red()
-    },
-    {
-        "id": 14,
-        "name": "Devoured by an Elder",
-        "description": "{name} wandered into an Elder's feeding ground. The ancient creature showed no mercy. Your vampire has been consumed.",
-        "type": "death",
-        "value": None,
-        "color": discord.Color.dark_red()
-    },
-    {
-        "id": 17,
-        "name": "Decapitated by a Slayer",
-        "description": "{name} underestimated a lone slayer who carried an enchanted blade. One swift strike ends their undead existence permanently.",
-        "type": "death",
-        "value": None,
-        "color": discord.Color.dark_red()
-    },
-    {
-        "id": 22,
-        "name": "Heart Ripped Out by an Ancient",
-        "description": "{name} challenged an Ancient vampire to a duel and paid the ultimate price. Their heart was ripped from their chest.",
-        "type": "death",
-        "value": None,
-        "color": discord.Color.dark_red()
-    },
-    {
-        "id": 38,
-        "name": "Consumed by a Hellfire Trap",
-        "description": "{name} walked into a hunter compound rigged with hellfire. The sacred flames engulfed them entirely leaving nothing but ash.",
-        "type": "death",
-        "value": None,
-        "color": discord.Color.dark_red()
-    },
-    {
-        "id": 39,
-        "name": "Destroyed by a Vampire Lord",
-        "description": "{name} trespassed in the domain of an ancient Vampire Lord who crushed them without effort. Their remains were scattered to the winds.",
-        "type": "death",
-        "value": None,
-        "color": discord.Color.dark_red()
-    },
-    {
-        "id": 40,
-        "name": "Drowned in Holy Water",
-        "description": "{name} was ambushed and submerged in a massive reservoir of blessed holy water by a cult of hunters. They could not escape.",
-        "type": "death",
-        "value": None,
-        "color": discord.Color.dark_red()
-    },
-    {
-        "id": 41,
-        "name": "Obliterated by a Witch Coven",
-        "description": "{name} made an enemy of an entire witch coven. They gathered and unleashed a combined spell that unmade your vampire at a molecular level.",
-        "type": "death",
-        "value": None,
-        "color": discord.Color.dark_red()
-    },
-    {
-        "id": 42,
-        "name": "Sealed Away Forever",
-        "description": "{name} was trapped in an enchanted iron coffin sealed with a thousand spells and buried a mile underground. Effectively dead. Gone forever.",
-        "type": "death",
-        "value": None,
-        "color": discord.Color.dark_red()
-    },
-    # NOTHING
-    {
-        "id": 11,
-        "name": "Nothing Happens",
-        "description": "{name} roams the night and finds nothing. The evening passes without incident. Sometimes darkness is just quiet.",
-        "type": "nothing",
-        "value": None,
-        "color": discord.Color.greyple()
-    },
-    {
-        "id": 43,
-        "name": "A Quiet Night",
-        "description": "{name} stalks the city rooftops for hours but finds no prey, no enemies, no events. The world sleeps undisturbed.",
-        "type": "nothing",
-        "value": None,
-        "color": discord.Color.greyple()
-    },
-    # RECRUIT
-    {
-        "id": 44,
-        "name": "A Wandering Vampire Appears",
-        "description": "{name} encounters a lone vampire wandering without a coven. After a tense standoff, the stranger offers to join forces.",
-        "type": "recruit",
-        "value": None,
-        "color": discord.Color.teal()
-    },
-    {
-        "id": 45,
-        "name": "Rescued a Captured Vampire",
-        "description": "{name} stumbled upon a vampire being held captive by hunters. After freeing them, the grateful vampire swears loyalty.",
-        "type": "recruit",
-        "value": None,
-        "color": discord.Color.teal()
-    },
-    {
-        "id": 46,
-        "name": "Survivor of a Destroyed Coven",
-        "description": "{name} finds the sole survivor of a coven that was wiped out by hunters. With nowhere left to go, they pledge themselves to your cause.",
-        "type": "recruit",
-        "value": None,
-        "color": discord.Color.teal()
-    },
-    {
-        "id": 47,
-        "name": "A Fledgling Seeks a Sire",
-        "description": "{name} encounters a newly turned vampire alone and confused. Recognizing {name}'s power they beg to follow them.",
-        "type": "recruit",
-        "value": None,
-        "color": discord.Color.teal()
-    },
-    {
-        "id": 48,
-        "name": "Impressed a Rival",
-        "description": "{name} crossed paths with a rival vampire who challenged them to a show of strength. Impressed by what they saw, the rival defects and joins willingly.",
-        "type": "recruit",
-        "value": None,
-        "color": discord.Color.teal()
-    },
-    # ANCIENT BLOOD — immortality event (rare, only one)
-    {
-        "id": 49,
-        "name": "The Ancient Blood",
-        "description": "{name} descends into the deepest vault beneath a forgotten civilization and finds a sealed obsidian chalice. Inside is blood so old it has turned black. They drink it. Something fundamental shifts. Death itself recoils from them.",
-        "type": "ancient_blood",
-        "value": None,
-        "color": discord.Color.from_rgb(80, 0, 80)
-    },
+    {"id": 1, "name": "Ancient Tome Discovered", "description": "{name} stumbles upon a forbidden ancient tome deep in a crumbling castle library. The dark knowledge within surges through their veins.", "type": "power_up", "value": (100, 300), "color": discord.Color.green()},
+    {"id": 4, "name": "Blood Moon Ritual", "description": "{name} participates in a rare blood moon ritual with elder vampires. The ceremony floods them with primordial energy.", "type": "power_up", "value": (200, 600), "color": discord.Color.green()},
+    {"id": 6, "name": "Consumed an Ancient's Blood", "description": "{name} found a dying ancient vampire and drained them completely. Their power floods into your vampire's body.", "type": "power_up", "value": (300, 800), "color": discord.Color.green()},
+    {"id": 9, "name": "Formed a Dark Alliance", "description": "{name} allied with a powerful vampire coven. Through shared blood rituals, their power has grown significantly.", "type": "power_up", "value": (150, 400), "color": discord.Color.green()},
+    {"id": 12, "name": "Discovered a Blood Spring", "description": "{name} discovered a mythical blood spring hidden beneath an old cathedral. Drinking from it restored and amplified their power.", "type": "power_up", "value": (400, 1000), "color": discord.Color.green()},
+    {"id": 15, "name": "Mastered a New Ability", "description": "{name} spent weeks in isolation practicing dark arts. They have awakened a new supernatural ability, boosting their combat power.", "type": "power_up", "value": (200, 500), "color": discord.Color.green()},
+    {"id": 18, "name": "Fed on a Powerful Mage", "description": "{name} fed on a powerful blood mage. The magical blood surging through them granted an extraordinary power boost.", "type": "power_up", "value": (250, 700), "color": discord.Color.green()},
+    {"id": 20, "name": "Awakened Dormant Powers", "description": "{name} experienced a near-death moment that cracked open a dormant power deep within their bloodline. They emerge transformed.", "type": "power_up", "value": (600, 1200), "color": discord.Color.green()},
+    {"id": 23, "name": "Bonded with a Familiar", "description": "{name} bonded with a powerful supernatural familiar that enhances their senses and combat abilities beyond normal limits.", "type": "power_up", "value": (150, 400), "color": discord.Color.green()},
+    {"id": 25, "name": "Absorbed a Dying Bloodline", "description": "{name} was the last to find a dying vampire bloodline and absorbed their entire lineage's power in a single night.", "type": "power_up", "value": (500, 1100), "color": discord.Color.green()},
+    {"id": 26, "name": "Bathed in Dragon's Blood", "description": "{name} discovered a slain dragon deep in a mountain cave and bathed in its still-warm blood. Ancient power unlike anything vampiric courses through them.", "type": "power_up", "value": (700, 1500), "color": discord.Color.green()},
+    {"id": 27, "name": "Consumed a Fallen Angel", "description": "{name} found a dying fallen angel and drained it completely. Divine and dark power merge within them creating something terrifying.", "type": "power_up", "value": (800, 1800), "color": discord.Color.green()},
+    {"id": 28, "name": "Eclipse Empowerment", "description": "{name} stood beneath a full solar eclipse and absorbed the rare dark energy that only surfaces during total darkness. They feel limitless.", "type": "power_up", "value": (400, 900), "color": discord.Color.green()},
+    {"id": 29, "name": "Unlocked Blood Memory", "description": "{name} fell into a trance and unlocked centuries of suppressed blood memory from their sire's lineage. Every ancestor's power is now accessible.", "type": "power_up", "value": (350, 800), "color": discord.Color.green()},
+    {"id": 30, "name": "Feasted on a God's Champion", "description": "{name} hunted down a mortal chosen by the gods themselves and drained them dry. The divine energy within the blood supercharged everything.", "type": "power_up", "value": (600, 1300), "color": discord.Color.green()},
+    {"id": 31, "name": "Discovered a Vampire Vault", "description": "{name} broke into an ancient sealed vault beneath a ruined city and consumed vials of preserved blood from long-dead primordial vampires.", "type": "power_up", "value": (500, 1000), "color": discord.Color.green()},
+    {"id": 32, "name": "Survived a Holy Weapon", "description": "{name} was struck by a holy weapon and should have died but did not. Surviving the wound caused their body to adapt and grow exponentially stronger.", "type": "power_up", "value": (300, 700), "color": discord.Color.green()},
+    {"id": 2, "name": "Ambushed by Hunters", "description": "{name} is ambushed by a squad of elite vampire hunters armed with holy weapons. They barely escape but are gravely weakened.", "type": "power_down", "value": (100, 400), "color": discord.Color.orange()},
+    {"id": 5, "name": "Cursed by a Witch", "description": "{name} crossed into a witch's territory uninvited. She placed a draining curse on them, sapping their strength.", "type": "power_down", "value": (150, 500), "color": discord.Color.orange()},
+    {"id": 7, "name": "Exposed to Sunlight", "description": "{name} was trapped outside at dawn by a cunning enemy. The sunlight scorched away a portion of their power before they escaped.", "type": "power_down", "value": (200, 600), "color": discord.Color.orange()},
+    {"id": 10, "name": "Betrayed by a Thrall", "description": "{name}'s most trusted human thrall betrayed them to vampire hunters. In the struggle, they were wounded by holy water.", "type": "power_down", "value": (100, 350), "color": discord.Color.orange()},
+    {"id": 13, "name": "Afflicted with Bloodlust Madness", "description": "{name} lost control to bloodlust and went on a rampage, drawing the attention of every hunter in the region. They barely survived.", "type": "power_down", "value": (300, 700), "color": discord.Color.orange()},
+    {"id": 16, "name": "Rival Vampire Attack", "description": "{name} was attacked by a rival vampire clan in their own territory. They survived, but the battle drained significant power.", "type": "power_down", "value": (200, 600), "color": discord.Color.orange()},
+    {"id": 19, "name": "Trapped in a Silver Cage", "description": "{name} was lured into a silver cage trap. Days of exposure to silver drained their supernatural strength before they escaped.", "type": "power_down", "value": (250, 550), "color": discord.Color.orange()},
+    {"id": 21, "name": "Exorcism Ritual Performed", "description": "{name} was caught in the crossfire of a massive exorcism ritual. The holy energy tore through them, stripping away their power.", "type": "power_down", "value": (400, 900), "color": discord.Color.orange()},
+    {"id": 24, "name": "Poisoned with Wolfsbane", "description": "{name} was poisoned with a concentrated wolfsbane and mountain ash mixture slipped into their blood supply. Recovery cost them dearly.", "type": "power_down", "value": (150, 450), "color": discord.Color.orange()},
+    {"id": 33, "name": "Drained by a Succubus", "description": "{name} was lured into the lair of a succubus who fed on their supernatural energy throughout the night. They awoke hollow and weakened.", "type": "power_down", "value": (300, 750), "color": discord.Color.orange()},
+    {"id": 34, "name": "Ancient Seal Triggered", "description": "{name} broke into a sealed tomb and triggered a powerful ancient ward. The magical backlash tore through their body and drained their power.", "type": "power_down", "value": (350, 800), "color": discord.Color.orange()},
+    {"id": 35, "name": "Blood Starved for Weeks", "description": "{name} was hunted so relentlessly they could not feed for weeks. The starvation withered their power to a fraction of what it was.", "type": "power_down", "value": (200, 600), "color": discord.Color.orange()},
+    {"id": 36, "name": "Cursed Relic Touched", "description": "{name} picked up a cursed relic designed to weaken vampires. By the time they realized the trap it had already siphoned a great deal of their strength.", "type": "power_down", "value": (250, 650), "color": discord.Color.orange()},
+    {"id": 37, "name": "Forced into Torpor", "description": "{name} was overwhelmed and forced into an involuntary torpor by a group of elder vampires. They awoke days later drained and disoriented.", "type": "power_down", "value": (400, 1000), "color": discord.Color.orange()},
+    {"id": 3, "name": "Slain by a Vampire Hunter", "description": "{name} encountered the legendary hunter Van Hellward and lost. A silver stake finds its mark. Your vampire is dead.", "type": "death", "value": None, "color": discord.Color.dark_red()},
+    {"id": 8, "name": "Burned at the Stake", "description": "{name} was captured by a vengeful mob and burned. Not even vampire regeneration could save them from the sacred fire.", "type": "death", "value": None, "color": discord.Color.dark_red()},
+    {"id": 14, "name": "Devoured by an Elder", "description": "{name} wandered into an Elder's feeding ground. The ancient creature showed no mercy. Your vampire has been consumed.", "type": "death", "value": None, "color": discord.Color.dark_red()},
+    {"id": 17, "name": "Decapitated by a Slayer", "description": "{name} underestimated a lone slayer who carried an enchanted blade. One swift strike ends their undead existence permanently.", "type": "death", "value": None, "color": discord.Color.dark_red()},
+    {"id": 22, "name": "Heart Ripped Out by an Ancient", "description": "{name} challenged an Ancient vampire to a duel and paid the ultimate price. Their heart was ripped from their chest.", "type": "death", "value": None, "color": discord.Color.dark_red()},
+    {"id": 38, "name": "Consumed by a Hellfire Trap", "description": "{name} walked into a hunter compound rigged with hellfire. The sacred flames engulfed them entirely leaving nothing but ash.", "type": "death", "value": None, "color": discord.Color.dark_red()},
+    {"id": 39, "name": "Destroyed by a Vampire Lord", "description": "{name} trespassed in the domain of an ancient Vampire Lord who crushed them without effort. Their remains were scattered to the winds.", "type": "death", "value": None, "color": discord.Color.dark_red()},
+    {"id": 40, "name": "Drowned in Holy Water", "description": "{name} was ambushed and submerged in a massive reservoir of blessed holy water by a cult of hunters. They could not escape.", "type": "death", "value": None, "color": discord.Color.dark_red()},
+    {"id": 41, "name": "Obliterated by a Witch Coven", "description": "{name} made an enemy of an entire witch coven. They gathered and unleashed a combined spell that unmade your vampire at a molecular level.", "type": "death", "value": None, "color": discord.Color.dark_red()},
+    {"id": 42, "name": "Sealed Away Forever", "description": "{name} was trapped in an enchanted iron coffin sealed with a thousand spells and buried a mile underground. Effectively dead. Gone forever.", "type": "death", "value": None, "color": discord.Color.dark_red()},
+    {"id": 11, "name": "Nothing Happens", "description": "{name} roams the night and finds nothing. The evening passes without incident. Sometimes darkness is just quiet.", "type": "nothing", "value": None, "color": discord.Color.greyple()},
+    {"id": 43, "name": "A Quiet Night", "description": "{name} stalks the city rooftops for hours but finds no prey, no enemies, no events. The world sleeps undisturbed.", "type": "nothing", "value": None, "color": discord.Color.greyple()},
+    {"id": 44, "name": "A Wandering Vampire Appears", "description": "{name} encounters a lone vampire wandering without a coven. After a tense standoff, the stranger offers to join forces.", "type": "recruit", "value": None, "color": discord.Color.teal()},
+    {"id": 45, "name": "Rescued a Captured Vampire", "description": "{name} stumbled upon a vampire being held captive by hunters. After freeing them, the grateful vampire swears loyalty.", "type": "recruit", "value": None, "color": discord.Color.teal()},
+    {"id": 46, "name": "Survivor of a Destroyed Coven", "description": "{name} finds the sole survivor of a coven that was wiped out by hunters. With nowhere left to go, they pledge themselves to your cause.", "type": "recruit", "value": None, "color": discord.Color.teal()},
+    {"id": 47, "name": "A Fledgling Seeks a Sire", "description": "{name} encounters a newly turned vampire alone and confused. Recognizing {name}'s power they beg to follow them.", "type": "recruit", "value": None, "color": discord.Color.teal()},
+    {"id": 48, "name": "Impressed a Rival", "description": "{name} crossed paths with a rival vampire who challenged them to a show of strength. Impressed by what they saw, the rival defects and joins willingly.", "type": "recruit", "value": None, "color": discord.Color.teal()},
+    {"id": 49, "name": "The Ancient Blood", "description": "{name} descends into the deepest vault beneath a forgotten civilization and finds a sealed obsidian chalice. Inside is blood so old it has turned black. They drink it. Something fundamental shifts. Death itself recoils from them.", "type": "ancient_blood", "value": None, "color": discord.Color.from_rgb(80, 0, 80)},
 ]
 
-# Separate weight pool so ancient_blood is very rare (1 in ~200 chance)
-EVENT_WEIGHTS = []
-for e in EVENTS:
-    if e['type'] == 'ancient_blood':
-        EVENT_WEIGHTS.append(1)
-    else:
-        EVENT_WEIGHTS.append(200)
+EVENT_WEIGHTS = [1 if e['type'] == 'ancient_blood' else 200 for e in EVENTS]
 
 
-@bot.event
-async def on_ready():
-    print(f'{bot.user} is online')
-
-
-@bot.check
-async def globally_block_dms(ctx):
-    if ctx.guild is None:
-        await ctx.send("Commands can only be used in servers, not DMs.")
-        return False
-    return True
-
-
-@bot.command(name='vampire')
-async def make_vampire(ctx):
+async def handle_vampire(message, args):
     name = f"{random.choice(FIRST_NAMES)} {random.choice(LAST_NAMES)}"
     power = generate_power()
     code = generate_code()
@@ -505,41 +136,35 @@ async def make_vampire(ctx):
     vampires[code] = {
         "name": name,
         "power": power,
-        "owner_id": ctx.author.id,
-        "owner_name": ctx.author.name,
+        "owner_id": message.author.id,
+        "owner_name": message.author.name,
         "code": code,
         "alive": True,
         "immortal": False
     }
 
-    embed = discord.Embed(
-        title="A Vampire Has Risen",
-        description=f"**{name}**",
-        color=color
-    )
-    embed.add_field(name="Owner", value=ctx.author.name, inline=True)
+    embed = discord.Embed(title="A Vampire Has Risen", description=f"**{name}**", color=color)
+    embed.add_field(name="Owner", value=message.author.name, inline=True)
     embed.add_field(name="Power Level", value=str(power), inline=True)
     embed.add_field(name="Tier", value=tier, inline=True)
     embed.add_field(name="Code", value=f"`{code}`", inline=False)
     embed.set_footer(text="Use your code to perform actions with this vampire")
+    await message.channel.send(embed=embed)
 
-    await ctx.send(embed=embed)
 
-
-@bot.command(name='show')
-async def show_vampires(ctx):
-    user_id = ctx.author.id
+async def handle_show(message, args):
+    user_id = message.author.id
     user_vampires = [v for v in vampires.values() if v['owner_id'] == user_id]
 
     if not user_vampires:
-        await ctx.send("You have no vampires. Use `?vampire` to create one.")
+        await message.channel.send("You have no vampires. Type `vampire` to create one.")
         return
 
     alive = [v for v in user_vampires if v['alive']]
     dead_count = len(user_vampires) - len(alive)
 
     embed = discord.Embed(
-        title=f"{ctx.author.name}'s Vampires",
+        title=f"{message.author.name}'s Vampires",
         description=f"Alive: {len(alive)}  |  Dead: {dead_count}",
         color=discord.Color.dark_purple()
     )
@@ -554,41 +179,34 @@ async def show_vampires(ctx):
                 inline=True
             )
     else:
-        embed.add_field(
-            name="No Alive Vampires",
-            value="All your vampires have perished. Use `?vampire` to create a new one.",
-            inline=False
-        )
+        embed.add_field(name="No Alive Vampires", value="All your vampires have perished. Type `vampire` to create a new one.", inline=False)
 
-    embed.set_footer(text="Use ?random <code> to trigger events | ?fight <code> to battle")
-    await ctx.send(embed=embed)
+    embed.set_footer(text="Type: random <code> | fight <code> | show")
+    await message.channel.send(embed=embed)
 
 
-@bot.command(name='random')
-async def random_event(ctx, code: str = None):
-    if code is None:
-        await ctx.send("Usage: `?random <code>`\nExample: `?random XKRV`")
+async def handle_random(message, args):
+    if not args:
+        await message.channel.send("Usage: `random <code>`\nExample: `random XKRV`")
         return
 
-    code = code.upper()
+    code = args[0].upper()
 
     if code not in vampires:
-        await ctx.send(f"No vampire found with code `{code}`.")
+        await message.channel.send(f"No vampire found with code `{code}`.")
         return
 
     vampire = vampires[code]
 
-    if vampire['owner_id'] != ctx.author.id:
-        await ctx.send("You don't own this vampire!")
+    if vampire['owner_id'] != message.author.id:
+        await message.channel.send("You don't own this vampire!")
         return
 
     if not vampire['alive']:
-        await ctx.send(f"**{vampire['name']}** is dead and cannot experience events anymore.")
+        await message.channel.send(f"**{vampire['name']}** is dead and cannot experience events anymore.")
         return
 
     is_immortal = vampire.get('immortal', False)
-
-    # If already immortal, remove ancient_blood from pool entirely
     pool = EVENTS if not is_immortal else [e for e in EVENTS if e['type'] != 'ancient_blood']
     weights = EVENT_WEIGHTS if not is_immortal else [w for e, w in zip(EVENTS, EVENT_WEIGHTS) if e['type'] != 'ancient_blood']
 
@@ -596,11 +214,7 @@ async def random_event(ctx, code: str = None):
     name = vampire['name']
     power = vampire['power']
 
-    embed = discord.Embed(
-        title=event['name'],
-        description=event['description'].format(name=name),
-        color=event['color']
-    )
+    embed = discord.Embed(title=event['name'], description=event['description'].format(name=name), color=event['color'])
     embed.add_field(name="Vampire", value=name, inline=True)
     embed.add_field(name="Code", value=f"`{code}`", inline=True)
 
@@ -626,31 +240,22 @@ async def random_event(ctx, code: str = None):
 
     elif event['type'] == 'death':
         if is_immortal:
-            # Check if this is a stake-bearer event — for random cmd, roll 5% stake carrier
             stake_roll = random.randint(1, 100)
             if stake_roll <= 5:
                 vampire['alive'] = False
                 embed.color = discord.Color.dark_red()
-                embed.add_field(
-                    name="The Undying Stake",
-                    value=f"This was no ordinary enemy. They carried the **Undying Stake** — the one weapon forged to end even immortal vampires. Your immortality meant nothing. {name} is gone.",
-                    inline=False
-                )
+                embed.add_field(name="The Undying Stake", value=f"This was no ordinary enemy. They carried the **Undying Stake** — the one weapon forged to end even immortal vampires. Your immortality meant nothing. {name} is gone.", inline=False)
                 embed.add_field(name="Power at Death", value=str(power), inline=False)
-                embed.set_footer(text="Even immortality has its end. Use ?vampire to create a new one.")
+                embed.set_footer(text="Even immortality has its end. Type vampire to create a new one.")
             else:
                 embed.color = discord.Color.from_rgb(80, 0, 80)
-                embed.add_field(
-                    name="Immortality Holds",
-                    value=f"Death came for {name} — but could not take them. Their immortality repelled the killing blow. They walk away untouched.",
-                    inline=False
-                )
+                embed.add_field(name="Immortality Holds", value=f"Death came for {name} — but could not take them. Their immortality repelled the killing blow. They walk away untouched.", inline=False)
                 embed.add_field(name="Power", value=str(power), inline=True)
                 embed.set_footer(text="Death itself cannot claim this vampire.")
         else:
             vampire['alive'] = False
             embed.add_field(name="Power at Death", value=str(power), inline=False)
-            embed.set_footer(text="This vampire is gone. Use ?vampire to create a new one.")
+            embed.set_footer(text="This vampire is gone. Type vampire to create a new one.")
 
     elif event['type'] == 'nothing':
         tier, _ = get_tier(power)
@@ -664,8 +269,8 @@ async def random_event(ctx, code: str = None):
         vampires[new_code] = {
             "name": recruited['name'],
             "power": recruited['power'],
-            "owner_id": ctx.author.id,
-            "owner_name": ctx.author.name,
+            "owner_id": message.author.id,
+            "owner_name": message.author.name,
             "code": new_code,
             "alive": True,
             "immortal": False
@@ -675,46 +280,39 @@ async def random_event(ctx, code: str = None):
         embed.add_field(name="Recruit Power", value=str(recruited['power']), inline=True)
         embed.add_field(name="Recruit Tier", value=recruited_tier, inline=True)
         embed.add_field(name="Recruit Code", value=f"`{new_code}`", inline=False)
-        embed.set_footer(text="A new vampire has joined your ranks. Use their code to command them.")
+        embed.set_footer(text="A new vampire has joined your ranks.")
 
     elif event['type'] == 'ancient_blood':
         vampire['immortal'] = True
-        embed.add_field(
-            name="Immortality Unlocked",
-            value=f"{name} is now immune to death by conventional means. Only the Undying Stake — a weapon carried by rare and powerful enemies — can end their existence.",
-            inline=False
-        )
+        embed.add_field(name="Immortality Unlocked", value=f"{name} is now immune to death by conventional means. Only the Undying Stake can end their existence.", inline=False)
         embed.add_field(name="Power", value=str(power), inline=True)
         embed.set_footer(text="Death itself now walks around this vampire.")
 
-    await ctx.send(embed=embed)
+    await message.channel.send(embed=embed)
 
 
-@bot.command(name='fight')
-async def fight(ctx, code: str = None):
-    if code is None:
-        await ctx.send("Usage: `?fight <code>`\nExample: `?fight XKRV`")
+async def handle_fight(message, args):
+    if not args:
+        await message.channel.send("Usage: `fight <code>`\nExample: `fight XKRV`")
         return
 
-    code = code.upper()
+    code = args[0].upper()
 
     if code not in vampires:
-        await ctx.send(f"No vampire found with code `{code}`.")
+        await message.channel.send(f"No vampire found with code `{code}`.")
         return
 
     vampire = vampires[code]
 
-    if vampire['owner_id'] != ctx.author.id:
-        await ctx.send("You don't own this vampire!")
+    if vampire['owner_id'] != message.author.id:
+        await message.channel.send("You don't own this vampire!")
         return
 
     if not vampire['alive']:
-        await ctx.send(f"**{vampire['name']}** is dead and cannot fight.")
+        await message.channel.send(f"**{vampire['name']}** is dead and cannot fight.")
         return
 
     is_immortal = vampire.get('immortal', False)
-
-    # 5% chance the AI carries the Undying Stake (only meaningful if player is immortal)
     stake_roll = random.randint(1, 100)
     enemy_has_stake = stake_roll <= 5
     enemy = generate_ai_vampire(carry_stake=enemy_has_stake)
@@ -724,7 +322,6 @@ async def fight(ctx, code: str = None):
     player_tier, _ = get_tier(player_power)
     enemy_tier, _ = get_tier(enemy_power)
 
-    # Battle intro
     stake_warning = "\n\nThis enemy carries something unusual at their side..." if enemy_has_stake and is_immortal else ""
     intro_embed = discord.Embed(
         title="Blood Battle",
@@ -736,10 +333,9 @@ async def fight(ctx, code: str = None):
     intro_embed.add_field(name="VS", value="\u200b", inline=True)
     intro_embed.add_field(name=enemy['name'], value=f"Power: {enemy_power}\nTier: {enemy_tier}", inline=True)
     intro_embed.set_footer(text="The battle begins...")
-    await ctx.send(embed=intro_embed)
+    await message.channel.send(embed=intro_embed)
     await asyncio.sleep(3)
 
-    # Win chance
     power_diff = player_power - enemy_power
     win_chance = 50 + int((power_diff / 4500) * 80)
     win_chance = max(10, min(90, win_chance))
@@ -752,51 +348,31 @@ async def fight(ctx, code: str = None):
         vampire['power'] = new_power
         new_tier, _ = get_tier(new_power)
 
-        # Small death chance on win — bypassed if immortal (unless enemy has stake)
         death_on_win_roll = random.randint(1, 100)
         if death_on_win_roll <= 10:
             if is_immortal and not enemy_has_stake:
-                # Immortal survives
-                result_embed = discord.Embed(
-                    title="Victory — Immortality Holds",
-                    description=f"**{vampire['name']}** defeated **{enemy['name']}**. A fatal blow landed but their immortality rejected death entirely.",
-                    color=discord.Color.green()
-                )
+                result_embed = discord.Embed(title="Victory — Immortality Holds", description=f"**{vampire['name']}** defeated **{enemy['name']}**. A fatal blow landed but their immortality rejected death entirely.", color=discord.Color.green())
                 result_embed.add_field(name="Power Gained", value=f"+{new_power - player_power}", inline=True)
                 result_embed.add_field(name="New Power", value=f"{player_power} → **{new_power}**", inline=False)
                 result_embed.add_field(name="New Tier", value=new_tier, inline=True)
                 result_embed.set_footer(text="Death cannot claim this vampire.")
             elif is_immortal and enemy_has_stake:
-                # Immortal killed by stake even in victory
                 vampire['alive'] = False
-                result_embed = discord.Embed(
-                    title="Victory — But the Stake Found Its Mark",
-                    description=f"**{vampire['name']}** defeated **{enemy['name']}** — but in the final moment the enemy drove the **Undying Stake** through their heart. Immortality shattered. They are gone.",
-                    color=discord.Color.dark_red()
-                )
+                result_embed = discord.Embed(title="Victory — But the Stake Found Its Mark", description=f"**{vampire['name']}** defeated **{enemy['name']}** — but in the final moment the enemy drove the **Undying Stake** through their heart. Immortality shattered. They are gone.", color=discord.Color.dark_red())
                 result_embed.add_field(name="Power at Death", value=str(player_power), inline=False)
-                result_embed.set_footer(text="Even immortality has its end. Use ?vampire to create a new one.")
+                result_embed.set_footer(text="Even immortality has its end. Type vampire to create a new one.")
             else:
                 vampire['alive'] = False
-                result_embed = discord.Embed(
-                    title="Pyrrhic Victory",
-                    description=f"**{vampire['name']}** defeated **{enemy['name']}** but sustained fatal wounds in the process. They crumble to ash moments after victory.",
-                    color=discord.Color.dark_red()
-                )
+                result_embed = discord.Embed(title="Pyrrhic Victory", description=f"**{vampire['name']}** defeated **{enemy['name']}** but sustained fatal wounds in the process. They crumble to ash moments after victory.", color=discord.Color.dark_red())
                 result_embed.add_field(name="Power at Death", value=str(player_power), inline=False)
-                result_embed.set_footer(text="Use ?vampire to create a new vampire.")
+                result_embed.set_footer(text="Type vampire to create a new one.")
         else:
-            result_embed = discord.Embed(
-                title="Victory",
-                description=f"**{vampire['name']}** has defeated **{enemy['name']}** and drained their power!",
-                color=discord.Color.green()
-            )
+            result_embed = discord.Embed(title="Victory", description=f"**{vampire['name']}** has defeated **{enemy['name']}** and drained their power!", color=discord.Color.green())
             result_embed.add_field(name="Enemy Power", value=str(enemy_power), inline=True)
             result_embed.add_field(name="Power Gained", value=f"+{new_power - player_power}", inline=True)
             result_embed.add_field(name="New Power", value=f"{player_power} → **{new_power}**", inline=False)
             result_embed.add_field(name="New Tier", value=new_tier, inline=True)
             result_embed.set_footer(text="Your vampire grows stronger with each kill.")
-
     else:
         death_chance = 20 + int(abs(power_diff) / 4500 * 45)
         death_chance = max(20, min(65, death_chance))
@@ -804,57 +380,72 @@ async def fight(ctx, code: str = None):
 
         if death_roll <= death_chance:
             if is_immortal and not enemy_has_stake:
-                # Immortal survives the loss
                 power_loss = random.randint(50, int(player_power * 0.25))
                 new_power = max(10, player_power - power_loss)
                 vampire['power'] = new_power
                 new_tier, _ = get_tier(new_power)
-                result_embed = discord.Embed(
-                    title="Defeated — Immortality Saves Them",
-                    description=f"**{vampire['name']}** was overpowered by **{enemy['name']}**. The killing blow landed — but their immortality rejected death and they crawled away broken but breathing.",
-                    color=discord.Color.orange()
-                )
+                result_embed = discord.Embed(title="Defeated — Immortality Saves Them", description=f"**{vampire['name']}** was overpowered by **{enemy['name']}**. The killing blow landed — but their immortality rejected death and they crawled away broken but breathing.", color=discord.Color.orange())
                 result_embed.add_field(name="Power Lost", value=f"-{player_power - new_power}", inline=True)
                 result_embed.add_field(name="New Power", value=f"{player_power} → **{new_power}**", inline=False)
                 result_embed.add_field(name="New Tier", value=new_tier, inline=True)
                 result_embed.set_footer(text="Immortality held. But barely.")
             elif is_immortal and enemy_has_stake:
-                # Immortal killed by stake
                 vampire['alive'] = False
-                result_embed = discord.Embed(
-                    title="Defeated — The Undying Stake",
-                    description=f"**{vampire['name']}** was defeated by **{enemy['name']}** who drove the **Undying Stake** through their heart. The one weapon that can kill what cannot die. Your vampire is gone.",
-                    color=discord.Color.dark_red()
-                )
+                result_embed = discord.Embed(title="Defeated — The Undying Stake", description=f"**{vampire['name']}** was defeated by **{enemy['name']}** who drove the **Undying Stake** through their heart. The one weapon that can kill what cannot die. Your vampire is gone.", color=discord.Color.dark_red())
                 result_embed.add_field(name="Power at Death", value=str(player_power), inline=False)
-                result_embed.set_footer(text="Even immortality has its end. Use ?vampire to create a new one.")
+                result_embed.set_footer(text="Even immortality has its end. Type vampire to create a new one.")
             else:
                 vampire['alive'] = False
-                result_embed = discord.Embed(
-                    title="Defeated",
-                    description=f"**{vampire['name']}** was overpowered by **{enemy['name']}** and has been destroyed.",
-                    color=discord.Color.dark_red()
-                )
+                result_embed = discord.Embed(title="Defeated", description=f"**{vampire['name']}** was overpowered by **{enemy['name']}** and has been destroyed.", color=discord.Color.dark_red())
                 result_embed.add_field(name="Enemy Power", value=str(enemy_power), inline=True)
                 result_embed.add_field(name="Your Power", value=str(player_power), inline=True)
-                result_embed.set_footer(text="Use ?vampire to create a new vampire.")
+                result_embed.set_footer(text="Type vampire to create a new one.")
         else:
             power_loss = random.randint(50, int(player_power * 0.25))
             new_power = max(10, player_power - power_loss)
             vampire['power'] = new_power
             new_tier, _ = get_tier(new_power)
-            result_embed = discord.Embed(
-                title="Defeated — But Alive",
-                description=f"**{vampire['name']}** was beaten by **{enemy['name']}** and barely escaped with their life.",
-                color=discord.Color.orange()
-            )
+            result_embed = discord.Embed(title="Defeated — But Alive", description=f"**{vampire['name']}** was beaten by **{enemy['name']}** and barely escaped with their life.", color=discord.Color.orange())
             result_embed.add_field(name="Enemy Power", value=str(enemy_power), inline=True)
             result_embed.add_field(name="Power Lost", value=f"-{player_power - new_power}", inline=True)
             result_embed.add_field(name="New Power", value=f"{player_power} → **{new_power}**", inline=False)
             result_embed.add_field(name="New Tier", value=new_tier, inline=True)
             result_embed.set_footer(text="Your vampire fled into the shadows, wounded.")
 
-    await ctx.send(embed=result_embed)
+    await message.channel.send(embed=result_embed)
+
+
+COMMANDS = {
+    "vampire": handle_vampire,
+    "show": handle_show,
+    "random": handle_random,
+    "fight": handle_fight,
+}
+
+
+@bot.event
+async def on_ready():
+    print(f'{bot.user} is online')
+
+
+@bot.event
+async def on_message(message):
+    if message.author.bot:
+        return
+    if message.guild is None:
+        await message.channel.send("Commands can only be used in servers, not DMs.")
+        return
+
+    content = message.content.strip()
+    parts = content.split()
+    if not parts:
+        return
+
+    cmd = parts[0].lower()
+    args = parts[1:]
+
+    if cmd in COMMANDS:
+        await COMMANDS[cmd](message, args)
 
 
 if __name__ == "__main__":
