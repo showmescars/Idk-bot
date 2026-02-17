@@ -212,7 +212,6 @@ async def trigger_post_kill_event(ctx, player_char, rival_name, rival_gang, riva
     characters = load_characters()
     graveyard = load_graveyard()
 
-    # If character was already deleted (died), skip
     if character_id not in characters:
         return
 
@@ -227,7 +226,6 @@ async def trigger_post_kill_event(ctx, player_char, rival_name, rival_gang, riva
     ])
 
     if event_type == "retaliation_crew":
-        # Crew of rivals shows up to retaliate
         num_attackers = random.randint(3, 6)
         attacker_names = [f"{random.choice(FIRST_NAMES)} {random.choice(LAST_NAMES)}" for _ in range(num_attackers)]
 
@@ -236,24 +234,14 @@ async def trigger_post_kill_event(ctx, player_char, rival_name, rival_gang, riva
             description=f"Word got back to the {rival_set} that {player_char['name']} just bodied one of theirs. A crew just pulled up looking for smoke.",
             color=discord.Color.dark_red()
         )
-        event_embed.add_field(
-            name="CREW PULLING UP",
-            value="\n".join(attacker_names),
-            inline=False
-        )
-        event_embed.add_field(
-            name="Rival Gang",
-            value=f"{rival_gang} - {rival_set}",
-            inline=True
-        )
+        event_embed.add_field(name="CREW PULLING UP", value="\n".join(attacker_names), inline=False)
+        event_embed.add_field(name="Rival Gang", value=f"{rival_gang} - {rival_set}", inline=True)
         event_embed.set_footer(text="They came for payback...")
         await ctx.send(embed=event_embed)
         await asyncio.sleep(3)
 
-        # Battle outcome - slightly harder odds since outnumbered
         survival_roll = random.randint(1, 100)
         survives = survival_roll <= 45
-
         death_roll = random.randint(1, 100)
         dies = death_roll <= 50 if not survives else death_roll <= 10
 
@@ -263,11 +251,7 @@ async def trigger_post_kill_event(ctx, player_char, rival_name, rival_gang, riva
                 description=f"{player_char['name']} was caught slipping by the retaliation crew and didn't make it out",
                 color=discord.Color.dark_red()
             )
-            death_embed.add_field(
-                name="Final Stats",
-                value=f"Body Count: {player_char.get('kills', 0)}\nMoney: ${player_char.get('money', 0):,}\nStatus: DECEASED",
-                inline=False
-            )
+            death_embed.add_field(name="Final Stats", value=f"Body Count: {player_char.get('kills', 0)}\nMoney: ${player_char.get('money', 0):,}\nStatus: DECEASED", inline=False)
             dead_member = player_char.copy()
             dead_member['death_date'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
             dead_member['killed_by'] = f"{rival_set} Retaliation Crew"
@@ -282,26 +266,17 @@ async def trigger_post_kill_event(ctx, player_char, rival_name, rival_gang, riva
                 description=f"{player_char['name']} stood their ground against the retaliation crew and made it out",
                 color=discord.Color.orange()
             )
-            survive_embed.add_field(
-                name="Outcome",
-                value=f"Fought off {num_attackers} rivals and lived to tell the story",
-                inline=False
-            )
+            survive_embed.add_field(name="Outcome", value=f"Fought off {num_attackers} rivals and lived to tell the story", inline=False)
             survive_embed.set_footer(text="The streets respect the ones who hold it down")
             await ctx.send(embed=survive_embed)
 
     elif event_type == "witness_calls_police":
-        # Witness snitched and police are coming
         event_embed = discord.Embed(
             title="WITNESS SNITCHED",
             description=f"Someone saw what {player_char['name']} did and called the police. Units are closing in.",
             color=discord.Color.blue()
         )
-        event_embed.add_field(
-            name="Police Response",
-            value="Multiple units dispatched to the area based on witness description",
-            inline=False
-        )
+        event_embed.add_field(name="Police Response", value="Multiple units dispatched to the area based on witness description", inline=False)
         event_embed.set_footer(text="Can they escape in time...")
         await ctx.send(embed=event_embed)
         await asyncio.sleep(3)
@@ -315,11 +290,7 @@ async def trigger_post_kill_event(ctx, player_char, rival_name, rival_gang, riva
                 description=f"{player_char['name']} heard the sirens and dipped before police could lock the area down",
                 color=discord.Color.green()
             )
-            escape_embed.add_field(
-                name="Status",
-                value="Made it back to the hood, police have no description",
-                inline=False
-            )
+            escape_embed.add_field(name="Status", value="Made it back to the hood, police have no description", inline=False)
             await ctx.send(embed=escape_embed)
         else:
             jail_time = random.randint(15, 35)
@@ -328,11 +299,7 @@ async def trigger_post_kill_event(ctx, player_char, rival_name, rival_gang, riva
                 description=f"{player_char['name']} was picked up by police based on the witness description",
                 color=discord.Color.orange()
             )
-            jail_embed.add_field(
-                name="Arrest Status",
-                value=f"Booked and sentenced to {jail_time} minutes in county jail",
-                inline=False
-            )
+            jail_embed.add_field(name="Arrest Status", value=f"Booked and sentenced to {jail_time} minutes in county jail", inline=False)
             jail_until = datetime.now() + timedelta(minutes=jail_time)
             player_char['jail_until'] = jail_until.strftime('%Y-%m-%d %H:%M:%S')
             characters[character_id] = player_char
@@ -340,18 +307,13 @@ async def trigger_post_kill_event(ctx, player_char, rival_name, rival_gang, riva
             await ctx.send(embed=jail_embed)
 
     elif event_type == "rival_solo_retaliation":
-        # One rival comes alone for revenge
         solo_name = f"{random.choice(FIRST_NAMES)} {random.choice(LAST_NAMES)}"
         event_embed = discord.Embed(
             title="SOLO RETALIATION",
             description=f"{solo_name} from the {rival_set} just rolled up on {player_char['name']} alone. He came to handle business himself.",
             color=discord.Color.red()
         )
-        event_embed.add_field(
-            name="One on One",
-            value=f"{solo_name} is out here solo, no backup - just him and his anger",
-            inline=False
-        )
+        event_embed.add_field(name="One on One", value=f"{solo_name} is out here solo, no backup - just him and his anger", inline=False)
         event_embed.set_footer(text="Settling it the old way...")
         await ctx.send(embed=event_embed)
         await asyncio.sleep(3)
@@ -377,11 +339,7 @@ async def trigger_post_kill_event(ctx, player_char, rival_name, rival_gang, riva
                 'date': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
                 'type': 'retaliation_defense'
             })
-            win_embed.add_field(
-                name="Updated Bodies",
-                value=f"Total Bodies: {player_char['kills']}",
-                inline=False
-            )
+            win_embed.add_field(name="Updated Bodies", value=f"Total Bodies: {player_char['kills']}", inline=False)
             characters[character_id] = player_char
             save_characters(characters)
             await ctx.send(embed=win_embed)
@@ -391,11 +349,7 @@ async def trigger_post_kill_event(ctx, player_char, rival_name, rival_gang, riva
                 description=f"{solo_name} caught {player_char['name']} slipping and put him down",
                 color=discord.Color.dark_red()
             )
-            death_embed.add_field(
-                name="Final Stats",
-                value=f"Body Count: {player_char.get('kills', 0)}\nMoney: ${player_char.get('money', 0):,}\nStatus: DECEASED",
-                inline=False
-            )
+            death_embed.add_field(name="Final Stats", value=f"Body Count: {player_char.get('kills', 0)}\nMoney: ${player_char.get('money', 0):,}\nStatus: DECEASED", inline=False)
             dead_member = player_char.copy()
             dead_member['death_date'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
             dead_member['killed_by'] = f"{solo_name} ({rival_set}) Solo Retaliation"
@@ -410,57 +364,33 @@ async def trigger_post_kill_event(ctx, player_char, rival_name, rival_gang, riva
                 description=f"{solo_name} got the better of {player_char['name']} but let him live",
                 color=discord.Color.orange()
             )
-            loss_embed.add_field(
-                name="Outcome",
-                value="Lost the fight but made it out breathing",
-                inline=False
-            )
+            loss_embed.add_field(name="Outcome", value="Lost the fight but made it out breathing", inline=False)
             await ctx.send(embed=loss_embed)
 
     elif event_type == "bounty_placed":
-        # A bounty gets placed on the character's head
         bounty_amount = random.randint(500, 3000)
         event_embed = discord.Embed(
             title="BOUNTY ON YOUR HEAD",
             description=f"The {rival_set} put a ${bounty_amount:,} bounty on {player_char['name']} for the body",
-            color=discord.Color.dark_gold() if hasattr(discord.Color, 'dark_gold') else discord.Color.gold()
+            color=discord.Color.gold()
         )
-        event_embed.add_field(
-            name="Bounty Amount",
-            value=f"${bounty_amount:,}",
-            inline=True
-        )
-        event_embed.add_field(
-            name="Placed By",
-            value=f"{rival_set}",
-            inline=True
-        )
-        event_embed.add_field(
-            name="Warning",
-            value=f"Everyone in the streets knows there is paper on {player_char['name']} - watch your back",
-            inline=False
-        )
+        event_embed.add_field(name="Bounty Amount", value=f"${bounty_amount:,}", inline=True)
+        event_embed.add_field(name="Placed By", value=f"{rival_set}", inline=True)
+        event_embed.add_field(name="Warning", value=f"Everyone in the streets knows there is paper on {player_char['name']} - watch your back", inline=False)
         event_embed.set_footer(text="The price of putting in work")
-
-        # Store bounty on character
         player_char['bounty'] = player_char.get('bounty', 0) + bounty_amount
         characters[character_id] = player_char
         save_characters(characters)
         await ctx.send(embed=event_embed)
 
     elif event_type == "jumped_walking_home":
-        # Gets jumped while walking back
         num_jumpers = random.randint(2, 5)
         event_embed = discord.Embed(
             title="JUMPED WALKING HOME",
             description=f"{player_char['name']} got rushed by {num_jumpers} opps on the way back from the hit",
             color=discord.Color.red()
         )
-        event_embed.add_field(
-            name="Ambush",
-            value=f"They were waiting, knew the route - {num_jumpers} on one",
-            inline=False
-        )
+        event_embed.add_field(name="Ambush", value=f"They were waiting, knew the route - {num_jumpers} on one", inline=False)
         event_embed.set_footer(text="Nowhere to run...")
         await ctx.send(embed=event_embed)
         await asyncio.sleep(3)
@@ -476,11 +406,7 @@ async def trigger_post_kill_event(ctx, player_char, rival_name, rival_gang, riva
                 description=f"{player_char['name']} was jumped and beaten to death by the crew",
                 color=discord.Color.dark_red()
             )
-            death_embed.add_field(
-                name="Final Stats",
-                value=f"Body Count: {player_char.get('kills', 0)}\nMoney: ${player_char.get('money', 0):,}\nStatus: DECEASED",
-                inline=False
-            )
+            death_embed.add_field(name="Final Stats", value=f"Body Count: {player_char.get('kills', 0)}\nMoney: ${player_char.get('money', 0):,}\nStatus: DECEASED", inline=False)
             dead_member = player_char.copy()
             dead_member['death_date'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
             dead_member['killed_by'] = f"{rival_set} Jump (Post Kill)"
@@ -495,11 +421,7 @@ async def trigger_post_kill_event(ctx, player_char, rival_name, rival_gang, riva
                 description=f"{player_char['name']} got jumped but scrapped their way out and made it home",
                 color=discord.Color.orange()
             )
-            survive_embed.add_field(
-                name="Outcome",
-                value="Banged up but alive - made it back to the block",
-                inline=False
-            )
+            survive_embed.add_field(name="Outcome", value="Banged up but alive - made it back to the block", inline=False)
             await ctx.send(embed=survive_embed)
         else:
             survive_embed = discord.Embed(
@@ -507,27 +429,17 @@ async def trigger_post_kill_event(ctx, player_char, rival_name, rival_gang, riva
                 description=f"{player_char['name']} broke away from the jump and ran before it got worse",
                 color=discord.Color.orange()
             )
-            survive_embed.add_field(
-                name="Outcome",
-                value="Took some hits but got away before things went fatal",
-                inline=False
-            )
+            survive_embed.add_field(name="Outcome", value="Took some hits but got away before things went fatal", inline=False)
             await ctx.send(embed=survive_embed)
 
 
-# Handle random events when a character is first created
+# CHANGED: Removed the 35% chance gate - creation event now ALWAYS fires on ?make
 async def trigger_creation_event(ctx, player_char, character_id):
-    """Random events that fire shortly after a character is created"""
+    """Fires after character creation - now guaranteed, no chance gate"""
     await asyncio.sleep(5)
 
     characters = load_characters()
     if character_id not in characters:
-        return
-
-    event_roll = random.randint(1, 100)
-
-    # 35% chance of a creation event
-    if event_roll > 35:
         return
 
     player_char = characters[character_id]
@@ -535,6 +447,7 @@ async def trigger_creation_event(ctx, player_char, character_id):
     char_gang = player_char.get('gang_affiliation', 'Unknown')
     char_set = player_char.get('set_name', 'Unknown')
 
+    # REMOVED: event_roll and 35% chance check - now always picks an event
     event_type = random.choice([
         "rival_spots_new_member",
         "initiated_by_hood",
@@ -550,16 +463,8 @@ async def trigger_creation_event(ctx, player_char, character_id):
             description=f"Word traveled fast. {rival_name} from the {rival_set} already knows {player_char['name']} just hit the streets and is on their way to send a message.",
             color=discord.Color.red()
         )
-        event_embed.add_field(
-            name="Threat",
-            value=f"{rival_name} is coming to test the new member before they get established",
-            inline=False
-        )
-        event_embed.add_field(
-            name="Enemy Info",
-            value=f"Gang: {rival_gang}\nSet: {rival_set}",
-            inline=True
-        )
+        event_embed.add_field(name="Threat", value=f"{rival_name} is coming to test the new member before they get established", inline=False)
+        event_embed.add_field(name="Enemy Info", value=f"Gang: {rival_gang}\nSet: {rival_set}", inline=True)
         event_embed.set_footer(text="The streets already know your name...")
         await ctx.send(embed=event_embed)
         await asyncio.sleep(3)
@@ -585,11 +490,7 @@ async def trigger_creation_event(ctx, player_char, character_id):
                 'date': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
                 'type': 'creation_event'
             })
-            win_embed.add_field(
-                name="First Body",
-                value=f"Bodies: {player_char['kills']}",
-                inline=True
-            )
+            win_embed.add_field(name="First Body", value=f"Bodies: {player_char['kills']}", inline=True)
             characters[character_id] = player_char
             save_characters(characters)
             await ctx.send(embed=win_embed)
@@ -599,11 +500,7 @@ async def trigger_creation_event(ctx, player_char, character_id):
                 description=f"{player_char['name']} caught a body before catching their first body - got taken out by {rival_name} on day one",
                 color=discord.Color.dark_red()
             )
-            death_embed.add_field(
-                name="Final Stats",
-                value=f"Body Count: 0\nMoney: $0\nStatus: DECEASED",
-                inline=False
-            )
+            death_embed.add_field(name="Final Stats", value=f"Body Count: 0\nMoney: $0\nStatus: DECEASED", inline=False)
             dead_member = player_char.copy()
             dead_member['death_date'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
             dead_member['killed_by'] = f"{rival_name} ({rival_set}) Day One"
@@ -618,11 +515,7 @@ async def trigger_creation_event(ctx, player_char, character_id):
                 description=f"{player_char['name']} got tested and lost but survived. The streets already humbled the new member.",
                 color=discord.Color.orange()
             )
-            loss_embed.add_field(
-                name="Outcome",
-                value="Lost the first fight but lived to learn from it",
-                inline=False
-            )
+            loss_embed.add_field(name="Outcome", value="Lost the first fight but lived to learn from it", inline=False)
             characters[character_id] = player_char
             save_characters(characters)
             await ctx.send(embed=loss_embed)
@@ -634,28 +527,19 @@ async def trigger_creation_event(ctx, player_char, character_id):
             description=f"Before {player_char['name']} can officially run with the {char_set}, they gotta get jumped in. {num_homies} homies are waiting.",
             color=discord.Color.purple()
         )
-        event_embed.add_field(
-            name="The Initiation",
-            value=f"{num_homies} members of the {char_set} are about to put hands on the new recruit for 60 seconds",
-            inline=False
-        )
+        event_embed.add_field(name="The Initiation", value=f"{num_homies} members of the {char_set} are about to put hands on the new recruit for 60 seconds", inline=False)
         event_embed.set_footer(text="Everyone goes through it...")
         await ctx.send(embed=event_embed)
         await asyncio.sleep(3)
 
         survive_roll = random.randint(1, 100)
-        # Most survive initiation - 85% chance
         if survive_roll <= 85:
             success_embed = discord.Embed(
                 title="OFFICIALLY JUMPED IN",
                 description=f"{player_char['name']} took the beat down and didn't fold. Now officially a member of the {char_set}.",
                 color=discord.Color.green()
             )
-            success_embed.add_field(
-                name="Hood Status",
-                value=f"Officially recognized by the {char_set} - welcome to the family",
-                inline=False
-            )
+            success_embed.add_field(name="Hood Status", value=f"Officially recognized by the {char_set} - welcome to the family", inline=False)
             success_embed.set_footer(text="One of us now")
             await ctx.send(embed=success_embed)
         else:
@@ -664,11 +548,7 @@ async def trigger_creation_event(ctx, player_char, character_id):
                 description=f"{player_char['name']} couldn't handle the initiation and got seriously hurt",
                 color=discord.Color.orange()
             )
-            fail_embed.add_field(
-                name="Outcome",
-                value="Survived but in bad shape - still made it into the set but paid a heavy price",
-                inline=False
-            )
+            fail_embed.add_field(name="Outcome", value="Survived but in bad shape - still made it into the set but paid a heavy price", inline=False)
             await ctx.send(embed=fail_embed)
 
     elif event_type == "found_on_wrong_block":
@@ -678,11 +558,7 @@ async def trigger_creation_event(ctx, player_char, character_id):
             description=f"{player_char['name']} was on the wrong side of the map when {rival_name} from {rival_set} spotted them deep in enemy territory",
             color=discord.Color.red()
         )
-        event_embed.add_field(
-            name="Caught Out There",
-            value=f"Deep in {rival_set} territory with no backup - this is a problem",
-            inline=False
-        )
+        event_embed.add_field(name="Caught Out There", value=f"Deep in {rival_set} territory with no backup - this is a problem", inline=False)
         event_embed.set_footer(text="Nowhere to run on the wrong block...")
         await ctx.send(embed=event_embed)
         await asyncio.sleep(3)
@@ -690,7 +566,7 @@ async def trigger_creation_event(ctx, player_char, character_id):
         battle = simulate_battle()
         won = battle['player_won']
         death_roll = random.randint(1, 100)
-        dies = death_roll <= (calculate_death_chance(won) + 10)  # Extra danger for being alone
+        dies = death_roll <= (calculate_death_chance(won) + 10)
 
         if won and not dies:
             win_embed = discord.Embed(
@@ -698,11 +574,7 @@ async def trigger_creation_event(ctx, player_char, character_id):
                 description=f"{player_char['name']} scrapped their way out of enemy territory",
                 color=discord.Color.green()
             )
-            win_embed.add_field(
-                name="Outcome",
-                value="Made it back to the hood - won't make that mistake again",
-                inline=False
-            )
+            win_embed.add_field(name="Outcome", value="Made it back to the hood - won't make that mistake again", inline=False)
             characters[character_id] = player_char
             save_characters(characters)
             await ctx.send(embed=win_embed)
@@ -712,11 +584,7 @@ async def trigger_creation_event(ctx, player_char, character_id):
                 description=f"{player_char['name']} was caught on the wrong block and paid the price",
                 color=discord.Color.dark_red()
             )
-            death_embed.add_field(
-                name="Final Stats",
-                value=f"Body Count: 0\nMoney: $0\nStatus: DECEASED",
-                inline=False
-            )
+            death_embed.add_field(name="Final Stats", value=f"Body Count: 0\nMoney: $0\nStatus: DECEASED", inline=False)
             dead_member = player_char.copy()
             dead_member['death_date'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
             dead_member['killed_by'] = f"{rival_name} ({rival_set}) Wrong Block"
@@ -731,11 +599,7 @@ async def trigger_creation_event(ctx, player_char, character_id):
                 description=f"{player_char['name']} got beat up on enemy turf but managed to limp back home",
                 color=discord.Color.orange()
             )
-            escape_embed.add_field(
-                name="Outcome",
-                value="Learned the hard way where the boundaries are",
-                inline=False
-            )
+            escape_embed.add_field(name="Outcome", value="Learned the hard way where the boundaries are", inline=False)
             characters[character_id] = player_char
             save_characters(characters)
             await ctx.send(embed=escape_embed)
@@ -747,16 +611,8 @@ async def trigger_creation_event(ctx, player_char, character_id):
             description=f"Before {player_char['name']} even got settled in the game, {rival_name} from the {rival_set} came around claiming there is already history between them.",
             color=discord.Color.dark_orange()
         )
-        event_embed.add_field(
-            name="The Situation",
-            value=f"{rival_name} says the beef is from before and it's time to settle it",
-            inline=False
-        )
-        event_embed.add_field(
-            name="Enemy",
-            value=f"{rival_gang} - {rival_set}",
-            inline=True
-        )
+        event_embed.add_field(name="The Situation", value=f"{rival_name} says the beef is from before and it's time to settle it", inline=False)
+        event_embed.add_field(name="Enemy", value=f"{rival_gang} - {rival_set}", inline=True)
         event_embed.set_footer(text="Old beef never dies in the streets...")
         await ctx.send(embed=event_embed)
         await asyncio.sleep(3)
@@ -792,11 +648,7 @@ async def trigger_creation_event(ctx, player_char, character_id):
                 description=f"{player_char['name']} couldn't shake the old history - {rival_name} settled it permanently",
                 color=discord.Color.dark_red()
             )
-            death_embed.add_field(
-                name="Final Stats",
-                value=f"Body Count: {player_char.get('kills', 0)}\nMoney: $0\nStatus: DECEASED",
-                inline=False
-            )
+            death_embed.add_field(name="Final Stats", value=f"Body Count: {player_char.get('kills', 0)}\nMoney: $0\nStatus: DECEASED", inline=False)
             dead_member = player_char.copy()
             dead_member['death_date'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
             dead_member['killed_by'] = f"{rival_name} ({rival_set}) Old Beef"
@@ -811,11 +663,7 @@ async def trigger_creation_event(ctx, player_char, character_id):
                 description=f"{player_char['name']} couldn't settle the beef today but is still breathing",
                 color=discord.Color.orange()
             )
-            loss_embed.add_field(
-                name="Outcome",
-                value="The beef is still alive - this is not over",
-                inline=False
-            )
+            loss_embed.add_field(name="Outcome", value="The beef is still alive - this is not over", inline=False)
             characters[character_id] = player_char
             save_characters(characters)
             await ctx.send(embed=loss_embed)
@@ -826,16 +674,8 @@ async def trigger_creation_event(ctx, player_char, character_id):
             description=f"The LAPD gang unit already has eyes on {player_char['name']}. They're watching every move from day one.",
             color=discord.Color.blue()
         )
-        event_embed.add_field(
-            name="Surveillance",
-            value="Gang detectives already building a file on the new member before they even do anything",
-            inline=False
-        )
-        event_embed.add_field(
-            name="Warning",
-            value="Any crime committed has a higher chance of getting caught for the next few runs",
-            inline=False
-        )
+        event_embed.add_field(name="Surveillance", value="Gang detectives already building a file on the new member before they even do anything", inline=False)
+        event_embed.add_field(name="Warning", value="Any crime committed has a higher chance of getting caught for the next few runs", inline=False)
         event_embed.set_footer(text="They know your face before you know theirs")
         player_char['police_heat'] = True
         characters[character_id] = player_char
@@ -880,16 +720,8 @@ async def trigger_passive_event(ctx, player_char, character_id):
             description=f"Out of nowhere a car from the {rival_set} just sprayed the block where {player_char['name']} was posted",
             color=discord.Color.dark_red()
         )
-        event_embed.add_field(
-            name="Shooter",
-            value=f"{rival_name} - {rival_set}",
-            inline=True
-        )
-        event_embed.add_field(
-            name="Situation",
-            value="Shots fired with no warning - had to react fast",
-            inline=True
-        )
+        event_embed.add_field(name="Shooter", value=f"{rival_name} - {rival_set}", inline=True)
+        event_embed.add_field(name="Situation", value="Shots fired with no warning - had to react fast", inline=True)
         event_embed.set_footer(text="The block is never safe...")
         await ctx.send(embed=event_embed)
         await asyncio.sleep(3)
@@ -905,11 +737,7 @@ async def trigger_passive_event(ctx, player_char, character_id):
                     description=f"{player_char['name']} was struck by bullets in the drive by and didn't survive",
                     color=discord.Color.dark_red()
                 )
-                death_embed.add_field(
-                    name="Final Stats",
-                    value=f"Body Count: {player_char.get('kills', 0)}\nMoney: ${player_char.get('money', 0):,}\nStatus: DECEASED",
-                    inline=False
-                )
+                death_embed.add_field(name="Final Stats", value=f"Body Count: {player_char.get('kills', 0)}\nMoney: ${player_char.get('money', 0):,}\nStatus: DECEASED", inline=False)
                 dead_member = player_char.copy()
                 dead_member['death_date'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
                 dead_member['killed_by'] = f"{rival_set} Drive By (Passive Event)"
@@ -924,11 +752,7 @@ async def trigger_passive_event(ctx, player_char, character_id):
                     description=f"{player_char['name']} got hit in the drive by but the wounds are not fatal",
                     color=discord.Color.orange()
                 )
-                wound_embed.add_field(
-                    name="Status",
-                    value="Took a bullet but survived - heading to get patched up",
-                    inline=False
-                )
+                wound_embed.add_field(name="Status", value="Took a bullet but survived - heading to get patched up", inline=False)
                 await ctx.send(embed=wound_embed)
         else:
             safe_embed = discord.Embed(
@@ -936,11 +760,7 @@ async def trigger_passive_event(ctx, player_char, character_id):
                 description=f"{player_char['name']} hit the ground when the shots rang out and avoided getting hit",
                 color=discord.Color.green()
             )
-            safe_embed.add_field(
-                name="Outcome",
-                value="Bullets missed - made it out clean",
-                inline=False
-            )
+            safe_embed.add_field(name="Outcome", value="Bullets missed - made it out clean", inline=False)
             await ctx.send(embed=safe_embed)
 
     elif event_type == "found_cash_on_street":
@@ -950,17 +770,9 @@ async def trigger_passive_event(ctx, player_char, character_id):
             description=f"{player_char['name']} was walking through the hood and found a dropped envelope",
             color=discord.Color.green()
         )
-        event_embed.add_field(
-            name="Contents",
-            value=f"${cash_found:,} cash inside - no name, no questions",
-            inline=True
-        )
+        event_embed.add_field(name="Contents", value=f"${cash_found:,} cash inside - no name, no questions", inline=True)
         player_char['money'] = player_char.get('money', 0) + cash_found
-        event_embed.add_field(
-            name="New Balance",
-            value=f"${player_char['money']:,}",
-            inline=True
-        )
+        event_embed.add_field(name="New Balance", value=f"${player_char['money']:,}", inline=True)
         event_embed.set_footer(text="Streets provide sometimes")
         characters[character_id] = player_char
         save_characters(characters)
@@ -972,11 +784,7 @@ async def trigger_passive_event(ctx, player_char, character_id):
             description=f"LAPD gang unit is doing a sweep through {player_char.get('set_name', 'the hood')} territory right now",
             color=discord.Color.blue()
         )
-        event_embed.add_field(
-            name="Police Activity",
-            value="Multiple units rolling through, stopping and questioning everyone on the block",
-            inline=False
-        )
+        event_embed.add_field(name="Police Activity", value="Multiple units rolling through, stopping and questioning everyone on the block", inline=False)
         event_embed.set_footer(text="Lay low or get caught up...")
         await ctx.send(embed=event_embed)
         await asyncio.sleep(3)
@@ -989,11 +797,7 @@ async def trigger_passive_event(ctx, player_char, character_id):
                 description=f"{player_char['name']} got caught in the police sweep and taken in",
                 color=discord.Color.orange()
             )
-            jail_embed.add_field(
-                name="Detention",
-                value=f"Held for {jail_time} minutes before being released",
-                inline=False
-            )
+            jail_embed.add_field(name="Detention", value=f"Held for {jail_time} minutes before being released", inline=False)
             jail_until = datetime.now() + timedelta(minutes=jail_time)
             player_char['jail_until'] = jail_until.strftime('%Y-%m-%d %H:%M:%S')
             characters[character_id] = player_char
@@ -1005,11 +809,7 @@ async def trigger_passive_event(ctx, player_char, character_id):
                 description=f"{player_char['name']} saw the police coming and got off the block in time",
                 color=discord.Color.green()
             )
-            clear_embed.add_field(
-                name="Outcome",
-                value="Avoided the sweep - back to normal",
-                inline=False
-            )
+            clear_embed.add_field(name="Outcome", value="Avoided the sweep - back to normal", inline=False)
             await ctx.send(embed=clear_embed)
 
     elif event_type == "homie_in_trouble":
@@ -1020,11 +820,7 @@ async def trigger_passive_event(ctx, player_char, character_id):
             description=f"{homie_name} from the {player_char.get('set_name', 'set')} just called - he is pinned down by {rival_set} and needs help right now",
             color=discord.Color.orange()
         )
-        event_embed.add_field(
-            name="The Call",
-            value=f"{homie_name} is outnumbered and calling for backup in enemy territory",
-            inline=False
-        )
+        event_embed.add_field(name="The Call", value=f"{homie_name} is outnumbered and calling for backup in enemy territory", inline=False)
         event_embed.set_footer(text="You ride for your homies...")
         await ctx.send(embed=event_embed)
         await asyncio.sleep(3)
@@ -1042,11 +838,7 @@ async def trigger_passive_event(ctx, player_char, character_id):
             )
             bonus_money = random.randint(100, 300)
             player_char['money'] = player_char.get('money', 0) + bonus_money
-            win_embed.add_field(
-                name="Loyalty Reward",
-                value=f"{homie_name} hit {player_char['name']} with ${bonus_money:,} for pulling up",
-                inline=False
-            )
+            win_embed.add_field(name="Loyalty Reward", value=f"{homie_name} hit {player_char['name']} with ${bonus_money:,} for pulling up", inline=False)
             characters[character_id] = player_char
             save_characters(characters)
             await ctx.send(embed=win_embed)
@@ -1056,11 +848,7 @@ async def trigger_passive_event(ctx, player_char, character_id):
                 description=f"{player_char['name']} gave their life pulling up for {homie_name}",
                 color=discord.Color.dark_red()
             )
-            death_embed.add_field(
-                name="Final Stats",
-                value=f"Body Count: {player_char.get('kills', 0)}\nMoney: ${player_char.get('money', 0):,}\nStatus: DECEASED",
-                inline=False
-            )
+            death_embed.add_field(name="Final Stats", value=f"Body Count: {player_char.get('kills', 0)}\nMoney: ${player_char.get('money', 0):,}\nStatus: DECEASED", inline=False)
             dead_member = player_char.copy()
             dead_member['death_date'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
             dead_member['killed_by'] = f"{rival_set} (Died Riding for Homies)"
@@ -1075,11 +863,7 @@ async def trigger_passive_event(ctx, player_char, character_id):
                 description=f"{player_char['name']} pulled up for {homie_name} but they both had to retreat",
                 color=discord.Color.orange()
             )
-            loss_embed.add_field(
-                name="Outcome",
-                value="Both made it out alive but the {rival_set} held the block tonight",
-                inline=False
-            )
+            loss_embed.add_field(name="Outcome", value=f"Both made it out alive but the {rival_set} held the block tonight", inline=False)
             await ctx.send(embed=loss_embed)
 
     elif event_type == "drug_deal_gone_wrong":
@@ -1089,18 +873,14 @@ async def trigger_passive_event(ctx, player_char, character_id):
             description=f"{player_char['name']} was present when a deal in the hood went completely wrong",
             color=discord.Color.red()
         )
-        event_embed.add_field(
-            name="The Situation",
-            value="Someone tried to rob the deal - shots fired, everyone scattering",
-            inline=False
-        )
+        event_embed.add_field(name="The Situation", value="Someone tried to rob the deal - shots fired, everyone scattering", inline=False)
         event_embed.set_footer(text="Wrong place wrong time...")
         await ctx.send(embed=event_embed)
         await asyncio.sleep(3)
 
         outcome_roll = random.randint(1, 100)
         if outcome_roll <= 40:
-            money_lost = random.randint(100, player_char.get('money', 100))
+            money_lost = random.randint(100, max(100, player_char.get('money', 100)))
             money_lost = min(money_lost, player_char.get('money', 0))
             player_char['money'] = max(0, player_char.get('money', 0) - money_lost)
             loss_embed = discord.Embed(
@@ -1108,16 +888,8 @@ async def trigger_passive_event(ctx, player_char, character_id):
                 description=f"{player_char['name']} got robbed during the confusion",
                 color=discord.Color.red()
             )
-            loss_embed.add_field(
-                name="Money Lost",
-                value=f"${money_lost:,} taken",
-                inline=True
-            )
-            loss_embed.add_field(
-                name="New Balance",
-                value=f"${player_char['money']:,}",
-                inline=True
-            )
+            loss_embed.add_field(name="Money Lost", value=f"${money_lost:,} taken", inline=True)
+            loss_embed.add_field(name="New Balance", value=f"${player_char['money']:,}", inline=True)
             characters[character_id] = player_char
             save_characters(characters)
             await ctx.send(embed=loss_embed)
@@ -1127,11 +899,7 @@ async def trigger_passive_event(ctx, player_char, character_id):
                 description=f"{player_char['name']} dipped when the deal went wrong and avoided the fallout",
                 color=discord.Color.green()
             )
-            safe_embed.add_field(
-                name="Outcome",
-                value="Made it out clean - nothing lost",
-                inline=False
-            )
+            safe_embed.add_field(name="Outcome", value="Made it out clean - nothing lost", inline=False)
             await ctx.send(embed=safe_embed)
         else:
             profit = random.randint(200, 800)
@@ -1141,16 +909,8 @@ async def trigger_passive_event(ctx, player_char, character_id):
                 description=f"{player_char['name']} moved smart during the confusion and walked away with something",
                 color=discord.Color.green()
             )
-            profit_embed.add_field(
-                name="Street Profit",
-                value=f"${profit:,} picked up in the chaos",
-                inline=True
-            )
-            profit_embed.add_field(
-                name="New Balance",
-                value=f"${player_char['money']:,}",
-                inline=True
-            )
+            profit_embed.add_field(name="Street Profit", value=f"${profit:,} picked up in the chaos", inline=True)
+            profit_embed.add_field(name="New Balance", value=f"${player_char['money']:,}", inline=True)
             characters[character_id] = player_char
             save_characters(characters)
             await ctx.send(embed=profit_embed)
@@ -1162,11 +922,7 @@ async def trigger_passive_event(ctx, player_char, character_id):
             description=f"{player_char['name']} was just walking through the hood when a car slowed down and opened fire",
             color=discord.Color.dark_red()
         )
-        event_embed.add_field(
-            name="Attack",
-            value=f"Believed to be from the {rival_set} - targeted shooting",
-            inline=False
-        )
+        event_embed.add_field(name="Attack", value=f"Believed to be from the {rival_set} - targeted shooting", inline=False)
         event_embed.set_footer(text="Can never fully relax out here...")
         await ctx.send(embed=event_embed)
         await asyncio.sleep(3)
@@ -1180,11 +936,7 @@ async def trigger_passive_event(ctx, player_char, character_id):
                     description=f"{player_char['name']} was hit and killed walking home from nowhere",
                     color=discord.Color.dark_red()
                 )
-                death_embed.add_field(
-                    name="Final Stats",
-                    value=f"Body Count: {player_char.get('kills', 0)}\nMoney: ${player_char.get('money', 0):,}\nStatus: DECEASED",
-                    inline=False
-                )
+                death_embed.add_field(name="Final Stats", value=f"Body Count: {player_char.get('kills', 0)}\nMoney: ${player_char.get('money', 0):,}\nStatus: DECEASED", inline=False)
                 dead_member = player_char.copy()
                 dead_member['death_date'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
                 dead_member['killed_by'] = f"{rival_set} Shooting (Passive Street Event)"
@@ -1199,11 +951,7 @@ async def trigger_passive_event(ctx, player_char, character_id):
                     description=f"{player_char['name']} was hit but the wound is not fatal - got to the hospital in time",
                     color=discord.Color.orange()
                 )
-                wound_embed.add_field(
-                    name="Status",
-                    value="Wounded and recovering but alive",
-                    inline=False
-                )
+                wound_embed.add_field(name="Status", value="Wounded and recovering but alive", inline=False)
                 await ctx.send(embed=wound_embed)
         else:
             miss_embed = discord.Embed(
@@ -1211,11 +959,7 @@ async def trigger_passive_event(ctx, player_char, character_id):
                 description=f"{player_char['name']} ducked behind a car and the shots missed - got away clean",
                 color=discord.Color.green()
             )
-            miss_embed.add_field(
-                name="Outcome",
-                value="Fast reflexes saved the day",
-                inline=False
-            )
+            miss_embed.add_field(name="Outcome", value="Fast reflexes saved the day", inline=False)
             await ctx.send(embed=miss_embed)
 
     elif event_type == "rival_tags_your_hood":
@@ -1225,23 +969,14 @@ async def trigger_passive_event(ctx, player_char, character_id):
             description=f"{player_char['name']} woke up to find the {rival_set} had tagged over the {player_char.get('set_name', 'set')} graffiti all through the neighborhood",
             color=discord.Color.red()
         )
-        event_embed.add_field(
-            name="Disrespect",
-            value=f"The {rival_set} crossed out the set's tags and put their own up - a direct challenge",
-            inline=False
-        )
-        event_embed.add_field(
-            name="Suspects",
-            value=f"{rival_name} and crew from {rival_gang}",
-            inline=True
-        )
+        event_embed.add_field(name="Disrespect", value=f"The {rival_set} crossed out the set's tags and put their own up - a direct challenge", inline=False)
+        event_embed.add_field(name="Suspects", value=f"{rival_name} and crew from {rival_gang}", inline=True)
         event_embed.set_footer(text="Disrespect cannot go unanswered...")
         await ctx.send(embed=event_embed)
         await asyncio.sleep(3)
 
         response_roll = random.randint(1, 100)
         if response_roll <= 60:
-            # Goes to handle it
             battle = simulate_battle()
             won = battle['player_won']
             death_roll = random.randint(1, 100)
@@ -1273,11 +1008,7 @@ async def trigger_passive_event(ctx, player_char, character_id):
                     description=f"{player_char['name']} went to check the {rival_set} for the disrespect but walked into a setup",
                     color=discord.Color.dark_red()
                 )
-                death_embed.add_field(
-                    name="Final Stats",
-                    value=f"Body Count: {player_char.get('kills', 0)}\nMoney: ${player_char.get('money', 0):,}\nStatus: DECEASED",
-                    inline=False
-                )
+                death_embed.add_field(name="Final Stats", value=f"Body Count: {player_char.get('kills', 0)}\nMoney: ${player_char.get('money', 0):,}\nStatus: DECEASED", inline=False)
                 dead_member = player_char.copy()
                 dead_member['death_date'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
                 dead_member['killed_by'] = f"{rival_name} ({rival_set}) Hood Defense"
@@ -1292,11 +1023,7 @@ async def trigger_passive_event(ctx, player_char, character_id):
                     description=f"{player_char['name']} went to handle the disrespect but had to fall back",
                     color=discord.Color.orange()
                 )
-                loss_embed.add_field(
-                    name="Outcome",
-                    value="Survived but the disrespect is still out there",
-                    inline=False
-                )
+                loss_embed.add_field(name="Outcome", value="Survived but the disrespect is still out there", inline=False)
                 characters[character_id] = player_char
                 save_characters(characters)
                 await ctx.send(embed=loss_embed)
@@ -1306,11 +1033,7 @@ async def trigger_passive_event(ctx, player_char, character_id):
                 description=f"{player_char['name']} decided to let it slide for now and not walk into a potential setup",
                 color=discord.Color.orange()
             )
-            lay_low_embed.add_field(
-                name="Decision",
-                value="Chose not to react - playing it smart",
-                inline=False
-            )
+            lay_low_embed.add_field(name="Decision", value="Chose not to react - playing it smart", inline=False)
             await ctx.send(embed=lay_low_embed)
 
     elif event_type == "unexpected_confrontation":
@@ -1320,11 +1043,7 @@ async def trigger_passive_event(ctx, player_char, character_id):
             description=f"{player_char['name']} was out handling regular business when they crossed paths with {rival_name} from the {rival_set}",
             color=discord.Color.orange()
         )
-        event_embed.add_field(
-            name="Chance Encounter",
-            value="Nobody planned this - it just happened. Now what?",
-            inline=False
-        )
+        event_embed.add_field(name="Chance Encounter", value="Nobody planned this - it just happened. Now what?", inline=False)
         event_embed.set_footer(text="The streets always got something waiting...")
         await ctx.send(embed=event_embed)
         await asyncio.sleep(3)
@@ -1360,11 +1079,7 @@ async def trigger_passive_event(ctx, player_char, character_id):
                 description=f"The chance encounter with {rival_name} ended with {player_char['name']} not making it home",
                 color=discord.Color.dark_red()
             )
-            death_embed.add_field(
-                name="Final Stats",
-                value=f"Body Count: {player_char.get('kills', 0)}\nMoney: ${player_char.get('money', 0):,}\nStatus: DECEASED",
-                inline=False
-            )
+            death_embed.add_field(name="Final Stats", value=f"Body Count: {player_char.get('kills', 0)}\nMoney: ${player_char.get('money', 0):,}\nStatus: DECEASED", inline=False)
             dead_member = player_char.copy()
             dead_member['death_date'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
             dead_member['killed_by'] = f"{rival_name} ({rival_set}) Unexpected Confrontation"
@@ -1379,11 +1094,7 @@ async def trigger_passive_event(ctx, player_char, character_id):
                 description=f"{player_char['name']} came out on the losing end of the confrontation with {rival_name} but made it out alive",
                 color=discord.Color.orange()
             )
-            loss_embed.add_field(
-                name="Outcome",
-                value="Lost this one but lived to fight again",
-                inline=False
-            )
+            loss_embed.add_field(name="Outcome", value="Lost this one but lived to fight again", inline=False)
             characters[character_id] = player_char
             save_characters(characters)
             await ctx.send(embed=loss_embed)
@@ -1469,11 +1180,11 @@ async def make_character(ctx):
     embed.add_field(name="\u200b", value="\u200b", inline=False)
     embed.add_field(name="Gang Affiliation", value=gang_affiliation, inline=True)
     embed.add_field(name="Set", value=set_name, inline=True)
-    embed.set_footer(text=f"Use ?slide {character_id} to get active")
+    embed.set_footer(text=f"Use ?slide {character_id} to get active | A street event is coming in 5 seconds...")
 
     await ctx.send(embed=embed)
 
-    # Fire creation event in background
+    # CHANGED: Always fires - no chance gate anymore
     bot.loop.create_task(trigger_creation_event(ctx, character_data, character_id))
 
 
@@ -1677,7 +1388,7 @@ async def work_job(ctx, character_id: str = None):
     save_characters(characters)
     await ctx.send(embed=outcome_embed)
 
-    # Fire passive event in background
+    # CHANCE-based passive event (30% rolls inside trigger_passive_event)
     bot.loop.create_task(trigger_passive_event(ctx, player_char, character_id))
 
 
@@ -1727,8 +1438,6 @@ async def rob_store(ctx, character_id: str = None):
     await asyncio.sleep(3)
 
     robbery_roll = random.randint(1, 100)
-
-    # Police heat increases catch chance
     police_heat_bonus = 15 if player_char.get('police_heat') else 0
     robbery_success = robbery_roll <= 70
 
@@ -1769,16 +1478,8 @@ async def rob_store(ctx, character_id: str = None):
             outcome_embed.add_field(name="Police Response", value="CAUGHT", inline=True)
             outcome_embed.add_field(name="\u200b", value="\u200b", inline=False)
             if witnesses_present:
-                outcome_embed.add_field(
-                    name="WITNESSES PRESENT",
-                    value=f"Multiple witnesses identified {player_char['name']}\nSentence increased due to evidence",
-                    inline=False
-                )
-            outcome_embed.add_field(
-                name="ARREST STATUS",
-                value=f"Sentenced to {jail_time} minutes in county jail\nMoney confiscated by police",
-                inline=False
-            )
+                outcome_embed.add_field(name="WITNESSES PRESENT", value=f"Multiple witnesses identified {player_char['name']}\nSentence increased due to evidence", inline=False)
+            outcome_embed.add_field(name="ARREST STATUS", value=f"Sentenced to {jail_time} minutes in county jail\nMoney confiscated by police", inline=False)
             jail_until = datetime.now() + timedelta(minutes=jail_time)
             player_char['jail_until'] = jail_until.strftime('%Y-%m-%d %H:%M:%S')
         else:
@@ -1808,7 +1509,7 @@ async def rob_store(ctx, character_id: str = None):
     save_characters(characters)
     await ctx.send(embed=outcome_embed)
 
-    # Fire passive event in background
+    # CHANCE-based passive event (30% rolls inside trigger_passive_event)
     bot.loop.create_task(trigger_passive_event(ctx, player_char, character_id))
 
 
@@ -1914,7 +1615,6 @@ async def block_party(ctx, character_id: str = None):
             )
             death_embed.add_field(name="Fatal Outcome", value=f"{player_char['name']} caught a stray bullet during the shootout and didn't make it", inline=False)
             death_embed.add_field(name="Final Stats", value=f"Body Count: {player_char.get('kills', 0)}\nMoney: ${player_char.get('money', 0):,}\nStatus: DECEASED", inline=False)
-
             dead_member = player_char.copy()
             dead_member['death_date'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
             dead_member['killed_by'] = f"{rival_set} Drive-By Shooting (Block Party)"
@@ -1958,7 +1658,7 @@ async def block_party(ctx, character_id: str = None):
             characters[character_id] = player_char
             save_characters(characters)
 
-    # Fire passive event in background
+    # CHANCE-based passive event (30% rolls inside trigger_passive_event)
     bot.loop.create_task(trigger_passive_event(ctx, player_char, character_id))
 
 
@@ -2074,7 +1774,6 @@ async def hoodday(ctx, character_id: str = None):
                 )
                 death_embed.add_field(name="Fatal Outcome", value=f"{player_char['name']} was hit during the chaos and didn't survive", inline=False)
                 death_embed.add_field(name="Final Stats", value=f"Body Count: {player_char.get('kills', 0)}\nMoney: ${player_char.get('money', 0):,}\nStatus: DECEASED", inline=False)
-
                 dead_member = player_char.copy()
                 dead_member['death_date'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
                 dead_member['killed_by'] = f"{rival_set} Attack (Hood Day Massacre)"
@@ -2131,6 +1830,9 @@ async def hoodday(ctx, character_id: str = None):
 
             characters[character_id] = player_char
             save_characters(characters)
+
+    # CHANCE-based passive event (30% rolls inside trigger_passive_event)
+    bot.loop.create_task(trigger_passive_event(ctx, player_char, character_id))
 
 
 # Slide command
@@ -2234,7 +1936,6 @@ async def slide_on_opps(ctx, *character_ids):
                 )
                 outcome_embed.add_field(name="Final Outcome", value=f"Despite winning the confrontation, {player_char['name']} succumbed to their wounds", inline=False)
                 outcome_embed.add_field(name="Final Stats", value=f"Body Count: {player_char.get('kills', 0)}\nMoney: ${player_char.get('money', 0):,}\nStatus: DECEASED", inline=False)
-
                 dead_member = player_char.copy()
                 dead_member['death_date'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
                 dead_member['killed_by'] = f"{rival_name} ({rival_set}) - Fatal Wounds"
@@ -2266,7 +1967,9 @@ async def slide_on_opps(ctx, *character_ids):
                 characters[character_id] = player_char
                 save_characters(characters)
 
-                # Fire post-kill event in background
+                # CHANCE-based passive event (30% rolls inside trigger_passive_event)
+                bot.loop.create_task(trigger_passive_event(ctx, player_char, character_id))
+                # Post kill event also fires on successful slide
                 bot.loop.create_task(trigger_post_kill_event(ctx, player_char, rival_name, rival_gang, rival_set, character_id))
         else:
             if member_dies:
@@ -2277,7 +1980,6 @@ async def slide_on_opps(ctx, *character_ids):
                 )
                 outcome_embed.add_field(name="Final Words", value=f"{player_char['name']} was caught lacking deep in enemy territory and paid the ultimate price", inline=False)
                 outcome_embed.add_field(name="Final Stats", value=f"Body Count: {player_char.get('kills', 0)}\nMoney: ${player_char.get('money', 0):,}\nStatus: DECEASED", inline=False)
-
                 dead_member = player_char.copy()
                 dead_member['death_date'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
                 dead_member['killed_by'] = f"{rival_name} ({rival_set})"
@@ -2295,6 +1997,9 @@ async def slide_on_opps(ctx, *character_ids):
                 outcome_embed.add_field(name="Current Stats", value=f"Body Count: {player_char.get('kills', 0)}\nMoney: ${player_char.get('money', 0):,}\nStatus: ALIVE", inline=False)
                 characters[character_id] = player_char
                 save_characters(characters)
+
+                # CHANCE-based passive event even on loss
+                bot.loop.create_task(trigger_passive_event(ctx, player_char, character_id))
 
         outcome_embed.set_footer(text="The streets never forget")
         await ctx.send(embed=outcome_embed)
@@ -2419,7 +2124,6 @@ async def revenge_battle(ctx, dead_character_id: str = None, avenger_character_i
             )
             outcome_embed.add_field(name="Final Moments", value=f"{avenger_char['name']} avenged their fallen homie but paid the ultimate price", inline=False)
             outcome_embed.add_field(name="Final Stats", value=f"Body Count: {avenger_char.get('kills', 0)}\nMoney: ${avenger_char.get('money', 0):,}\nStatus: DECEASED", inline=False)
-
             dead_avenger = avenger_char.copy()
             dead_avenger['death_date'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
             dead_avenger['killed_by'] = f"{killer_name} (Revenge Mission - Fatal Wounds)"
@@ -2452,8 +2156,10 @@ async def revenge_battle(ctx, dead_character_id: str = None, avenger_character_i
             characters[avenger_character_id] = avenger_char
             save_characters(characters)
 
-            # Fire post-kill event in background
+            # Post kill event fires on successful revenge
             bot.loop.create_task(trigger_post_kill_event(ctx, avenger_char, killer_name, rival_gang, rival_set, avenger_character_id))
+            # CHANCE-based passive event too
+            bot.loop.create_task(trigger_passive_event(ctx, avenger_char, avenger_character_id))
     else:
         if member_dies:
             outcome_embed = discord.Embed(
@@ -2463,7 +2169,6 @@ async def revenge_battle(ctx, dead_character_id: str = None, avenger_character_i
             )
             outcome_embed.add_field(name="Failed Mission", value=f"{avenger_char['name']} fell to the same killer who took {dead_member['name']}\n{dead_member['name']} remains unavenged", inline=False)
             outcome_embed.add_field(name="Final Stats", value=f"Body Count: {avenger_char.get('kills', 0)}\nMoney: ${avenger_char.get('money', 0):,}\nStatus: DECEASED", inline=False)
-
             dead_avenger = avenger_char.copy()
             dead_avenger['death_date'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
             dead_avenger['killed_by'] = f"{killer_name} (Failed Revenge Mission)"
@@ -2481,6 +2186,9 @@ async def revenge_battle(ctx, dead_character_id: str = None, avenger_character_i
             outcome_embed.add_field(name="Current Stats", value=f"Body Count: {avenger_char.get('kills', 0)}\nMoney: ${avenger_char.get('money', 0):,}\nStatus: ALIVE", inline=False)
             characters[avenger_character_id] = avenger_char
             save_characters(characters)
+
+            # CHANCE-based passive event even on failed revenge
+            bot.loop.create_task(trigger_passive_event(ctx, avenger_char, avenger_character_id))
 
     outcome_embed.set_footer(text="The cycle of violence continues")
     await ctx.send(embed=outcome_embed)
