@@ -66,7 +66,7 @@ def evaluate_status(member):
 
 def format_status_line(member):
     tags = evaluate_status(member)
-    return "  ".join([f"[{t}]" for t in tags]) if tags else "—"
+    return "  ".join([f"[{t}]" for t in tags]) if tags else "--"
 
 
 # ─────────────────────────────────────────────
@@ -384,15 +384,14 @@ def send_to_jail(member):
 
 def get_member_status(m):
     if not m['alive']:
-        return "💀 Dead"
+        return "Dead"
     now = time.time()
     if m.get('jail_until') and now < m['jail_until']:
-        return f"🔒 Locked Up ({m['jail_sentence']})"
-    return "✅ Free"
+        return f"Locked Up ({m['jail_sentence']})"
+    return "Free"
 
 
 def format_member_list(members):
-    """Clean roster display: name | tags | kills | status."""
     if not members:
         return "None left."
     lines = []
@@ -400,10 +399,9 @@ def format_member_list(members):
         name = f"`{m['name']}`"
         kills = m.get('kills', 0)
         tags = evaluate_status(m)
-        tag_str = "  ".join([f"`{t}`" for t in tags]) if tags else "`—`"
+        tag_str = "  ".join([f"[{t}]" for t in tags]) if tags else "--"
         status = get_member_status(m)
-        kill_str = f"☠️ {kills}" if kills > 0 else "☠️ 0"
-        lines.append(f"{name}  {tag_str}  {kill_str}  {status}")
+        lines.append(f"{name}  |  {tag_str}  |  {kills} kills  |  {status}")
     return "\n".join(lines)
 
 
@@ -433,16 +431,11 @@ def remove_revenge_target(gang, gang_name):
     gang['revenge_targets'] = [t for t in gang['revenge_targets'] if t['gang'] != gang_name]
 
 
-async def post_status_changes(channel, status_ups):
-    """Fire off status tag change announcements — no rank up lines needed anymore."""
-    pass
-
-
 # ─────────────────────────────────────────────
-# BEEF OUTCOME
+# SLIDE OUTCOME
 # ─────────────────────────────────────────────
 
-def calculate_beef_outcome(gang, rolling_members, enemy_rep, is_revenge=False):
+def calculate_slide_outcome(gang, rolling_members, enemy_rep, is_revenge=False):
     player_rep = gang['rep']
     rep_diff = player_rep - enemy_rep
     win_chance = 50 + int((rep_diff / 500) * 40)
@@ -453,8 +446,6 @@ def calculate_beef_outcome(gang, rolling_members, enemy_rep, is_revenge=False):
     player_won = random.randint(1, 100) <= win_chance
     outcome_lines = []
     kills_this_fight = {}
-    rank_ups = []
-    rank_downs = []
 
     if player_won:
         rep_gain = random.randint(20, int(max(1, enemy_rep * 0.4)))
@@ -495,7 +486,7 @@ def calculate_beef_outcome(gang, rolling_members, enemy_rep, is_revenge=False):
                     f"`{casualty['name']}` caught a round in the chest during the exchange. Stayed on his feet long enough to make it back to the car but was gone before they reached the block. Won the fight but the set lost somebody real tonight.",
                     f"`{casualty['name']}` took a shot from someone hiding behind a car on the far end of the block. The crew didn't realize until they were already pulling off. He didn't make it to the hospital.",
                     f"One of the opps who was already down still had enough left to get a shot off. `{casualty['name']}` caught it in the neck. The crew held the block but held a funeral three days later.",
-                    f"`{casualty['name']}` took a stray during the chaos — wrong place, wrong angle, bad luck. The streets claimed another one that night. Set won the beef but the victory felt hollow.",
+                    f"`{casualty['name']}` took a stray during the chaos — wrong place, wrong angle, bad luck. The streets claimed another one that night. Set won the slide but the victory felt hollow.",
                     f"`{casualty['name']}` pushed too deep into their territory without cover and got cut off. By the time the crew circled back it was too late. Another name on the wall.",
                     f"`{casualty['name']}` was covering the exit when a shooter appeared from a second floor window nobody had eyes on. Took two shots to the back and was gone before the ambulance was even called.",
                     f"The celebration was cut short. `{casualty['name']}` had been hit early in the fight but kept moving on adrenaline and nobody realized how bad it was until the car was three blocks away. He didn't make it to morning.",
@@ -529,8 +520,6 @@ def calculate_beef_outcome(gang, rolling_members, enemy_rep, is_revenge=False):
             "total_bodies": get_gang_bodies(gang),
             "total_deaths": get_gang_deaths(gang),
             "members_alive": len(get_alive_members(gang)),
-            "rank_ups": rank_ups,
-            "rank_downs": rank_downs,
         }
 
     else:
@@ -591,14 +580,12 @@ def calculate_beef_outcome(gang, rolling_members, enemy_rep, is_revenge=False):
             "total_bodies": get_gang_bodies(gang),
             "total_deaths": get_gang_deaths(gang),
             "members_alive": len(get_alive_members(gang)),
-            "rank_ups": rank_ups,
-            "rank_downs": rank_downs,
         }
 
 
-async def send_beef_result(channel, gang, enemy_gang_info, result, is_revenge=False):
+async def send_slide_result(channel, gang, enemy_gang_info, result, is_revenge=False):
     if result['won']:
-        title = "Revenge Collected — Debt Settled" if is_revenge else "Beef Won — Block Secured"
+        title = "Revenge Collected — Debt Settled" if is_revenge else "Slide Won — Block Secured"
         descriptions = [
             f"**{gang['name']}** came back for blood and got exactly what they came for. **{enemy_gang_info['name']}** paid for what they did and the whole hood knows who collected.",
             f"**{gang['name']}** ran **{enemy_gang_info['name']}** off the block and claimed everything they had. The hood knows who runs it now.",
@@ -612,7 +599,7 @@ async def send_beef_result(channel, gang, enemy_gang_info, result, is_revenge=Fa
         color = discord.Color.green()
         footer = "They know not to touch yours again." if is_revenge else "Hold that block. Don't let nobody take what's yours."
     else:
-        title = "Revenge Failed — Took Another L" if is_revenge else "Beef Lost — Took an L"
+        title = "Revenge Failed — Took Another L" if is_revenge else "Slide Lost — Took an L"
         descriptions = [
             f"**{gang['name']}** came for revenge but **{enemy_gang_info['name']}** was ready. Took another L.",
             f"**{gang['name']}** got run off by **{enemy_gang_info['name']}** tonight. Took heavy losses but the set is still breathing.",
@@ -628,7 +615,7 @@ async def send_beef_result(channel, gang, enemy_gang_info, result, is_revenge=Fa
         header_embed.add_field(name="Cred Gained", value=f"+{result['rep_gain']}", inline=True)
     else:
         header_embed.add_field(name="Cred Lost", value=f"-{result['rep_loss']}", inline=True)
-    header_embed.add_field(name="New Street Cred", value=f"{result['old_rep']} → **{result['new_rep']}**", inline=True)
+    header_embed.add_field(name="New Street Cred", value=f"{result['old_rep']} -> {result['new_rep']}", inline=True)
     header_embed.add_field(name="Members Alive", value=str(result['members_alive']), inline=True)
     await channel.send(embed=header_embed)
 
@@ -648,6 +635,7 @@ async def send_beef_result(channel, gang, enemy_gang_info, result, is_revenge=Fa
     summary_embed.add_field(name="Kills This Run", value=kills_text, inline=False)
     summary_embed.set_footer(text=footer)
     await channel.send(embed=summary_embed)
+
 
 # ─────────────────────────────────────────────
 # EVENTS
@@ -813,7 +801,7 @@ async def handle_solo(message, args):
     ]
 
     tags = evaluate_status(target_member)
-    tag_str = "  ".join([f"`{t}`" for t in tags]) if tags else "`—`"
+    tag_str = "  ".join([f"[{t}]" for t in tags]) if tags else "--"
 
     intro_embed = discord.Embed(title="Solo Mission", description=random.choice(send_off_lines), color=discord.Color.dark_red())
     intro_embed.add_field(name="Soldier", value=f"`{target_member['name']}`", inline=True)
@@ -833,14 +821,14 @@ async def handle_solo(message, args):
         gang['rep'] = player_rep + rep_gain
         story = random.choice(SOLO_WIN_LINES).replace("{member}", f"`{target_member['name']}`")
         new_tags = evaluate_status(target_member)
-        new_tag_str = "  ".join([f"`{t}`" for t in new_tags]) if new_tags else "`—`"
+        new_tag_str = "  ".join([f"[{t}]" for t in new_tags]) if new_tags else "--"
 
         result_embed = discord.Embed(title="Solo Mission — Target Down", description=story, color=discord.Color.green())
         result_embed.add_field(name="Soldier", value=f"`{target_member['name']}`", inline=True)
         result_embed.add_field(name="Tags", value=new_tag_str, inline=True)
         result_embed.add_field(name="Kills", value=str(target_member['kills']), inline=True)
         result_embed.add_field(name="Cred Gained", value=f"+{rep_gain}", inline=True)
-        result_embed.add_field(name="New Street Cred", value=f"{player_rep} → **{gang['rep']}**", inline=True)
+        result_embed.add_field(name="New Street Cred", value=f"{player_rep} -> {gang['rep']}", inline=True)
         result_embed.set_footer(text="Solo work. The set eats off one man's courage tonight.")
         await message.channel.send(embed=result_embed)
 
@@ -855,7 +843,7 @@ async def handle_solo(message, args):
         result_embed.add_field(name="Tags", value=tag_str, inline=True)
         result_embed.add_field(name="Kills", value=str(target_member.get('kills', 0)), inline=True)
         result_embed.add_field(name="Cred Lost", value=f"-{rep_loss}", inline=True)
-        result_embed.add_field(name="New Street Cred", value=f"{player_rep} → **{gang['rep']}**", inline=True)
+        result_embed.add_field(name="New Street Cred", value=f"{player_rep} -> {gang['rep']}", inline=True)
         result_embed.set_footer(text="Came back alive. That has to count for something.")
         await message.channel.send(embed=result_embed)
 
@@ -870,7 +858,7 @@ async def handle_solo(message, args):
         result_embed.add_field(name="Tags", value=tag_str, inline=True)
         result_embed.add_field(name="Sentence", value=sentence, inline=True)
         result_embed.add_field(name="Cred Lost", value=f"-{rep_loss}", inline=True)
-        result_embed.add_field(name="New Street Cred", value=f"{player_rep} → **{gang['rep']}**", inline=True)
+        result_embed.add_field(name="New Street Cred", value=f"{player_rep} -> {gang['rep']}", inline=True)
         result_embed.set_footer(text="One man down. The set carries on.")
         await message.channel.send(embed=result_embed)
 
@@ -888,7 +876,7 @@ async def handle_solo(message, args):
             result_embed.add_field(name="Final Tags", value=tag_str, inline=True)
             result_embed.add_field(name="Kills", value=str(target_member.get('kills', 0)), inline=True)
             result_embed.add_field(name="Cred Lost", value=f"-{rep_loss}", inline=True)
-            result_embed.add_field(name="New Street Cred", value=f"{player_rep} → **{gang['rep']}**", inline=True)
+            result_embed.add_field(name="New Street Cred", value=f"{player_rep} -> {gang['rep']}", inline=True)
             result_embed.add_field(name="Members Alive", value=str(len(get_alive_members(gang))), inline=True)
             result_embed.set_footer(text="The set lost a soldier tonight. That name stays on the wall.")
             await message.channel.send(embed=result_embed)
@@ -903,7 +891,7 @@ async def handle_solo(message, args):
             result_embed.add_field(name="Tags", value=tag_str, inline=True)
             result_embed.add_field(name="Sentence", value=sentence, inline=True)
             result_embed.add_field(name="Cred Lost", value=f"-{rep_loss}", inline=True)
-            result_embed.add_field(name="New Street Cred", value=f"{player_rep} → **{gang['rep']}**", inline=True)
+            result_embed.add_field(name="New Street Cred", value=f"{player_rep} -> {gang['rep']}", inline=True)
             result_embed.set_footer(text="Last man standing is locked up. Hold it down until they're out.")
             await message.channel.send(embed=result_embed)
 
@@ -1067,7 +1055,7 @@ async def handle_block(message, args):
 
     summary_color = discord.Color.green() if rep_change >= 0 else discord.Color.orange()
     footer = ("The hood is talking. That party put the set on a different level." if rep_change >= 80 else "Night is over. The block is quiet now.") if rep_change >= 0 else "The party is over. Not the way anyone wanted it to end."
-    rep_display = f"{old_rep} → **{new_rep}** (+{rep_change})" if rep_change >= 0 else f"{old_rep} → **{new_rep}** ({rep_change})"
+    rep_display = f"{old_rep} -> {new_rep} (+{rep_change})" if rep_change >= 0 else f"{old_rep} -> {new_rep} ({rep_change})"
 
     summary_embed = discord.Embed(title="Block Party — Night Done", description=f"The **{gang['name']}** block party on {gang['hood']} is wrapped up. Here is the final count.", color=summary_color)
     summary_embed.add_field(name="Street Cred", value=rep_display, inline=False)
@@ -1126,7 +1114,7 @@ async def handle_gang(message, args):
     embed.add_field(name="Code", value=f"`{code}`", inline=True)
     embed.add_field(name="\u200b", value="\u200b", inline=True)
     embed.add_field(name="Crew", value=member_lines, inline=False)
-    embed.set_footer(text="Type: mission <code> | beef <code> [names] | recruit <code> | revenge <code> | block <code> | solo <code> <name> | show")
+    embed.set_footer(text="Type: mission <code> | slide <code> <number> | recruit <code> | revenge <code> | block <code> | solo <code> <name> | show")
     await message.channel.send(embed=embed)
 
 
@@ -1155,29 +1143,26 @@ async def handle_show(message, args):
             win_rate = f"{int((fights_won / total) * 100)}%" if total > 0 else "N/A"
             targets = get_revenge_targets(g)
 
-            # ── Gang stats ──
             stats_lines = [
-                f"🏙️  **Hood:** {g.get('hood', 'Unknown')}",
-                f"🔑  **Code:** `{g['code']}`",
-                f"👑  **Shot Caller:** `{g.get('leader', 'Unknown')}`",
-                f"⭐  **Street Cred:** {g['rep']}",
-                f"📊  **Record:** {fights_won}W — {fights_lost}L   |   Win Rate: {win_rate}",
-                f"☠️  **Kills:** {get_gang_bodies(g)}   |   **Deaths:** {get_gang_deaths(g)}",
-                f"👥  **Alive:** {len(get_alive_members(g))}   |   **Free:** {len(get_free_members(g))}",
+                f"Hood: {g.get('hood', 'Unknown')}",
+                f"Code: `{g['code']}`",
+                f"Shot Caller: `{g.get('leader', 'Unknown')}`",
+                f"Street Cred: {g['rep']}",
+                f"Record: {fights_won}W — {fights_lost}L   |   Win Rate: {win_rate}",
+                f"Kills: {get_gang_bodies(g)}   |   Deaths: {get_gang_deaths(g)}",
+                f"Alive: {len(get_alive_members(g))}   |   Free: {len(get_free_members(g))}",
             ]
             if targets:
                 for t in targets:
-                    stats_lines.append(f"🩸  **Blood Owed:** `{t['name']}` — {t['gang']}")
+                    stats_lines.append(f"Blood Owed: `{t['name']}` — {t['gang']}")
 
             embed.add_field(name=g['name'], value="\n".join(stats_lines), inline=False)
-
-            # ── Roster ──
             embed.add_field(name="Roster", value=format_member_list(g['members']), inline=False)
             embed.add_field(name="\u200b", value="\u200b", inline=False)
     else:
         embed.add_field(name="No Active Crew", value="Your crew got disbanded. Type `gang` to start fresh.", inline=False)
 
-    embed.set_footer(text="Type: mission <code> | beef <code> [names] | recruit <code> | revenge <code> | block <code> | solo <code> <name> | show")
+    embed.set_footer(text="Type: mission <code> | slide <code> <number> | recruit <code> | revenge <code> | block <code> | solo <code> <name> | show")
     await message.channel.send(embed=embed)
 
 
@@ -1209,7 +1194,7 @@ async def handle_mission(message, args):
     rep = gang['rep']
     old_kills = featured_member.get('kills', 0)
     tags = evaluate_status(featured_member)
-    tag_str = "  ".join([f"`{t}`" for t in tags]) if tags else "`—`"
+    tag_str = "  ".join([f"[{t}]" for t in tags]) if tags else "--"
 
     embed = discord.Embed(
         title=event['name'],
@@ -1226,9 +1211,10 @@ async def handle_mission(message, args):
         featured_member['missions_survived'] = featured_member.get('missions_survived', 0) + 1
         if random.randint(1, 100) <= 20:
             featured_member['kills'] = old_kills + 1
-            embed.add_field(name="Kill", value=f"`{featured_member['name']}` ☠️ +1", inline=True)
-        embed.add_field(name="Street Cred", value=f"{rep} → **{gang['rep']}** (+{gain})", inline=True)
-        embed.add_field(name="Updated Tags", value="  ".join([f"`{t}`" for t in evaluate_status(featured_member)]) or "`—`", inline=True)
+            embed.add_field(name="Kill", value=f"`{featured_member['name']}` +1", inline=True)
+        embed.add_field(name="Street Cred", value=f"{rep} -> {gang['rep']} (+{gain})", inline=True)
+        updated_tags = evaluate_status(featured_member)
+        embed.add_field(name="Updated Tags", value="  ".join([f"[{t}]" for t in updated_tags]) if updated_tags else "--", inline=True)
         embed.set_footer(text="Rep rising on the streets...")
 
     elif event['type'] == 'rep_down':
@@ -1248,8 +1234,9 @@ async def handle_mission(message, args):
             extra_info.append(f"`{featured_member['name']}` got knocked and is facing {sentence}")
         if extra_info:
             embed.add_field(name="What Happened", value="\n".join(extra_info), inline=False)
-        embed.add_field(name="Street Cred", value=f"{rep} → **{gang['rep']}** (-{actual_loss})", inline=True)
-        embed.add_field(name="Updated Tags", value="  ".join([f"`{t}`" for t in evaluate_status(featured_member)]) or "`—`", inline=True)
+        embed.add_field(name="Street Cred", value=f"{rep} -> {gang['rep']} (-{actual_loss})", inline=True)
+        updated_tags = evaluate_status(featured_member)
+        embed.add_field(name="Updated Tags", value="  ".join([f"[{t}]" for t in updated_tags]) if updated_tags else "--", inline=True)
         embed.set_footer(text="Taking an L on the streets...")
 
     elif event['type'] == 'nothing':
@@ -1326,13 +1313,14 @@ async def handle_recruit(message, args):
     await message.channel.send(embed=embed)
 
 
-async def handle_beef(message, args):
-    if not args:
+async def handle_slide(message, args):
+    # Usage: slide <code> <number>
+    # number = how many members roll out (1 to however many are free, capped at 10)
+    if len(args) < 2:
         await message.channel.send(
-            "Usage:\n"
-            "`beef <code>` — random members roll out\n"
-            "`beef <code> <name1> <name2> ...` — pick who rolls\n"
-            "Example: `beef XKRV Joker Ghost Tiny`"
+            "Usage: `slide <code> <number>`\n"
+            "Number is how many members roll out.\n"
+            "Example: `slide XKRV 3`"
         )
         return
 
@@ -1349,54 +1337,36 @@ async def handle_beef(message, args):
         await message.channel.send(f"**{gang['name']}** has been disbanded.")
         return
 
+    try:
+        requested_count = int(args[1])
+    except ValueError:
+        await message.channel.send("The number needs to be a whole number. Example: `slide XKRV 3`")
+        return
+
+    if requested_count < 1:
+        await message.channel.send("You need to send at least 1 person.")
+        return
+
     free_members = get_free_members(gang)
     if not free_members:
         await message.channel.send(f"**{gang['name']}** has nobody free to roll out right now.")
         return
 
-    if len(args) > 1:
-        requested_names = [n.lower() for n in args[1:]]
-        free_name_map = {m['name'].lower(): m for m in free_members}
-        all_name_map  = {m['name'].lower(): m for m in gang['members']}
+    # Cap at however many are actually free, max 10
+    actual_count = min(requested_count, len(free_members), 10)
+    if actual_count < requested_count:
+        await message.channel.send(
+            f"Only {len(free_members)} members are free right now. Rolling with {actual_count}."
+        )
 
-        rolling_members = []
-        errors = []
-
-        for rn in requested_names:
-            if rn not in all_name_map:
-                errors.append(f"`{rn}` — not on the roster")
-            elif not all_name_map[rn]['alive']:
-                errors.append(f"`{all_name_map[rn]['name']}` — dead")
-            elif rn not in free_name_map:
-                errors.append(f"`{all_name_map[rn]['name']}` — locked up")
-            else:
-                rolling_members.append(free_name_map[rn])
-
-        if errors:
-            err_text = "\n".join(errors)
-            if not rolling_members:
-                await message.channel.send(f"None of those members can roll right now:\n{err_text}")
-                return
-            else:
-                await message.channel.send(f"Some members couldn't roll — skipping them:\n{err_text}")
-
-        seen = set()
-        deduped = []
-        for m in rolling_members:
-            if m['name'] not in seen:
-                seen.add(m['name'])
-                deduped.append(m)
-        rolling_members = deduped[:3]
-    else:
-        max_rollers = min(3, len(free_members))
-        rolling_members = random.sample(free_members, random.randint(1, max_rollers))
+    rolling_members = random.sample(free_members, actual_count)
 
     enemy_gang_info = random.choice(LA_GANGS)
-    enemy_members = generate_ai_members(random.randint(1, 3))
+    enemy_members = generate_ai_members(random.randint(1, max(1, actual_count)))
     enemy_rep = random.randint(10, 500)
     player_rep = gang['rep']
 
-    beef_intros = [
+    slide_intros = [
         f"**{gang['name']}** got word that **{enemy_gang_info['name']}** has been running their mouth. Time to pull up and make it clear.",
         f"**{enemy_gang_info['name']}** crossed a line they can't uncross. **{gang['name']}** is loading up and heading out.",
         f"The disrespect from **{enemy_gang_info['name']}** has been building for weeks. Tonight **{gang['name']}** settles it.",
@@ -1404,17 +1374,17 @@ async def handle_beef(message, args):
     ]
 
     rolling_display = "\n".join([f"`{m['name']}`" for m in rolling_members])
-    enemy_display   = "\n".join([f"`{m['name']}`" for m in enemy_members])
+    enemy_display = "\n".join([f"`{m['name']}`" for m in enemy_members])
 
-    intro_embed = discord.Embed(title="Beef", description=random.choice(beef_intros), color=discord.Color.dark_red())
-    intro_embed.add_field(name=gang['name'], value=f"⭐ Cred: {player_rep}\n\n{rolling_display}", inline=True)
+    intro_embed = discord.Embed(title="Slide", description=random.choice(slide_intros), color=discord.Color.dark_red())
+    intro_embed.add_field(name=gang['name'], value=f"Cred: {player_rep}\nRolling {actual_count} deep\n\n{rolling_display}", inline=True)
     intro_embed.add_field(name="VS", value="\u200b", inline=True)
-    intro_embed.add_field(name=enemy_gang_info['name'], value=f"⭐ Cred: {enemy_rep}\n\n{enemy_display}", inline=True)
+    intro_embed.add_field(name=enemy_gang_info['name'], value=f"Cred: {enemy_rep}\n\n{enemy_display}", inline=True)
     intro_embed.set_footer(text="It's on...")
     await message.channel.send(embed=intro_embed)
 
     alive_before = set(m['name'] for m in get_alive_members(gang))
-    result = calculate_beef_outcome(gang, rolling_members, enemy_rep)
+    result = calculate_slide_outcome(gang, rolling_members, enemy_rep)
     alive_after = set(m['name'] for m in get_alive_members(gang))
 
     if alive_before - alive_after:
@@ -1422,7 +1392,7 @@ async def handle_beef(message, args):
 
     check_and_mark_dead(code)
     await asyncio.sleep(3)
-    await send_beef_result(message.channel, gang, enemy_gang_info, result)
+    await send_slide_result(message.channel, gang, enemy_gang_info, result)
 
 
 async def handle_revenge(message, args):
@@ -1463,7 +1433,7 @@ async def handle_revenge(message, args):
     rolling_members = random.sample(free_members, random.randint(1, max_rollers))
 
     rolling_display = "\n".join([f"`{m['name']}`" for m in rolling_members])
-    enemy_display   = "\n".join([f"`{m['name']}`" for m in enemy_members])
+    enemy_display = "\n".join([f"`{m['name']}`" for m in enemy_members])
 
     revenge_intros = [
         f"**{gang['name']}** hasn't slept right since they lost one of their own. Tonight they found out where **{enemy_gang_info['name']}** is posted and the crew is moving with one thing in mind.",
@@ -1473,10 +1443,10 @@ async def handle_revenge(message, args):
     ]
 
     intro_embed = discord.Embed(title="Revenge", description=random.choice(revenge_intros), color=discord.Color.dark_red())
-    intro_embed.add_field(name=gang['name'], value=f"⭐ Cred: {player_rep}\nRolling {len(rolling_members)} deep\n\n{rolling_display}", inline=True)
+    intro_embed.add_field(name=gang['name'], value=f"Cred: {player_rep}\nRolling {len(rolling_members)} deep\n\n{rolling_display}", inline=True)
     intro_embed.add_field(name="VS", value="\u200b", inline=True)
-    intro_embed.add_field(name=enemy_gang_info['name'], value=f"⭐ Cred: {enemy_rep}\n\n{enemy_display}", inline=True)
-    intro_embed.add_field(name="🩸 Target Tonight", value=f"`{last_killer['name']}` of **{enemy_gang_info['name']}**", inline=False)
+    intro_embed.add_field(name=enemy_gang_info['name'], value=f"Cred: {enemy_rep}\n\n{enemy_display}", inline=True)
+    intro_embed.add_field(name="Target Tonight", value=f"`{last_killer['name']}` of **{enemy_gang_info['name']}**", inline=False)
 
     remaining_before = [t for t in targets if t['gang'] != enemy_gang_info['name']]
     if remaining_before:
@@ -1486,7 +1456,7 @@ async def handle_revenge(message, args):
     await message.channel.send(embed=intro_embed)
 
     alive_before = set(m['name'] for m in get_alive_members(gang))
-    result = calculate_beef_outcome(gang, rolling_members, enemy_rep, is_revenge=True)
+    result = calculate_slide_outcome(gang, rolling_members, enemy_rep, is_revenge=True)
     alive_after = set(m['name'] for m in get_alive_members(gang))
 
     if result['won']:
@@ -1496,11 +1466,11 @@ async def handle_revenge(message, args):
 
     check_and_mark_dead(code)
     await asyncio.sleep(3)
-    await send_beef_result(message.channel, gang, enemy_gang_info, result, is_revenge=True)
+    await send_slide_result(message.channel, gang, enemy_gang_info, result, is_revenge=True)
 
     remaining_targets = get_revenge_targets(gang)
     if remaining_targets:
-        followup = discord.Embed(title="🩸 Blood Still Owed", description=f"**{gang['name']}** still has debts to collect.", color=discord.Color.dark_red())
+        followup = discord.Embed(title="Blood Still Owed", description=f"**{gang['name']}** still has debts to collect.", color=discord.Color.dark_red())
         for t in remaining_targets:
             followup.add_field(name=t['gang'], value=f"`{t['name']}`", inline=True)
         followup.set_footer(text=f"Type `revenge {code}` again to go after another one.")
@@ -1515,7 +1485,7 @@ COMMANDS = {
     "gang": handle_gang,
     "show": handle_show,
     "mission": handle_mission,
-    "beef": handle_beef,
+    "slide": handle_slide,
     "recruit": handle_recruit,
     "revenge": handle_revenge,
     "block": handle_block,
