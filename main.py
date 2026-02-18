@@ -142,7 +142,6 @@ RANK_DOWN_LINES = [
 # ─────────────────────────────────────────────
 
 STREET_NAMES = [
-    # Original crew — trimmed heavy Lil duplicates
     "Big Loc", "Joker", "Tiny", "Demon", "Ghost", "Cisco", "Drowsy", "Spanky",
     "Travieso", "Sleepy", "Boxer", "Dopey", "Scrappy", "Sinner", "Cartoon",
     "Psycho", "Casper", "Smiley", "Termite", "Coyote", "Grumpy", "Stomper",
@@ -159,8 +158,6 @@ STREET_NAMES = [
     "Lil Mugsy", "Lil Sniper", "Lil Looney", "Lil Crazy", "Lil Silent",
     "Lil Savage", "Lil Bandit", "Lil Sinister", "Lil Capone", "Lil Scarface",
     "Lil Hitman", "Lil Naughty",
-
-    # 250 new names — street handles, minimal Lil prefix
     "Creeper", "Vulture", "Venom", "Reaper", "Cobra", "Phantom", "Wraith",
     "Raider", "Chaos", "Menace", "Havoc", "Reckless", "Infamous", "Renegade",
     "Outlaw", "Maverick", "Rebel", "Diesel", "Bruiser", "Crusher", "Tank",
@@ -169,62 +166,30 @@ STREET_NAMES = [
     "Wrench", "Knuckles", "Fist", "Brawler", "Slugger", "Mauler", "Bonebreaker",
     "Jawbreaker", "Headbuster", "Kneecap", "Ribcracker", "Necksnap", "Backbreaker",
     "Undertaker", "Gravedigger", "Casket", "Tombstone", "Cipher", "Riddle",
-    "Maze", "Labyrinth", "Puzzle", "Ridgeline", "Plateau", "Badlands",
-    "Dusty", "Rusty", "Crusty", "Grimey", "Grimy", "Grime", "Filth",
-    "Murk", "Muddy", "Ashy", "Chalky", "Smoky", "Foggy", "Hazy",
-    "Cloudy", "Stormy", "Thunder", "Lightning", "Tempest", "Cyclone",
-    "Tornado", "Hurricane", "Typhoon", "Tsunami", "Avalanche", "Landslide",
-    "Rockslide", "Mudslide", "Flashflood", "Earthquake", "Tremor", "Aftershock",
-    "Rubble", "Ruins", "Wreckage", "Debris", "Remnant", "Relic",
-    "Fossil", "Bones", "Marrow", "Skull", "Ribs", "Spine",
-    "Fracture", "Splinter", "Shatter", "Crumble", "Collapse", "Implode",
-    "Detonate", "Ignite", "Blaze", "Inferno", "Ember", "Ash",
-    "Cinder", "Char", "Scorch", "Burn", "Smolder", "Flicker",
-    "Flare", "Flash", "Streak", "Bolt", "Spark", "Surge",
-    "Current", "Voltage", "Static", "Conductor", "Reactor", "Meltdown",
-    "Fallout", "Hazmat", "Toxic", "Venom", "Plague", "Outbreak",
-    "Infection", "Fever", "Frostbite", "Hypothermia", "Exposure", "Blackout",
-    "Whiteout", "Blindside", "Sucker", "Ambush", "Bushwhack", "Backstab",
-    "Blindspot", "Deadzone", "Killzone", "Warzone", "Frontline", "Trenches",
-    "Foxhole", "Bunker", "Fortify", "Fortress", "Rampart", "Bastion",
-    "Citadel", "Stockade", "Garrison", "Warden", "Marshal", "Sheriff",
-    "Lawless", "Untamed", "Feral", "Rabid", "Savage Rex", "Predator",
-    "Apex", "Alpha", "Omega", "Titan", "Colossus", "Behemoth",
-    "Leviathan", "Goliath", "Juggernaut", "Wrecking Ball", "Battering Ram",
-    "Sledge", "Maul", "Pulverize", "Devastate", "Obliterate", "Annihilate",
-    "Exterminate", "Execute", "Terminate", "Eliminate", "Eradicate", "Vanquish",
-    "Conquer", "Dominate", "Subjugate", "Oppress", "Suppress", "Crush",
-    "Flatten", "Steamroll", "Bulldoze", "Plow", "Mow", "Sweep",
-    "Wipe", "Cleanse", "Purge", "Scour", "Scrap", "Strip",
-    "Peel", "Flay", "Skin", "Scalp", "Carve", "Chisel",
-    "Etch", "Brand", "Scar", "Mark", "Stamp", "Seal",
-    "Cipher Zero", "Ghost Rider", "Night Crawler", "Day Walker", "Street King",
+    "Maze", "Dusty", "Rusty", "Crusty", "Grimey", "Murk", "Smoky",
+    "Thunder", "Lightning", "Tempest", "Cyclone", "Tornado", "Hurricane",
+    "Avalanche", "Rubble", "Ruins", "Wreckage", "Bones", "Skull",
+    "Fracture", "Shatter", "Detonate", "Ignite", "Blaze", "Inferno",
+    "Ember", "Ash", "Scorch", "Burn", "Flare", "Bolt", "Spark",
+    "Toxic", "Plague", "Fever", "Blackout", "Blindside", "Ambush",
+    "Deadzone", "Killzone", "Warzone", "Bunker", "Warden", "Lawless",
+    "Feral", "Rabid", "Predator", "Apex", "Alpha", "Omega", "Titan",
+    "Colossus", "Juggernaut", "Sledge", "Devastate", "Obliterate", "Annihilate",
+    "Eliminate", "Vanquish", "Dominate", "Crush", "Steamroll", "Purge",
+    "Scar", "Mark", "Cipher Zero", "Ghost Rider", "Night Crawler", "Street King",
     "Block God", "Corner Lord", "Trap Star", "Hustle King", "Grind Lord",
-    "Money Bags", "Cash Rules", "Broke Never", "Rich Forever", "Stack Heavy",
-    "Guap", "Gwap", "Bankroll", "Rolodex", "Portfolio", "Offshore",
-    "Cayman", "Swiss", "Numbered", "Encrypted", "Coded", "Classified",
-    "Redacted", "Blacklisted", "Wanted", "Fugitive", "Exile", "Outcast",
-    "Pariah", "Leper", "Phantom Pain", "Ghost Protocol", "Dark Matter",
-    "Black Hole", "Event Horizon", "Singularity", "Anomaly", "Glitch",
-    "Error", "Corrupt", "Virus", "Malware", "Trojan", "Payload",
-    "Detonator", "Trigger Man", "Hitlist", "Contract", "Bounty", "Warrant",
-    "Indictment", "Verdict", "Sentence", "Conviction", "Appeal", "Acquit",
-    "Alibi", "Witness", "Evidence", "Exhibit", "Docket", "Case",
-    "Charge", "Count", "Felony", "Misdemeanor", "Statute", "Code",
-    "Section", "Article", "Amendment", "Override", "Veto", "Injunction",
-    "Restraining", "Order", "Warrant", "Writ", "Subpoena", "Summons",
-    "Dispatch", "Deploy", "Advance", "Retreat", "Flank", "Maneuver",
-    "Tactic", "Strategy", "Operation", "Mission", "Objective", "Target",
-    "Marker", "Waypoint", "Checkpoint", "Rendezvous", "Extraction", "Infiltrate",
-    "Exfil", "Breach", "Clear", "Secure", "Lockdown", "Standoff",
-    "Deadlock", "Stalemate", "Standstill", "Impasse", "Gridlock", "Bottleneck",
-    "Choke", "Strangle", "Suffocate", "Smother", "Muffle", "Silence",
-    "Hush", "Whisper", "Murmur", "Echo", "Reverberate", "Resonate",
-    "Amplify", "Distort", "Warp", "Bend", "Twist", "Contort",
-    "Disfigure", "Deface", "Deform", "Mutilate", "Mangle", "Maim",
+    "Bankroll", "Guap", "Offshore", "Fugitive", "Exile", "Outcast",
+    "Phantom Pain", "Ghost Protocol", "Dark Matter", "Anomaly", "Glitch",
+    "Corrupt", "Virus", "Payload", "Detonator", "Trigger Man", "Hitlist",
+    "Bounty", "Verdict", "Sentence", "Conviction", "Alibi", "Evidence",
+    "Felony", "Override", "Dispatch", "Deploy", "Advance", "Flank",
+    "Tactic", "Operation", "Objective", "Infiltrate", "Breach", "Lockdown",
+    "Standoff", "Deadlock", "Choke", "Silence", "Whisper", "Echo",
+    "Amplify", "Distort", "Warp", "Twist", "Disfigure", "Mutilate",
 ]
 
 LA_GANGS = [
+    # Original 29
     {"name": "Rollin 60s Crips", "hood": "West Adams, LA"},
     {"name": "Grape Street Watts Crips", "hood": "Watts, LA"},
     {"name": "Eight Tray Gangster Crips", "hood": "South LA"},
@@ -254,6 +219,142 @@ LA_GANGS = [
     {"name": "Tree Top Piru", "hood": "Compton, LA"},
     {"name": "Fruit Town Piru", "hood": "Compton, LA"},
     {"name": "Westside Crips", "hood": "West LA"},
+    # 130 new
+    {"name": "Mona Park Crips", "hood": "Compton, LA"},
+    {"name": "Palmer Blocc Crips", "hood": "Compton, LA"},
+    {"name": "Santana Blocc Crips", "hood": "Compton, LA"},
+    {"name": "Acacia Blocc Crips", "hood": "Compton, LA"},
+    {"name": "Kelly Park Crips", "hood": "Compton, LA"},
+    {"name": "Tragniew Park Crips", "hood": "Compton, LA"},
+    {"name": "Leuders Park Piru", "hood": "Compton, LA"},
+    {"name": "Mob Piru", "hood": "Compton, LA"},
+    {"name": "Lime Hood Piru", "hood": "Compton, LA"},
+    {"name": "Richland Farms Crips", "hood": "Compton, LA"},
+    {"name": "Dominguez Varrio 13", "hood": "Compton, LA"},
+    {"name": "Compton Varrio Tortilla Flats", "hood": "Compton, LA"},
+    {"name": "CV70s", "hood": "Compton, LA"},
+    {"name": "Spook Town Crips", "hood": "Watts, LA"},
+    {"name": "Nickerson Gardens Bloods", "hood": "Watts, LA"},
+    {"name": "Jordan Downs Grape Street", "hood": "Watts, LA"},
+    {"name": "Hacienda Village Bloods", "hood": "Watts, LA"},
+    {"name": "Imperial Courts Crips", "hood": "Watts, LA"},
+    {"name": "Watts Varrio Grape", "hood": "Watts, LA"},
+    {"name": "Front Hood Watts Crips", "hood": "Watts, LA"},
+    {"name": "Rollin 20s Bloods", "hood": "West Adams, LA"},
+    {"name": "Rollin 30s Harlem Crips", "hood": "West Adams, LA"},
+    {"name": "Rollin 40s Crips", "hood": "West Adams, LA"},
+    {"name": "Rollin 90s Crips", "hood": "South LA"},
+    {"name": "Rollin 100s Crips", "hood": "South LA"},
+    {"name": "111 Neighborhood Crips", "hood": "South LA"},
+    {"name": "113 Stoner Crips", "hood": "South LA"},
+    {"name": "Avalon Gangster Crips", "hood": "South LA"},
+    {"name": "Main Street Crips", "hood": "South LA"},
+    {"name": "Raymond Avenue Crips", "hood": "South LA"},
+    {"name": "Fudge Town Mafia Crips", "hood": "South LA"},
+    {"name": "Weirdos Crips", "hood": "South LA"},
+    {"name": "Swan Bloods", "hood": "South LA"},
+    {"name": "Athens Park Bloods", "hood": "South LA"},
+    {"name": "Denver Lane Bloods", "hood": "South LA"},
+    {"name": "Van Ness Gangster Brims", "hood": "South LA"},
+    {"name": "Harvard Park Brims", "hood": "South LA"},
+    {"name": "Menlo Crips", "hood": "South LA"},
+    {"name": "Figueroa Boys", "hood": "South LA"},
+    {"name": "Shotgun Crips", "hood": "South LA"},
+    {"name": "Original Swamp Crips", "hood": "South LA"},
+    {"name": "Neighborhood Crips", "hood": "South LA"},
+    {"name": "Six Pacc Crips", "hood": "South LA"},
+    {"name": "Underground Crips", "hood": "South LA"},
+    {"name": "Florencia 13 Southside", "hood": "South LA"},
+    {"name": "La Mirada Locos 13", "hood": "East LA"},
+    {"name": "Maravilla", "hood": "East LA"},
+    {"name": "Varrio Nuevo Estrada Locos", "hood": "Boyle Heights, LA"},
+    {"name": "Primera Flats", "hood": "East LA"},
+    {"name": "Cuatro Flats", "hood": "East LA"},
+    {"name": "Big Hazard", "hood": "East LA"},
+    {"name": "Lil Valley Hoods", "hood": "East LA"},
+    {"name": "El Hoyo Maravilla", "hood": "East LA"},
+    {"name": "Indiana Dukes", "hood": "East LA"},
+    {"name": "Eastside Wilmas", "hood": "East LA"},
+    {"name": "Barrio Mojados", "hood": "East LA"},
+    {"name": "Barrio Van Nuys 13", "hood": "Van Nuys, LA"},
+    {"name": "Canoga Park Alabama", "hood": "Canoga Park, LA"},
+    {"name": "Langdon Street Locos", "hood": "San Fernando Valley, LA"},
+    {"name": "Pacoima Flats", "hood": "Pacoima, LA"},
+    {"name": "Vineland Boyz", "hood": "Sun Valley, LA"},
+    {"name": "Toonerville Rifa 13", "hood": "Atwater Village, LA"},
+    {"name": "Columbia Lil Cycos 13", "hood": "Westlake, LA"},
+    {"name": "Diamond Street Locos", "hood": "Silver Lake, LA"},
+    {"name": "Mara Salvatrucha Westside", "hood": "Westside, LA"},
+    {"name": "Rockwood Street Locos", "hood": "Echo Park, LA"},
+    {"name": "Glendale Locos 13", "hood": "Glendale, LA"},
+    {"name": "Burbank Locos", "hood": "Burbank, LA"},
+    {"name": "Azusa 13", "hood": "Azusa, LA"},
+    {"name": "Duarte Vario 13", "hood": "Duarte, LA"},
+    {"name": "Norwalk Locos 13", "hood": "Norwalk, LA"},
+    {"name": "Whittier Varrio Locos", "hood": "Whittier, LA"},
+    {"name": "Santa Fe Springs 13", "hood": "Santa Fe Springs, LA"},
+    {"name": "South Side Whittier", "hood": "Whittier, LA"},
+    {"name": "Paragons", "hood": "South Gate, LA"},
+    {"name": "South Gate Locos", "hood": "South Gate, LA"},
+    {"name": "Lynwood Vario Tortilla Flats", "hood": "Lynwood, LA"},
+    {"name": "Lynwood Bloods", "hood": "Lynwood, LA"},
+    {"name": "Paramount Locos 13", "hood": "Paramount, LA"},
+    {"name": "Bellflower Locos", "hood": "Bellflower, LA"},
+    {"name": "Artesia Crips", "hood": "Artesia, LA"},
+    {"name": "Carson Crips", "hood": "Carson, LA"},
+    {"name": "Varrio Carson 13", "hood": "Carson, LA"},
+    {"name": "Westside Wilmas", "hood": "Wilmington, LA"},
+    {"name": "Varrio Wilmington 13", "hood": "Wilmington, LA"},
+    {"name": "Eastside Longos", "hood": "Long Beach, LA"},
+    {"name": "West Side Longos", "hood": "Long Beach, LA"},
+    {"name": "Insane Long Beach Crips", "hood": "Long Beach, LA"},
+    {"name": "Rollin 20s Long Beach Crips", "hood": "Long Beach, LA"},
+    {"name": "Long Beach Insane Crips", "hood": "Long Beach, LA"},
+    {"name": "Sons of Samoa", "hood": "Carson, LA"},
+    {"name": "Tongan Crip Gang", "hood": "Carson, LA"},
+    {"name": "Samoan Crips", "hood": "Hawthorne, LA"},
+    {"name": "Hawthorne Piru", "hood": "Hawthorne, LA"},
+    {"name": "Lawndale Bloods", "hood": "Lawndale, LA"},
+    {"name": "Gardena Shotgun Crips", "hood": "Gardena, LA"},
+    {"name": "Gardena Paybacc Crips", "hood": "Gardena, LA"},
+    {"name": "Varrio Gardena 13", "hood": "Gardena, LA"},
+    {"name": "Inglewood Crips", "hood": "Inglewood, LA"},
+    {"name": "Queen Street Bloods", "hood": "Inglewood, LA"},
+    {"name": "Crenshaw Mafia Gang", "hood": "Crenshaw, LA"},
+    {"name": "Black P Stone Jungles", "hood": "Hyde Park, LA"},
+    {"name": "Jungle Boys", "hood": "Baldwin Hills, LA"},
+    {"name": "Westside Piru", "hood": "Compton, LA"},
+    {"name": "Westside Pomona Crips", "hood": "Pomona, LA"},
+    {"name": "Eastside Pomona Crips", "hood": "Pomona, LA"},
+    {"name": "Pomona Varrio 12", "hood": "Pomona, LA"},
+    {"name": "12th Street Sharkies", "hood": "Pomona, LA"},
+    {"name": "Ontario Varrio Sur", "hood": "Ontario, LA"},
+    {"name": "Montebello Park Gang", "hood": "Montebello, LA"},
+    {"name": "Lomas Varrio 70", "hood": "Montebello, LA"},
+    {"name": "Barrio El Sereno", "hood": "El Sereno, LA"},
+    {"name": "Eastside Alvas", "hood": "El Sereno, LA"},
+    {"name": "Varrio Nuevo Aliso", "hood": "Aliso Village, LA"},
+    {"name": "Pico Viejo Locos", "hood": "Pico-Union, LA"},
+    {"name": "Drifters", "hood": "Pico-Union, LA"},
+    {"name": "Crazy Riders", "hood": "Mid-City, LA"},
+    {"name": "Mid City Stoners 13", "hood": "Mid-City, LA"},
+    {"name": "Jefferson Park Locos", "hood": "Jefferson Park, LA"},
+    {"name": "Adams 11 Locos", "hood": "Adams, LA"},
+    {"name": "Country Club Drive Locos", "hood": "South LA"},
+    {"name": "Malditos 13", "hood": "Lincoln Heights, LA"},
+    {"name": "Lincoln Heights Locos", "hood": "Lincoln Heights, LA"},
+    {"name": "Eastside Clover", "hood": "Glassel Park, LA"},
+    {"name": "Glassel Park Boys", "hood": "Glassel Park, LA"},
+    {"name": "Cypress Park Locos", "hood": "Cypress Park, LA"},
+    {"name": "Arroyo Boys", "hood": "Highland Park, LA"},
+    {"name": "Highland Park Gang", "hood": "Highland Park, LA"},
+    {"name": "San Fer 13", "hood": "San Fernando, LA"},
+    {"name": "Sylmar Locotes", "hood": "Sylmar, LA"},
+    {"name": "Pacas 13", "hood": "Panorama City, LA"},
+    {"name": "Panorama City Locos", "hood": "Panorama City, LA"},
+    {"name": "North Hollywood Locos", "hood": "North Hollywood, LA"},
+    {"name": "Blythe Street Gang", "hood": "Panorama City, LA"},
+    {"name": "Barrio Van Nuys Locos", "hood": "Van Nuys, LA"},
 ]
 
 gangs = {}
@@ -361,6 +462,7 @@ def get_member_status(m):
 
 
 def format_member_list(members):
+    """Used in show command — name, tags, kills, status. No rank here."""
     if not members:
         return "None left"
     lines = []
@@ -368,9 +470,20 @@ def format_member_list(members):
         status = get_member_status(m)
         kills = m.get('kills', 0)
         tags = evaluate_status(m)
-        tag_str = " ".join([f"[{t}]" for t in tags]) if tags else ""
-        lines.append(f"`{m['name']}`  |  {get_rank_name(m)}  {tag_str}  |  {kills} kills  |  {status}")
+        tag_str = " ".join([f"[{t}]" for t in tags]) if tags else "—"
+        lines.append(f"`{m['name']}`  |  {tag_str}  |  {kills} kills  |  {status}")
     return "\n".join(lines)
+
+
+def format_rank_list(members):
+    """Separate rank breakdown for show command."""
+    if not members:
+        return "None"
+    lines = []
+    for m in members:
+        if m['alive']:
+            lines.append(f"`{m['name']}` — {get_rank_name(m)}  ({m.get('kills', 0)} kills)")
+    return "\n".join(lines) if lines else "No living members"
 
 
 def add_revenge_target(gang, killer_name, enemy_gang_info, enemy_rep):
@@ -1110,7 +1223,7 @@ async def handle_gang(message, args):
     embed.add_field(name="Code", value=f"`{code}`", inline=True)
     embed.add_field(name="\u200b", value="\u200b", inline=True)
     embed.add_field(name="Crew", value=member_lines, inline=False)
-    embed.set_footer(text="Type: mission <code> | beef <code> | recruit <code> | revenge <code> | block <code> | solo <code> <name> | show")
+    embed.set_footer(text="Type: mission <code> | beef <code> [names] | recruit <code> | revenge <code> | block <code> | solo <code> <name> | show")
     await message.channel.send(embed=embed)
 
 
@@ -1125,7 +1238,11 @@ async def handle_show(message, args):
     alive = [g for g in user_gangs if g['alive']]
     dead_count = len(user_gangs) - len(alive)
 
-    embed = discord.Embed(title=f"{message.author.name}'s Crew", description=f"Active: {len(alive)}   |   Disbanded: {dead_count}", color=discord.Color.dark_grey())
+    embed = discord.Embed(
+        title=f"{message.author.name}'s Crew",
+        description=f"Active: {len(alive)}   |   Disbanded: {dead_count}",
+        color=discord.Color.dark_grey()
+    )
 
     if alive:
         for g in alive:
@@ -1136,26 +1253,30 @@ async def handle_show(message, args):
             targets = get_revenge_targets(g)
             revenge_lines = "\n".join([f"Blood Owed: `{t['name']}` ({t['gang']})" for t in targets]) if targets else ""
 
-            embed.add_field(
-                name=g['name'],
-                value=(
-                    f"Hood: {g.get('hood', 'Unknown')}\n"
-                    f"Code: `{g['code']}`\n"
-                    f"Shot Caller: `{g.get('leader', 'Unknown')}`\n"
-                    f"Street Cred: {g['rep']}\n"
-                    f"Record: {fights_won}W - {fights_lost}L   |   Win Rate: {win_rate}\n"
-                    f"Gang Kills: {get_gang_bodies(g)}   |   Gang Deaths: {get_gang_deaths(g)}\n"
-                    f"Members Alive: {len(get_alive_members(g))}   |   Members Free: {len(get_free_members(g))}"
-                    + (f"\n{revenge_lines}" if revenge_lines else "")
-                ),
-                inline=False
+            # ── Gang stats block (no ranks here) ──
+            stats_value = (
+                f"Hood: {g.get('hood', 'Unknown')}\n"
+                f"Code: `{g['code']}`\n"
+                f"Shot Caller: `{g.get('leader', 'Unknown')}`\n"
+                f"Street Cred: {g['rep']}\n"
+                f"Record: {fights_won}W - {fights_lost}L   |   Win Rate: {win_rate}\n"
+                f"Gang Kills: {get_gang_bodies(g)}   |   Gang Deaths: {get_gang_deaths(g)}\n"
+                f"Members Alive: {len(get_alive_members(g))}   |   Members Free: {len(get_free_members(g))}"
+                + (f"\n{revenge_lines}" if revenge_lines else "")
             )
+            embed.add_field(name=g['name'], value=stats_value, inline=False)
+
+            # ── Roster block: name | tags | kills | status (no rank) ──
             embed.add_field(name="Roster", value=format_member_list(g['members']), inline=False)
+
+            # ── Ranks block: separate section ──
+            embed.add_field(name="Ranks", value=format_rank_list(g['members']), inline=False)
+
             embed.add_field(name="\u200b", value="\u200b", inline=False)
     else:
         embed.add_field(name="No Active Crew", value="Your crew got disbanded. Type `gang` to start fresh.", inline=False)
 
-    embed.set_footer(text="Type: mission <code> | beef <code> | recruit <code> | revenge <code> | block <code> | solo <code> <name> | show")
+    embed.set_footer(text="Type: mission <code> | beef <code> [names] | recruit <code> | revenge <code> | block <code> | solo <code> <name> | show")
     await message.channel.send(embed=embed)
 
 
@@ -1307,8 +1428,17 @@ async def handle_recruit(message, args):
 
 
 async def handle_beef(message, args):
+    # ── Usage ──────────────────────────────────────────────────────────
+    # beef <code>                → random free members roll
+    # beef <code> <name1> ...   → specified members roll (must be free & alive)
+    # ───────────────────────────────────────────────────────────────────
     if not args:
-        await message.channel.send("Usage: `beef <code>`\nExample: `beef XKRV`")
+        await message.channel.send(
+            "Usage:\n"
+            "`beef <code>` — random members roll out\n"
+            "`beef <code> <name1> <name2> ...` — pick who rolls\n"
+            "Example: `beef XKRV Joker Ghost Tiny`"
+        )
         return
 
     code = args[0].upper()
@@ -1329,8 +1459,47 @@ async def handle_beef(message, args):
         await message.channel.send(f"**{gang['name']}** has nobody free to roll out right now.")
         return
 
-    max_rollers = min(3, len(free_members))
-    rolling_members = random.sample(free_members, random.randint(1, max_rollers))
+    # ── Member selection ───────────────────────────────────────────────
+    if len(args) > 1:
+        # Player specified names — args[1:] are the member names (single-word handles)
+        requested_names = [n.lower() for n in args[1:]]
+        free_name_map = {m['name'].lower(): m for m in free_members}
+        all_name_map  = {m['name'].lower(): m for m in gang['members']}
+
+        rolling_members = []
+        errors = []
+
+        for rn in requested_names:
+            if rn not in all_name_map:
+                errors.append(f"`{rn}` — not on the roster")
+            elif not all_name_map[rn]['alive']:
+                errors.append(f"`{all_name_map[rn]['name']}` — dead")
+            elif rn not in free_name_map:
+                errors.append(f"`{all_name_map[rn]['name']}` — locked up")
+            else:
+                rolling_members.append(free_name_map[rn])
+
+        if errors:
+            err_text = "\n".join(errors)
+            if not rolling_members:
+                await message.channel.send(f"None of those members can roll right now:\n{err_text}")
+                return
+            else:
+                await message.channel.send(f"Some members couldn't roll — skipping them:\n{err_text}")
+
+        # Deduplicate (in case user typed same name twice)
+        seen = set()
+        deduped = []
+        for m in rolling_members:
+            if m['name'] not in seen:
+                seen.add(m['name'])
+                deduped.append(m)
+        rolling_members = deduped[:3]  # cap at 3
+    else:
+        # Random selection
+        max_rollers = min(3, len(free_members))
+        rolling_members = random.sample(free_members, random.randint(1, max_rollers))
+
     enemy_gang_info = random.choice(LA_GANGS)
     enemy_members = generate_ai_members(random.randint(1, 3))
     enemy_rep = random.randint(10, 500)
@@ -1344,7 +1513,7 @@ async def handle_beef(message, args):
     ]
 
     rolling_display = "\n".join([f"`{m['name']}` — {get_rank_name(m)}" for m in rolling_members])
-    enemy_display = "\n".join([f"`{m['name']}` — {get_rank_name(m)}" for m in enemy_members])
+    enemy_display   = "\n".join([f"`{m['name']}` — {get_rank_name(m)}" for m in enemy_members])
 
     intro_embed = discord.Embed(title="Beef", description=random.choice(beef_intros), color=discord.Color.dark_red())
     intro_embed.add_field(name=gang['name'], value=f"Street Cred: {player_rep}\n\n{rolling_display}", inline=True)
@@ -1403,7 +1572,7 @@ async def handle_revenge(message, args):
     rolling_members = random.sample(free_members, random.randint(1, max_rollers))
 
     rolling_display = "\n".join([f"`{m['name']}` — {get_rank_name(m)}" for m in rolling_members])
-    enemy_display = "\n".join([f"`{m['name']}` — {get_rank_name(m)}" for m in enemy_members])
+    enemy_display   = "\n".join([f"`{m['name']}` — {get_rank_name(m)}" for m in enemy_members])
 
     revenge_intros = [
         f"**{gang['name']}** hasn't slept right since they lost one of their own. Tonight they found out where **{enemy_gang_info['name']}** is posted and the crew is moving with one thing in mind.",
