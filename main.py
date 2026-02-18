@@ -462,7 +462,7 @@ def get_member_status(m):
 
 
 def format_member_list(members):
-    """Used in show command — name, tags, kills, status. No rank here."""
+    """Roster section — name | tags | kills | status. No rank."""
     if not members:
         return "None left"
     lines = []
@@ -476,13 +476,13 @@ def format_member_list(members):
 
 
 def format_rank_list(members):
-    """Separate rank breakdown for show command."""
+    """Ranks section — name | rank only. No kills (already shown in Roster)."""
     if not members:
         return "None"
     lines = []
     for m in members:
         if m['alive']:
-            lines.append(f"`{m['name']}` — {get_rank_name(m)}  ({m.get('kills', 0)} kills)")
+            lines.append(f"`{m['name']}` — {get_rank_name(m)}")
     return "\n".join(lines) if lines else "No living members"
 
 
@@ -1253,7 +1253,7 @@ async def handle_show(message, args):
             targets = get_revenge_targets(g)
             revenge_lines = "\n".join([f"Blood Owed: `{t['name']}` ({t['gang']})" for t in targets]) if targets else ""
 
-            # ── Gang stats block (no ranks here) ──
+            # ── Gang stats (no ranks) ──
             stats_value = (
                 f"Hood: {g.get('hood', 'Unknown')}\n"
                 f"Code: `{g['code']}`\n"
@@ -1266,10 +1266,10 @@ async def handle_show(message, args):
             )
             embed.add_field(name=g['name'], value=stats_value, inline=False)
 
-            # ── Roster block: name | tags | kills | status (no rank) ──
+            # ── Roster: name | tags | kills | status ──
             embed.add_field(name="Roster", value=format_member_list(g['members']), inline=False)
 
-            # ── Ranks block: separate section ──
+            # ── Ranks: name | rank only (no kills repeated) ──
             embed.add_field(name="Ranks", value=format_rank_list(g['members']), inline=False)
 
             embed.add_field(name="\u200b", value="\u200b", inline=False)
@@ -1428,10 +1428,6 @@ async def handle_recruit(message, args):
 
 
 async def handle_beef(message, args):
-    # ── Usage ──────────────────────────────────────────────────────────
-    # beef <code>                → random free members roll
-    # beef <code> <name1> ...   → specified members roll (must be free & alive)
-    # ───────────────────────────────────────────────────────────────────
     if not args:
         await message.channel.send(
             "Usage:\n"
@@ -1459,9 +1455,7 @@ async def handle_beef(message, args):
         await message.channel.send(f"**{gang['name']}** has nobody free to roll out right now.")
         return
 
-    # ── Member selection ───────────────────────────────────────────────
     if len(args) > 1:
-        # Player specified names — args[1:] are the member names (single-word handles)
         requested_names = [n.lower() for n in args[1:]]
         free_name_map = {m['name'].lower(): m for m in free_members}
         all_name_map  = {m['name'].lower(): m for m in gang['members']}
@@ -1487,16 +1481,14 @@ async def handle_beef(message, args):
             else:
                 await message.channel.send(f"Some members couldn't roll — skipping them:\n{err_text}")
 
-        # Deduplicate (in case user typed same name twice)
         seen = set()
         deduped = []
         for m in rolling_members:
             if m['name'] not in seen:
                 seen.add(m['name'])
                 deduped.append(m)
-        rolling_members = deduped[:3]  # cap at 3
+        rolling_members = deduped[:3]
     else:
-        # Random selection
         max_rollers = min(3, len(free_members))
         rolling_members = random.sample(free_members, random.randint(1, max_rollers))
 
