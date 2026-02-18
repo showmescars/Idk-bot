@@ -205,7 +205,9 @@ SENTENCE_TIERS = [
 ]
 SENTENCE_WEIGHTS = [30, 25, 20, 12, 8, 3, 2]
 
-# ─── Helper Functions ──────────────────────────────────────────────────────────
+MSG_DELAY = 4.5
+
+# ─── Helpers ───────────────────────────────────────────────────────────────────
 
 def is_admin(message):
     return isinstance(message.author, discord.Member) and message.author.guild_permissions.administrator
@@ -278,8 +280,6 @@ def get_revenge_targets(gang):
 
 def remove_revenge_target(gang, gang_name):
     gang['revenge_targets'] = [t for t in gang.get('revenge_targets', []) if t['gang'] != gang_name]
-
-# ─── Safe Send Helper ──────────────────────────────────────────────────────────
 
 async def safe_send(channel, embed=None, content=None):
     try:
@@ -440,7 +440,7 @@ BLOCK_PARTY_EVENTS = [
     {"name": "Turnout Was Low", "description": "The word got out and the setup was solid but people just didn't show up the way they were supposed to. {member} stood at a half-empty block for three hours wondering what went wrong. **{name}** put in the effort but it was a quiet night.", "type": "nothing", "color": discord.Color.greyple()},
 ]
 
-# ─── Slide Outcome ─────────────────────────────────────────────────────────────
+# ─── Slide Logic ───────────────────────────────────────────────────────────────
 
 def calculate_slide_outcome(gang, rolling_members, enemy_rep, is_revenge=False):
     player_rep = gang['rep']
@@ -467,7 +467,6 @@ def calculate_slide_outcome(gang, rolling_members, enemy_rep, is_revenge=False):
             line = random.choice(WIN_LINES).replace("{m}", f"`{m['name']}`")
             outcome_lines.append(line)
 
-        # Chance friendly casualty
         if len(get_alive_members(gang)) > 1 and random.randint(1, 100) <= 20:
             still_alive = [m for m in rolling_members if m['alive']]
             if still_alive:
@@ -476,7 +475,6 @@ def calculate_slide_outcome(gang, rolling_members, enemy_rep, is_revenge=False):
                 c['deaths'] += 1
                 outcome_lines.append(random.choice(FRIENDLY_LOSS_LINES).replace("{c}", c['name']))
 
-        # Chance jailed after win
         if random.randint(1, 100) <= 15:
             now = time.time()
             still_free = [m for m in rolling_members if m['alive'] and (not m['jail_until'] or now >= m['jail_until'])]
@@ -510,7 +508,6 @@ def calculate_slide_outcome(gang, rolling_members, enemy_rep, is_revenge=False):
                 "enemy_rep": enemy_rep, "outcome_lines": outcome_lines, "kills_this_fight": kills_this_fight,
                 "members_alive": len(get_alive_members(gang))}
 
-# ─── Send Slide Result ─────────────────────────────────────────────────────────
 
 async def send_slide_result(channel, gang, enemy_info, result, is_revenge=False):
     if result['won']:
@@ -542,13 +539,13 @@ async def send_slide_result(channel, gang, enemy_info, result, is_revenge=False)
     header.add_field(name="New Street Cred", value=f"{result['old_rep']} → {result['new_rep']}", inline=True)
     header.add_field(name="Members Alive", value=str(result['members_alive']), inline=True)
     await safe_send(channel, embed=header)
+    await asyncio.sleep(MSG_DELAY)
 
-    # Send story lines with delay to avoid rate limits
     for i, line in enumerate(result['outcome_lines']):
         embed = discord.Embed(description=line, color=color)
         embed.set_footer(text=f"Play by play — {i+1} of {len(result['outcome_lines'])}")
         await safe_send(channel, embed=embed)
-        await asyncio.sleep(1.2)
+        await asyncio.sleep(MSG_DELAY)
 
     kills_text = "\n".join(f"`{n}` | {k} kill{'s' if k != 1 else ''} this run" for n, k in result['kills_this_fight'].items()) or "No bodies this run."
     summary = discord.Embed(title="Run Summary", color=color)
@@ -632,7 +629,6 @@ async def handle_show(message, args):
                 stats.append(f"Blood Owed: `{t['name']}` | {t['gang']}")
 
             embed.add_field(name=g['name'], value="\n".join(stats), inline=False)
-
             roster = "\n".join(f"`{m['name']}` | {m['kills']} kills | {get_member_status(m)}" for m in g['members'])
             embed.add_field(name="Roster", value=roster or "None left.", inline=False)
             embed.add_field(name="\u200b", value="\u200b", inline=False)
@@ -824,6 +820,7 @@ async def handle_slide(message, args):
     intro.add_field(name=enemy_info['name'], value=f"Cred: {enemy_rep}\n\n{enemy_display}", inline=True)
     intro.set_footer(text="It's on...")
     await safe_send(message.channel, embed=intro)
+    await asyncio.sleep(MSG_DELAY)
 
     alive_before = {m['name'] for m in get_alive_members(gang)}
     result = calculate_slide_outcome(gang, rolling, enemy_rep)
@@ -833,7 +830,6 @@ async def handle_slide(message, args):
         add_revenge_target(gang, random.choice(enemy_members)['name'], enemy_info, enemy_rep)
 
     check_and_mark_dead(code)
-    await asyncio.sleep(2)
     await send_slide_result(message.channel, gang, enemy_info, result)
 
 
@@ -893,6 +889,7 @@ async def handle_revenge(message, args):
 
     intro.set_footer(text="This one is personal...")
     await safe_send(message.channel, embed=intro)
+    await asyncio.sleep(MSG_DELAY)
 
     alive_before = {m['name'] for m in get_alive_members(gang)}
     result = calculate_slide_outcome(gang, rolling, enemy_rep, is_revenge=True)
@@ -904,7 +901,6 @@ async def handle_revenge(message, args):
         add_revenge_target(gang, random.choice(enemy_members)['name'], enemy_info, enemy_rep)
 
     check_and_mark_dead(code)
-    await asyncio.sleep(2)
     await send_slide_result(message.channel, gang, enemy_info, result, is_revenge=True)
 
     remaining_after = get_revenge_targets(gang)
@@ -966,7 +962,7 @@ async def handle_solo(message, args):
     intro.add_field(name="Target Territory", value=f"{enemy_info['name']} — {enemy_info['hood']}", inline=False)
     intro.set_footer(text="One man. No backup. Whatever happens next happens alone.")
     await safe_send(message.channel, embed=intro)
-    await asyncio.sleep(3)
+    await asyncio.sleep(MSG_DELAY)
 
     if roll <= win_chance:
         target['kills'] += 1
@@ -974,7 +970,6 @@ async def handle_solo(message, args):
         rep_gain = random.randint(15, 60)
         gang['rep'] = player_rep + rep_gain
         story = random.choice(SOLO_WIN_LINES).replace("{m}", f"`{target['name']}`")
-
         embed = discord.Embed(title="Solo Mission — Target Down", description=story, color=discord.Color.green())
         embed.add_field(name="Soldier", value=f"`{target['name']}`", inline=True)
         embed.add_field(name="Kills", value=str(target['kills']), inline=True)
@@ -987,7 +982,6 @@ async def handle_solo(message, args):
         rep_loss = random.randint(5, 25)
         gang['rep'] = max(1, player_rep - rep_loss)
         story = random.choice(SOLO_SURVIVED_LINES).replace("{m}", f"`{target['name']}`")
-
         embed = discord.Embed(title="Solo Mission — Made It Back", description=story, color=discord.Color.orange())
         embed.add_field(name="Soldier", value=f"`{target['name']}`", inline=True)
         embed.add_field(name="Kills", value=str(target['kills']), inline=True)
@@ -1000,7 +994,6 @@ async def handle_solo(message, args):
         rep_loss = random.randint(10, 35)
         gang['rep'] = max(1, player_rep - rep_loss)
         story = random.choice(SOLO_JAILED_LINES).replace("{m}", f"`{target['name']}`").replace("{s}", s)
-
         embed = discord.Embed(title="Solo Mission — Knocked", description=story, color=discord.Color.blue())
         embed.add_field(name="Soldier", value=f"`{target['name']}`", inline=True)
         embed.add_field(name="Sentence", value=s, inline=True)
@@ -1025,7 +1018,6 @@ async def handle_solo(message, args):
             embed.add_field(name="Members Alive", value=str(len(get_alive_members(gang))), inline=True)
             embed.set_footer(text="The set lost a soldier tonight. That name stays on the wall.")
         else:
-            # Last man — jail instead of kill
             s = send_to_jail(target)
             story = random.choice(SOLO_JAILED_LINES).replace("{m}", f"`{target['name']}`").replace("{s}", s)
             embed = discord.Embed(title="Solo Mission — Knocked", description=story, color=discord.Color.blue())
@@ -1076,7 +1068,7 @@ async def handle_block(message, args):
     setup_embed.add_field(name="Street Cred", value=str(old_rep), inline=True)
     setup_embed.set_footer(text="The block is live...")
     await safe_send(message.channel, embed=setup_embed)
-    await asyncio.sleep(2)
+    await asyncio.sleep(MSG_DELAY)
 
     num_events = random.randint(2, 4)
     rep_change = 0
@@ -1084,7 +1076,7 @@ async def handle_block(message, args):
     members_killed = []
 
     for i in range(num_events):
-        await asyncio.sleep(2)
+        await asyncio.sleep(MSG_DELAY)
         current_free = get_free_members(gang)
         featured = random.choice(current_free) if current_free else host
         event = random.choice(BLOCK_PARTY_EVENTS)
@@ -1146,7 +1138,7 @@ async def handle_block(message, args):
                 ev_embed.add_field(name="Locked Up", value="\n".join(extra), inline=False)
             ev_embed.set_footer(text=f"They came to your party and disrespected. Type `revenge {code}` to handle it.")
 
-        elif event['type'] in ('police_harassment',):
+        elif event['type'] == 'police_harassment':
             loss = random.randint(10, 40)
             rep_change -= loss
             ev_embed.add_field(name="Cred", value=f"-{loss}", inline=True)
@@ -1188,7 +1180,7 @@ async def handle_block(message, args):
 
     gang['rep'] = max(1, gang['rep'] + rep_change)
     check_and_mark_dead(code)
-    await asyncio.sleep(2)
+    await asyncio.sleep(MSG_DELAY)
 
     color = discord.Color.green() if rep_change >= 0 else discord.Color.orange()
     rep_display = f"{old_rep} → {gang['rep']} (+{rep_change})" if rep_change >= 0 else f"{old_rep} → {gang['rep']} ({rep_change})"
