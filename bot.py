@@ -235,9 +235,13 @@ def generate_ai_members(count=5):
 def get_alive_members(gang):
     return [m for m in gang['members'] if m['alive']]
 
+def is_jailed(member):
+    """Returns True if member is currently locked up."""
+    return bool(member['jail_until'] and time.time() < member['jail_until'])
+
 def get_free_members(gang):
-    now = time.time()
-    return [m for m in gang['members'] if m['alive'] and (not m['jail_until'] or now >= m['jail_until'])]
+    """Only alive members who are NOT in jail."""
+    return [m for m in gang['members'] if m['alive'] and not is_jailed(m)]
 
 def get_gang_bodies(gang):
     return sum(m['kills'] for m in gang['members'])
@@ -262,7 +266,7 @@ def send_to_jail(member):
 def get_member_status(m):
     if not m['alive']:
         return "Dead"
-    if m['jail_until'] and time.time() < m['jail_until']:
+    if is_jailed(m):
         return f"Locked Up ({m['jail_sentence']})"
     return "Free"
 
@@ -464,22 +468,21 @@ def calculate_slide_outcome(gang, rolling_members, enemy_rep, is_revenge=False):
             m['kills'] += 1
             m['missions_survived'] += 1
             kills_this_fight[m['name']] = kills_this_fight.get(m['name'], 0) + 1
-            line = random.choice(WIN_LINES).replace("{m}", f"`{m['name']}`")
-            outcome_lines.append(line)
+            outcome_lines.append(random.choice(WIN_LINES).replace("{m}", f"`{m['name']}`"))
 
-        if len(get_alive_members(gang)) > 1 and random.randint(1, 100) <= 20:
-            still_alive = [m for m in rolling_members if m['alive']]
-            if still_alive:
-                c = random.choice(still_alive)
-                c['alive'] = False
-                c['deaths'] += 1
-                outcome_lines.append(random.choice(FRIENDLY_LOSS_LINES).replace("{c}", c['name']))
+        # Chance friendly casualty — only from free members
+        free_rolling = [m for m in rolling_members if not is_jailed(m)]
+        if len(get_alive_members(gang)) > 1 and random.randint(1, 100) <= 20 and free_rolling:
+            c = random.choice(free_rolling)
+            c['alive'] = False
+            c['deaths'] += 1
+            outcome_lines.append(random.choice(FRIENDLY_LOSS_LINES).replace("{c}", c['name']))
 
+        # Chance jailed after win — only from free members
         if random.randint(1, 100) <= 15:
-            now = time.time()
-            still_free = [m for m in rolling_members if m['alive'] and (not m['jail_until'] or now >= m['jail_until'])]
-            if still_free:
-                j = random.choice(still_free)
+            free_rolling2 = [m for m in rolling_members if m['alive'] and not is_jailed(m)]
+            if free_rolling2:
+                j = random.choice(free_rolling2)
                 s = send_to_jail(j)
                 outcome_lines.append(random.choice(JAIL_WIN_LINES).replace("{j}", f"`{j['name']}`").replace("{s}", s))
 
@@ -490,11 +493,13 @@ def calculate_slide_outcome(gang, rolling_members, enemy_rep, is_revenge=False):
         gang['fights_lost'] = gang.get('fights_lost', 0) + 1
 
         for m in rolling_members:
+            if is_jailed(m):
+                continue  # Skip jailed members entirely in loss processing
             if len(get_alive_members(gang)) > 1 and random.randint(1, 100) <= 40:
                 m['alive'] = False
                 m['deaths'] += 1
                 outcome_lines.append(random.choice(DEATH_LINES).replace("{m}", f"`{m['name']}`"))
-            elif random.randint(1, 100) <= 30 and m['alive']:
+            elif random.randint(1, 100) <= 30:
                 s = send_to_jail(m)
                 outcome_lines.append(random.choice(CAUGHT_LINES).replace("{m}", f"`{m['name']}`").replace("{s}", s))
             else:
@@ -587,7 +592,7 @@ async def handle_gang(message, args):
     embed.add_field(name="Code", value=f"`{code}`", inline=True)
     embed.add_field(name="\u200b", value="\u200b", inline=True)
     embed.add_field(name="Crew", value=member_lines, inline=False)
-    embed.set_footer(text="mission | slide | recruit | revenge | block | solo | show")
+    embed.set_footer(text="mission | slide | recruit | revenge | block | solo | show | delete")
     await safe_send(message.channel, embed=embed)
 
 
@@ -635,7 +640,7 @@ async def handle_show(message, args):
     else:
         embed.add_field(name="No Active Crew", value="Your crew got disbanded. Type `gang` to start fresh.", inline=False)
 
-    embed.set_footer(text="mission | slide | recruit | revenge | block | solo | show")
+    embed.set_footer(text="mission | slide | recruit | revenge | block | solo | show | delete")
     await safe_send(message.channel, embed=embed)
 
 
@@ -658,7 +663,7 @@ async def handle_mission(message, args):
 
     free = get_free_members(gang)
     if not free:
-        await safe_send(message.channel, content=f"**{gang['name']}** has no free members right now.")
+        await safe_send(message.channel, content=f"**{gang['name']}** has no free members right now. Everyone is locked up or dead.")
         return
 
     member = random.choice(free)
@@ -796,7 +801,7 @@ async def handle_slide(message, args):
 
     actual = min(requested, len(free), 10)
     if actual < requested:
-        await safe_send(message.channel, content=f"Only {len(free)} members free right now. Rolling with {actual}.")
+        await safe_send(message.channel, content=f"Only {len(free)} free members available. Rolling with {actual}.")
 
     rolling = random.sample(free, actual)
     enemy_info = random.choice(LA_GANGS)
@@ -939,8 +944,8 @@ async def handle_solo(message, args):
     if not target['alive']:
         await safe_send(message.channel, content=f"`{target['name']}` is dead. Can't send a dead man on a mission.")
         return
-    if target['jail_until'] and time.time() < target['jail_until']:
-        await safe_send(message.channel, content=f"`{target['name']}` is locked up right now.")
+    if is_jailed(target):
+        await safe_send(message.channel, content=f"`{target['name']}` is locked up right now. They can't roll out until their sentence is done.")
         return
 
     enemy_info = random.choice(LA_GANGS)
@@ -1202,6 +1207,42 @@ async def handle_block(message, args):
     await safe_send(message.channel, embed=summary)
 
 
+async def handle_delete(message, args):
+    if not args:
+        await safe_send(message.channel, content="Usage: `delete <code>` — Example: `delete XKRV`")
+        return
+
+    code = args[0].upper()
+    gang = gangs.get(code)
+
+    if not gang:
+        await safe_send(message.channel, content=f"No crew found with code `{code}`.")
+        return
+
+    # Only owner or admin can delete
+    if gang['owner_id'] != message.author.id and not is_admin(message):
+        await safe_send(message.channel, content="That ain't your crew. You can't delete it.")
+        return
+
+    gang_name = gang['name']
+    owner_id = gang['owner_id']
+
+    # Remove from gangs dict
+    del gangs[code]
+
+    # Clean up active owner tracking if they have no more alive gangs
+    if not user_has_active_gang(owner_id):
+        active_gang_owners.discard(owner_id)
+
+    embed = discord.Embed(
+        title="Crew Deleted",
+        description=f"**{gang_name}** (`{code}`) has been wiped. That crew never existed. You're free to start fresh.",
+        color=discord.Color.dark_red()
+    )
+    embed.set_footer(text="Type `gang` to start a new crew.")
+    await safe_send(message.channel, embed=embed)
+
+
 # ─── Bot Events ────────────────────────────────────────────────────────────────
 
 COMMANDS = {
@@ -1213,6 +1254,7 @@ COMMANDS = {
     "revenge": handle_revenge,
     "block": handle_block,
     "solo": handle_solo,
+    "delete": handle_delete,
 }
 
 @bot.event
