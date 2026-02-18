@@ -5,6 +5,7 @@ from dotenv import load_dotenv
 import os
 import asyncio
 import time
+from datetime import datetime, timedelta
 from keep_alive import keep_alive
 
 load_dotenv()
@@ -207,7 +208,33 @@ SENTENCE_WEIGHTS = [30, 25, 20, 12, 8, 3, 2]
 
 MSG_DELAY = 2.1
 
-# Helpers
+# ── Date / Day helpers ────────────────────────────────────────────────────────
+
+def random_join_date(days_back_max=1825):
+    """Return a random past date as a datetime object."""
+    offset = random.randint(1, days_back_max)
+    return datetime.utcnow() - timedelta(days=offset)
+
+def format_join_date(dt):
+    return dt.strftime("%b %d, %Y")
+
+def days_in_gang(dt):
+    return (datetime.utcnow() - dt).days
+
+def advance_gang_day(gang):
+    """Called after every command — moves the gang's internal clock forward by 1 day."""
+    gang['days'] = gang.get('days', 0) + 1
+
+def advance_member_day(member):
+    """Advance a member's in-game days by 1."""
+    member['days_in'] = member.get('days_in', 0) + 1
+
+def advance_all_days(gang):
+    advance_gang_day(gang)
+    for m in gang['members']:
+        advance_member_day(m)
+
+# ── Helpers ───────────────────────────────────────────────────────────────────
 
 def is_admin(message):
     return isinstance(message.author, discord.Member) and message.author.guild_permissions.administrator
@@ -222,10 +249,19 @@ def generate_code():
             return code
 
 def make_member(name):
+    join_dt = random_join_date(730)
     return {
-        "name": name, "alive": True, "kills": 0, "deaths": 0,
-        "times_jailed": 0, "times_snitched": 0, "missions_survived": 0,
-        "jail_until": None, "jail_sentence": None,
+        "name": name,
+        "alive": True,
+        "kills": 0,
+        "deaths": 0,
+        "times_jailed": 0,
+        "times_snitched": 0,
+        "missions_survived": 0,
+        "jail_until": None,
+        "jail_sentence": None,
+        "join_date": join_dt.isoformat(),
+        "days_in": (datetime.utcnow() - join_dt).days,
     }
 
 def generate_ai_members(count=5):
@@ -279,6 +315,16 @@ def get_member_status(m):
         return f"Locked Up ({m['jail_sentence']})"
     return "Free"
 
+def get_member_join_str(m):
+    try:
+        dt = datetime.fromisoformat(m['join_date'])
+        return format_join_date(dt)
+    except Exception:
+        return "Unknown"
+
+def get_member_days(m):
+    return m.get('days_in', 0)
+
 def add_revenge_target(gang, killer_name, enemy_info, enemy_rep):
     targets = gang.setdefault('revenge_targets', [])
     for t in targets:
@@ -308,7 +354,7 @@ async def safe_send(channel, embed=None, content=None):
     except discord.HTTPException as e:
         print(f"safe_send error: {e}")
 
-# Short outcome phrases
+# ── Short outcome phrases ─────────────────────────────────────────────────────
 
 def member_result_line(name, outcome, sentence=None):
     if outcome == "kill":
@@ -343,7 +389,7 @@ def member_result_line(name, outcome, sentence=None):
         ])
     return f"`{name}` -- status unknown."
 
-# Slide Logic
+# ── Slide Logic ───────────────────────────────────────────────────────────────
 
 def calculate_slide_outcome(gang, rolling_members, enemy_rep, is_revenge=False):
     player_rep = gang['rep']
@@ -458,7 +504,7 @@ async def send_slide_result(channel, gang, enemy_info, result, rolling, is_reven
     await safe_send(channel, embed=result_embed)
 
 
-# Mission handler
+# ── Mission handler ───────────────────────────────────────────────────────────
 
 async def handle_mission(message, args):
     if not args:
@@ -477,9 +523,11 @@ async def handle_mission(message, args):
         await safe_send(message.channel, content=f"**{gang['name']}** has been disbanded.")
         return
 
+    advance_all_days(gang)
+
     free = get_free_members(gang)
     if not free:
-        await safe_send(message.channel, content=f"**{gang['name']}** has no free members right now. Everyone is locked up or dead.")
+        await safe_send(message.channel, content=f"**{gang['name']}** has no free members right now.")
         return
 
     member = random.choice(free)
@@ -578,7 +626,7 @@ async def run_drug_mission(channel, gang, member, code):
     await safe_send(channel, embed=embed)
 
 
-# DP Command
+# ── DP Command ────────────────────────────────────────────────────────────────
 
 async def handle_dp(message, args):
     if len(args) < 2:
@@ -599,6 +647,8 @@ async def handle_dp(message, args):
         await safe_send(message.channel, content=f"**{gang['name']}** has been disbanded.")
         return
 
+    advance_all_days(gang)
+
     target = next((m for m in gang['members'] if m['name'].lower() == member_name.lower()), None)
     if not target:
         roster = ", ".join(f"`{m['name']}`" for m in gang['members'])
@@ -615,7 +665,6 @@ async def handle_dp(message, args):
         await safe_send(message.channel, content="Nobody free to handle the DP right now.")
         return
 
-    # Send intro embed
     intro = discord.Embed(title="Disciplinary Punishment", color=discord.Color.dark_red())
     intro.description = (
         f"**{gang['name']}** is handling business internally.\n\n"
@@ -625,7 +674,6 @@ async def handle_dp(message, args):
     await safe_send(message.channel, embed=intro)
     await asyncio.sleep(MSG_DELAY)
 
-    # Build beating scene
     num_involved = min(len(beaters), random.randint(2, 5))
     involved = random.sample(beaters, num_involved)
 
@@ -651,11 +699,9 @@ async def handle_dp(message, args):
     await safe_send(message.channel, embed=beat_embed)
     await asyncio.sleep(MSG_DELAY)
 
-    # Determine outcome
     roll = random.randint(1, 100)
 
     if roll <= 15:
-        # Killed during DP
         if len(get_alive_members(gang)) > 1:
             target['alive'] = False
             target['deaths'] += 1
@@ -663,37 +709,27 @@ async def handle_dp(message, args):
             result_embed = discord.Embed(title="DP Result -- Didn't Make It", color=discord.Color.dark_grey())
             result_embed.description = (
                 f"`{target['name']}` took too much. They didn't walk away from this one.\n\n"
-                f"The set went too far. That decision is final.\n\n"
                 f"Members Alive: {len(get_alive_members(gang))}"
             )
             result_embed.set_footer(text="That name won't be spoken again.")
         else:
             result_embed = discord.Embed(title="DP Result -- Can't Finish It", color=discord.Color.orange())
-            result_embed.description = (
-                f"`{target['name']}` is the last one alive. Can't finish what got started.\n"
-                f"They live -- for now."
-            )
+            result_embed.description = f"`{target['name']}` is the last one alive. Can't finish what got started."
             result_embed.set_footer(text="Unfinished business.")
 
     elif roll <= 45:
-        # Kicked out
         gang['members'].remove(target)
         result_embed = discord.Embed(title="DP Result -- Kicked Out the Set", color=discord.Color.red())
         result_embed.description = (
             f"`{target['name']}` got beat out of the set.\n\n"
-            f"They took their licks and when it was done they were told to walk.\n"
-            f"`{target['name']}` is no longer part of **{gang['name']}**.\n\n"
             f"Members Remaining: {len(get_alive_members(gang))}"
         )
         result_embed.set_footer(text="Don't come back around.")
 
     else:
-        # Beaten but stays in
         result_embed = discord.Embed(title="DP Result -- Beat Down, Still In", color=discord.Color.orange())
         result_embed.description = (
             f"`{target['name']}` took the full DP and is still standing -- barely.\n\n"
-            f"They didn't run. They didn't fold. The set decided that counts for something.\n"
-            f"`{target['name']}` is still part of **{gang['name']}** but they know what time it is now.\n\n"
             f"Members Alive: {len(get_alive_members(gang))}"
         )
         result_embed.set_footer(text="One more slip and it won't end the same way.")
@@ -701,7 +737,7 @@ async def handle_dp(message, args):
     await safe_send(message.channel, embed=result_embed)
 
 
-# Commands
+# ── Commands ──────────────────────────────────────────────────────────────────
 
 async def handle_gang(message, args):
     user_id = message.author.id
@@ -713,6 +749,7 @@ async def handle_gang(message, args):
     code = generate_code()
     members = generate_ai_members(random.randint(4, 7))
     rep = random.randint(10, 100)
+    founded_dt = random_join_date(365)
 
     gangs[code] = {
         "name": la_gang["name"], "hood": la_gang["hood"],
@@ -721,6 +758,8 @@ async def handle_gang(message, args):
         "code": code, "alive": True,
         "fights_won": 0, "fights_lost": 0,
         "members": members, "revenge_targets": [],
+        "founded": founded_dt.isoformat(),
+        "days": (datetime.utcnow() - founded_dt).days,
     }
 
     if not is_admin(message):
@@ -735,7 +774,8 @@ async def handle_gang(message, args):
             f"Shot Caller: `{members[0]['name']}`\n"
             f"Street Cred: {rep}\n"
             f"Members: {len(members)}\n"
-            f"Code: `{code}`\n\n"
+            f"Code: `{code}`\n"
+            f"Founded: {format_join_date(founded_dt)}\n\n"
             f"{member_lines}"
         ),
         color=discord.Color.dark_grey()
@@ -767,6 +807,14 @@ async def handle_show(message, args):
             blood_lines = ""
             if targets:
                 blood_lines = "\n" + "\n".join(f"Blood Owed: `{t['name']}` from **{t['gang']}**" for t in targets)
+
+            try:
+                founded_str = format_join_date(datetime.fromisoformat(g['founded']))
+            except Exception:
+                founded_str = "Unknown"
+
+            days_active = g.get('days', 0)
+
             desc += (
                 f"\n\n**{g['name']}**\n"
                 f"Hood: {g.get('hood', 'Unknown')}\n"
@@ -775,45 +823,74 @@ async def handle_show(message, args):
                 f"Street Cred: {g['rep']}\n"
                 f"Record: {fw}W -- {fl}L   Win Rate: {win_rate}\n"
                 f"Kills: {get_gang_bodies(g)}   Deaths: {get_gang_deaths(g)}\n"
-                f"Alive: {len(get_alive_members(g))}   Free: {len(get_free_members(g))}"
+                f"Alive: {len(get_alive_members(g))}   Free: {len(get_free_members(g))}\n"
+                f"Founded: {founded_str}   Days Active: {days_active}"
                 + blood_lines
             )
     else:
         desc += "\n\nNo active crew. Type `gang` to start fresh."
 
     embed = discord.Embed(title=f"{message.author.name}'s Crew", description=desc, color=discord.Color.dark_grey())
-
-    if alive_gangs:
-        for g in alive_gangs:
-            alive = get_alive_members(g)
-            if alive:
-                roster_lines = "\n".join(
-                    f"`{m['name']}` | {m['kills']} kills | {get_member_status(m)}" for m in alive
-                )
-                embed.add_field(name=f"{g['name']} -- Active Roster", value=roster_lines, inline=False)
-
     embed.set_footer(text="mission | slide | recruit | revenge | block | solo | dp | show | delete")
     await safe_send(message.channel, embed=embed)
 
-    has_dead = any(get_dead_members(g) for g in alive_gangs)
-    if has_dead:
-        rip_embed = discord.Embed(
-            title="Rest In Power",
-            description="Homies who fell in the streets. Their names stay on the wall.",
-            color=discord.Color.dark_grey()
-        )
+    # ── NEW: Full roster embed (all members, dead or alive) ──
+    if alive_gangs:
         for g in alive_gangs:
-            dead = get_dead_members(g)
-            if dead:
-                dead_lines = "\n".join(f"`{m['name']}` | {m['kills']} kills | Dead" for m in dead)
-                rip_embed.add_field(name=f"{g['name']} -- Fallen", value=dead_lines, inline=False)
-        rip_embed.set_footer(text="Gone but not forgotten.")
-        await safe_send(message.channel, embed=rip_embed)
+            all_members = g['members']
+            if not all_members:
+                continue
+
+            lines = []
+            for m in all_members:
+                status = get_member_status(m)
+                join_str = get_member_join_str(m)
+                days = get_member_days(m)
+
+                if not m['alive']:
+                    icon = "💀"
+                elif is_jailed(m):
+                    icon = "🔒"
+                else:
+                    icon = "🟢"
+
+                lines.append(
+                    f"{icon} `{m['name']}`\n"
+                    f"   Status: {status}\n"
+                    f"   Joined: {join_str}  |  Days In: {days}\n"
+                    f"   Kills: {m['kills']}  |  Missions: {m['missions_survived']}  |  Jailed: {m['times_jailed']}"
+                )
+
+            # Discord embed field limit is 1024 chars — split into chunks if needed
+            chunk = ""
+            field_num = 1
+            roster_embed = discord.Embed(
+                title=f"{g['name']} -- Full Roster",
+                color=discord.Color.dark_grey()
+            )
+            roster_embed.description = (
+                f"🟢 Free   🔒 Locked Up   💀 Dead\n"
+                f"Total Members: {len(all_members)}  |  Alive: {len(get_alive_members(g))}  |  Dead: {len(get_dead_members(g))}"
+            )
+
+            for line in lines:
+                if len(chunk) + len(line) + 1 > 1000:
+                    roster_embed.add_field(name=f"── Page {field_num} ──", value=chunk, inline=False)
+                    chunk = line + "\n"
+                    field_num += 1
+                else:
+                    chunk += line + "\n"
+
+            if chunk:
+                roster_embed.add_field(name=f"── Page {field_num} ──", value=chunk, inline=False)
+
+            roster_embed.set_footer(text="Every name counted. Dead or alive.")
+            await safe_send(message.channel, embed=roster_embed)
 
 
 async def handle_recruit(message, args):
     if not args:
-        await safe_send(message.channel, content="Usage: `recruit <code> <number>` -- Example: `recruit XKRV 3`")
+        await safe_send(message.channel, content="Usage: `recruit <code> <number>`")
         return
 
     code = args[0].upper()
@@ -828,12 +905,14 @@ async def handle_recruit(message, args):
         await safe_send(message.channel, content=f"**{gang['name']}** has been disbanded.")
         return
 
+    advance_all_days(gang)
+
     requested = 1
     if len(args) >= 2:
         try:
             requested = int(args[1])
         except ValueError:
-            await safe_send(message.channel, content="The number needs to be a whole number. Example: `recruit XKRV 3`")
+            await safe_send(message.channel, content="The number needs to be a whole number.")
             return
         if requested < 1:
             await safe_send(message.channel, content="Recruit at least 1.")
@@ -877,7 +956,7 @@ async def handle_recruit(message, args):
         embed.color = discord.Color.gold()
     else:
         embed.title = "Nobody Came Through"
-        embed.description = f"Put the word out for {requested} but nobody stepped up.\nMembers: {len(get_alive_members(gang))}"
+        embed.description = f"Put the word out for {requested} but nobody stepped up."
 
     embed.set_footer(text=f"recruit {code} <number> to try again.")
     await safe_send(message.channel, embed=embed)
@@ -900,6 +979,8 @@ async def handle_slide(message, args):
         await safe_send(message.channel, content=f"**{gang['name']}** has been disbanded.")
         return
 
+    advance_all_days(gang)
+
     try:
         requested = int(args[1])
     except ValueError:
@@ -912,7 +993,7 @@ async def handle_slide(message, args):
 
     free = get_free_members(gang)
     if not free:
-        await safe_send(message.channel, content="Nobody free to roll out. Everyone is locked up or dead.")
+        await safe_send(message.channel, content="Nobody free to roll out.")
         return
 
     actual = min(requested, len(free), 10)
@@ -949,6 +1030,8 @@ async def handle_revenge(message, args):
         await safe_send(message.channel, content=f"**{gang['name']}** has been disbanded.")
         return
 
+    advance_all_days(gang)
+
     targets = get_revenge_targets(gang)
     if not targets:
         await safe_send(message.channel, content="No blood owed right now. Your set is clean.")
@@ -956,10 +1039,9 @@ async def handle_revenge(message, args):
 
     free = get_free_members(gang)
     if not free:
-        await safe_send(message.channel, content="Nobody free to roll out. Everyone is locked up or dead.")
+        await safe_send(message.channel, content="Nobody free to roll out.")
         return
 
-    # Show who we are going after first
     target = targets[0]
     enemy_info = target.get('gang_info')
 
@@ -972,7 +1054,6 @@ async def handle_revenge(message, args):
     num_rolling = random.randint(1, min(3, len(free)))
     rolling = random.sample(free, num_rolling)
 
-    # Send a setup embed showing who we are going after
     setup = discord.Embed(title="Revenge", color=discord.Color.dark_red())
     setup.description = (
         f"**{gang['name']}** is going after **{enemy_info['name']}**.\n"
@@ -999,10 +1080,7 @@ async def handle_revenge(message, args):
     await asyncio.sleep(1)
     remaining = get_revenge_targets(gang)
     if remaining:
-        followup = discord.Embed(
-            title="Blood Still Owed",
-            color=discord.Color.dark_red()
-        )
+        followup = discord.Embed(title="Blood Still Owed", color=discord.Color.dark_red())
         lines = "\n".join(f"**{t['gang']}** | `{t['name']}`" for t in remaining)
         followup.description = f"{lines}\n\nType `revenge {code}` again to keep going."
         await safe_send(message.channel, embed=followup)
@@ -1030,6 +1108,8 @@ async def handle_solo(message, args):
     if not gang['alive']:
         await safe_send(message.channel, content=f"**{gang['name']}** has been disbanded.")
         return
+
+    advance_all_days(gang)
 
     target = next((m for m in gang['members'] if m['name'].lower() == member_name.lower()), None)
     if not target:
@@ -1132,9 +1212,11 @@ async def handle_block(message, args):
         await safe_send(message.channel, content=f"**{gang['name']}** has been disbanded.")
         return
 
+    advance_all_days(gang)
+
     free = get_free_members(gang)
     if not free:
-        await safe_send(message.channel, content="No free members to run the block party. Everyone is locked up or dead.")
+        await safe_send(message.channel, content="No free members to run the block party.")
         return
 
     host = random.choice(free)
@@ -1297,7 +1379,7 @@ async def handle_delete(message, args):
     await safe_send(message.channel, embed=embed)
 
 
-# Drug Mission Events
+# ── Drug Mission Events ───────────────────────────────────────────────────────
 
 DRUG_EVENTS = [
     {"name": "Trap Popping", "description": "{member} had the trap running smooth all night. Fiends lining up, money counted twice. **{name}** ate good tonight.", "type": "drug_win", "value": (40, 120), "color": discord.Color.green()},
@@ -1337,7 +1419,7 @@ DRUG_EVENTS = [
     {"name": "Competition on the Block", "description": "Another crew set up shop two blocks over and pulled all the traffic away. {member} held the corner but nobody came. **{name}** needs to deal with that competition.", "type": "drug_nothing", "color": discord.Color.greyple()},
 ]
 
-# Regular Mission Events
+# ── Regular Mission Events ────────────────────────────────────────────────────
 
 EVENTS = [
     {"name": "Corner Locked Down", "description": "{member} muscled every corner boy off Figueroa. By morning **{name}** owned every inch of that block.", "type": "rep_up", "value": (20, 80), "color": discord.Color.green()},
@@ -1401,7 +1483,7 @@ EVENTS = [
     {"name": "Rain Night", "description": "Nobody moves in the rain. {member} kept **{name}** off the streets and waited it out. The block is still there tomorrow.", "type": "nothing", "color": discord.Color.greyple()},
 ]
 
-# Block Party Events
+# ── Block Party Events ────────────────────────────────────────────────────────
 
 BLOCK_PARTY_EVENTS = [
     {"name": "Block Party Jumping", "description": "Music rattling windows two blocks over. {member} kept the energy right all night. **{name}**'s name on every lip.", "type": "rep_up", "value": (40, 100), "color": discord.Color.green()},
@@ -1442,7 +1524,7 @@ BLOCK_PARTY_EVENTS = [
     {"name": "Permit Issue", "description": "The city showed up with a cease and desist before the party even got started. {member} kept it peaceful but the block party was over before it began.", "type": "nothing", "color": discord.Color.greyple()},
 ]
 
-# Bot Events
+# ── Bot Events ────────────────────────────────────────────────────────────────
 
 COMMANDS = {
     "gang": handle_gang,
