@@ -1525,4 +1525,5 @@ if __name__ == "__main__":
     if not TOKEN:
         print("ERROR: DISCORD_TOKEN not found in .env")
     else:
+        keep_alive()
         bot.run(TOKEN)
