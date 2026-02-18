@@ -295,7 +295,7 @@ async def safe_send(channel, embed=None, content=None):
     except discord.HTTPException as e:
         print(f"safe_send error: {e}")
 
-# ─── Short outcome phrases (replaces long story lines) ─────────────────────────
+# ─── Short outcome phrases ──────────────────────────────────────────────────────
 
 def member_result_line(name, outcome, sentence=None):
     if outcome == "kill":
@@ -445,7 +445,7 @@ async def send_slide_result(channel, gang, enemy_info, result, rolling, is_reven
     await safe_send(channel, embed=result_embed)
 
 
-# ─── Commands ─────────────────────────────────────────────────────────────────
+# ─── Commands ──────────────────────────────────────────────────────────────────
 
 async def handle_gang(message, args):
     user_id = message.author.id
@@ -625,7 +625,7 @@ async def handle_mission(message, args):
 
 async def handle_recruit(message, args):
     if not args:
-        await safe_send(message.channel, content="Usage: `recruit <code>`")
+        await safe_send(message.channel, content="Usage: `recruit <code> <number>` — Example: `recruit XKRV 3`")
         return
 
     code = args[0].upper()
@@ -640,29 +640,74 @@ async def handle_recruit(message, args):
         await safe_send(message.channel, content=f"**{gang['name']}** has been disbanded.")
         return
 
+    # Parse optional number — default to 1
+    requested = 1
+    if len(args) >= 2:
+        try:
+            requested = int(args[1])
+        except ValueError:
+            await safe_send(message.channel, content="The number needs to be a whole number. Example: `recruit XKRV 3`")
+            return
+        if requested < 1:
+            await safe_send(message.channel, content="Recruit at least 1 person.")
+            return
+        if requested > 10:
+            await safe_send(message.channel, content="Max you can recruit at once is 10.")
+            return
+
     existing = {m['name'] for m in gang['members']}
     available = [n for n in STREET_NAMES if n not in existing]
     if not available:
-        await safe_send(message.channel, content=f"**{gang['name']}** roster is maxed out.")
+        await safe_send(message.channel, content=f"**{gang['name']}** roster is maxed out — no more names available.")
         return
 
-    if random.randint(1, 2) == 1:
-        new_name = random.choice(available)
-        gang['members'].append(make_member(new_name))
-        desc = random.choice([
-            f"`{new_name}` had been hanging around the block for weeks. Finally put them on.",
-            f"Word got to `{new_name}` through a mutual. Showed up the next day ready to work.",
-            f"`{new_name}` proved themselves last month. The decision was unanimous.",
-            f"`{new_name}` always had love for **{gang['name']}**. When the invite came, they were ready.",
-        ])
-        embed = discord.Embed(title="New Member", color=discord.Color.teal())
-        embed.description = desc + f"\n\nNew: `{new_name}`  |  Total Alive: {len(get_alive_members(gang))}"
-        embed.set_footer(text="Keep building.")
-    else:
-        embed = discord.Embed(title="Nobody Came Through", color=discord.Color.dark_grey())
-        embed.description = f"Put the word out but nobody stepped up. Members: {len(get_alive_members(gang))}"
-        embed.set_footer(text="50/50. Try again.")
+    # Cap to how many slots are actually open
+    actual = min(requested, len(available))
 
+    joined = []
+    failed = 0
+
+    for _ in range(actual):
+        if not available:
+            break
+        # Each recruit attempt has a 60% success chance
+        if random.randint(1, 100) <= 60:
+            new_name = random.choice(available)
+            available.remove(new_name)
+            existing.add(new_name)
+            gang['members'].append(make_member(new_name))
+            joined.append(new_name)
+        else:
+            failed += 1
+
+    embed = discord.Embed(color=discord.Color.teal() if joined else discord.Color.dark_grey())
+
+    if joined and failed == 0:
+        embed.title = f"{len(joined)} Joined the Set"
+        lines = "\n".join(f"`{n}`" for n in joined)
+        embed.description = (
+            f"{lines}\n\n"
+            f"All {len(joined)} came through. **{gang['name']}** is growing.\n"
+            f"Total Alive: {len(get_alive_members(gang))}"
+        )
+    elif joined and failed > 0:
+        embed.title = f"{len(joined)} Joined — {failed} Fell Through"
+        lines = "\n".join(f"`{n}`" for n in joined)
+        embed.description = (
+            f"Joined:\n{lines}\n\n"
+            f"{failed} candidate{'s' if failed > 1 else ''} didn't show. "
+            f"Total Alive: {len(get_alive_members(gang))}"
+        )
+        embed.color = discord.Color.gold()
+    else:
+        embed.title = "Nobody Came Through"
+        embed.description = (
+            f"Put the word out for {requested} but nobody stepped up.\n"
+            f"Members: {len(get_alive_members(gang))}"
+        )
+        embed.color = discord.Color.dark_grey()
+
+    embed.set_footer(text=f"recruit {code} <number> to try again.")
     await safe_send(message.channel, embed=embed)
 
 
@@ -695,7 +740,7 @@ async def handle_slide(message, args):
 
     free = get_free_members(gang)
     if not free:
-        await safe_send(message.channel, content=f"Nobody free to roll out.")
+        await safe_send(message.channel, content="Nobody free to roll out.")
         return
 
     actual = min(requested, len(free), 10)
@@ -734,12 +779,12 @@ async def handle_revenge(message, args):
 
     targets = get_revenge_targets(gang)
     if not targets:
-        await safe_send(message.channel, content=f"No blood owed right now.")
+        await safe_send(message.channel, content="No blood owed right now.")
         return
 
     free = get_free_members(gang)
     if not free:
-        await safe_send(message.channel, content=f"Nobody free to roll out.")
+        await safe_send(message.channel, content="Nobody free to roll out.")
         return
 
     target = random.choice(targets)
@@ -895,7 +940,7 @@ async def handle_block(message, args):
 
     free = get_free_members(gang)
     if not free:
-        await safe_send(message.channel, content=f"No free members to run the block party.")
+        await safe_send(message.channel, content="No free members to run the block party.")
         return
 
     host = random.choice(free)
@@ -1052,7 +1097,7 @@ async def handle_delete(message, args):
     await safe_send(message.channel, embed=embed)
 
 
-# ─── Event Lists ──────────────────────────────────────────────────────────────
+# ─── Event Lists ───────────────────────────────────────────────────────────────
 
 EVENTS = [
     {"name": "Corner Locked Down", "description": "{member} muscled every corner boy off Figueroa. By morning **{name}** owned every inch of that block.", "type": "rep_up", "value": (20, 80), "color": discord.Color.green()},
@@ -1060,15 +1105,15 @@ EVENTS = [
     {"name": "Street Fight Victory", "description": "{member} ran into four opps outside the liquor store, squared up solo, dropped two, walked away clean. **{name}**'s name rang out.", "type": "rep_up", "value": (20, 60), "color": discord.Color.green()},
     {"name": "Territory Claimed", "description": "{member} led **{name}** onto a block the opps had held for months. Posted up in broad daylight. Nobody said a word.", "type": "rep_up", "value": (40, 120), "color": discord.Color.green()},
     {"name": "OG Vouched", "description": "A respected OG pulled {member} aside and made a few calls. Doors opened for **{name}** that nobody knew existed.", "type": "rep_up", "value": (50, 150), "color": discord.Color.green()},
-    {"name": "Retaliation Hit", "description": "{member} waited a full week then delivered the message personally. The streets went quiet after that. **{name}** doesn't forget.", "type": "rep_up", "value": (60, 180), "color": discord.Color.green()},
-    {"name": "Prison Connects Made", "description": "{member} made the right introductions inside. **{name}** now has connects in three facilities. Business doesn't stop.", "type": "rep_up", "value": (40, 100), "color": discord.Color.green()},
-    {"name": "Rival Scattered", "description": "{member} pulled up on the opp's main corner with the whole crew. One warning. Within 48 hours **{name}** had three new blocks without a shot fired.", "type": "rep_up", "value": (80, 200), "color": discord.Color.green()},
+    {"name": "Retaliation Hit", "description": "{member} waited a full week then delivered the message personally. The streets went quiet. **{name}** doesn't forget.", "type": "rep_up", "value": (60, 180), "color": discord.Color.green()},
+    {"name": "Prison Connects Made", "description": "{member} made the right introductions inside. **{name}** now has connects in three facilities.", "type": "rep_up", "value": (40, 100), "color": discord.Color.green()},
+    {"name": "Rival Scattered", "description": "{member} pulled up on the opp's main corner with the whole crew. One warning. 48 hours later **{name}** had three new blocks.", "type": "rep_up", "value": (80, 200), "color": discord.Color.green()},
     {"name": "Rapper Shoutout", "description": "A rapper buried {member}'s name in two tracks — **{name}** repped fully. Three cities were asking about the set by morning.", "type": "rep_up", "value": (50, 130), "color": discord.Color.green()},
     {"name": "Fed the Block", "description": "{member} threw a cookout. Families came out, OGs showed love. **{name}** has the community locked in.", "type": "rep_up", "value": (25, 70), "color": discord.Color.green()},
     {"name": "Big Score", "description": "{member} set up the biggest score **{name}** had seen in years. Product moved fast, money came back clean. Everyone ate.", "type": "rep_up", "value": (60, 160), "color": discord.Color.green()},
     {"name": "Took the Block Back", "description": "The opps had **{name}**'s old block for six months. {member} moved at 2am. By sunrise **{name}**'s colors were back up.", "type": "rep_up", "value": (70, 170), "color": discord.Color.green()},
     {"name": "Put in Work", "description": "There was a name on a list. {member} got it done quietly with no trail. **{name}** moves different because of soldiers like that.", "type": "rep_up", "value": (80, 200), "color": discord.Color.green()},
-    {"name": "Court Case Dismissed", "description": "The DA's key witness stopped cooperating. {member} walked out of the courthouse and came straight back to the block. **{name}** at full strength.", "type": "rep_up", "value": (40, 110), "color": discord.Color.green()},
+    {"name": "Court Case Dismissed", "description": "The DA's key witness stopped cooperating. {member} walked out of the courthouse and came straight back to the block.", "type": "rep_up", "value": (40, 110), "color": discord.Color.green()},
     {"name": "Neighborhood Loyalty", "description": "Three families told detectives they saw nothing. {member} built that loyalty over years. **{name}** is protected.", "type": "rep_up", "value": (35, 95), "color": discord.Color.green()},
     {"name": "New Connect", "description": "{member} got introduced to a new supplier. First order came in clean. **{name}**'s operation just leveled up.", "type": "rep_up", "value": (60, 150), "color": discord.Color.green()},
     {"name": "Snitch in the Ranks", "description": "A sealed document leaked — {member}'s name was on it. Cooperating since summer. **{name}** is fractured. Trust is gone.", "type": "rep_down", "value": (30, 100), "color": discord.Color.orange(), "snitch": True},
@@ -1078,35 +1123,35 @@ EVENTS = [
     {"name": "Internal Beef", "description": "{member} and another member got into it over money right outside the trap. Neighbors recorded it. Other sets are laughing.", "type": "rep_down", "value": (25, 75), "color": discord.Color.orange()},
     {"name": "LAPD Raid", "description": "Forty officers hit **{name}**'s spot at 5am. {member} barely got out the back. Everything seized. The operation is on pause.", "type": "rep_down", "value": (60, 180), "color": discord.Color.orange()},
     {"name": "Caught Lacking", "description": "The opps caught {member} alone at a gas station. Took everything, recorded it, posted it. **{name}**'s name is on that video.", "type": "rep_down", "value": (30, 90), "color": discord.Color.orange()},
-    {"name": "Lost the Package", "description": "{member} lost the package cross-town. Whether opps or a checkpoint — **{name}** lost the product, the money, and the connect is threatening to cut them off.", "type": "rep_down", "value": (45, 130), "color": discord.Color.orange()},
+    {"name": "Lost the Package", "description": "{member} lost the package cross-town. **{name}** lost the product, the money, and the connect is threatening to cut them off.", "type": "rep_down", "value": (45, 130), "color": discord.Color.orange()},
     {"name": "Homie Flipped", "description": "{member} had been cooperating for months. DA announced indictments on a Tuesday. **{name}** lost four members to federal charges in one day.", "type": "rep_down", "value": (50, 160), "color": discord.Color.orange(), "snitch": True},
     {"name": "Jumped by Opps", "description": "Eight opps cornered {member} in broad daylight with witnesses everywhere. People recorded it. **{name}**'s name is attached to that video.", "type": "rep_down", "value": (35, 110), "color": discord.Color.orange()},
     {"name": "Stash House Burned", "description": "Somebody gave up the location. Opps hit it at noon. {member} barely got out the back window. Months of work gone in ten minutes.", "type": "rep_down", "value": (55, 150), "color": discord.Color.orange()},
-    {"name": "Quiet Night", "description": "{member} held down the corner all night. Nothing to report. Sometimes the streets just go still. **{name}** is ready.", "type": "nothing", "color": discord.Color.greyple()},
+    {"name": "Quiet Night", "description": "{member} held down the corner all night. Nothing to report. **{name}** is positioned and ready.", "type": "nothing", "color": discord.Color.greyple()},
     {"name": "Laying Low", "description": "Too much heat. Patrol cars every hour. {member} kept **{name}** off the corners tonight. Smart move.", "type": "nothing", "color": discord.Color.greyple()},
-    {"name": "Watching and Waiting", "description": "{member} spent the night getting eyes on enemy positions. No action — reconnaissance. **{name}** is building a picture.", "type": "nothing", "color": discord.Color.greyple()},
+    {"name": "Watching and Waiting", "description": "{member} spent the night getting eyes on enemy positions. No action tonight — reconnaissance. **{name}** is building a picture.", "type": "nothing", "color": discord.Color.greyple()},
     {"name": "Regrouping", "description": "{member} called everyone in after recent events. Real conversation about what went wrong. **{name}** came out more focused.", "type": "nothing", "color": discord.Color.greyple()},
 ]
 
 BLOCK_PARTY_EVENTS = [
     {"name": "Block Party Jumping", "description": "Music rattling windows two blocks over. {member} kept the energy right all night. **{name}**'s name on every lip.", "type": "rep_up", "value": (40, 100), "color": discord.Color.green()},
-    {"name": "Community Showed Love", "description": "Families from three streets came through. {member} passed out food personally and checked on the elders. **{name}** earned real love tonight.", "type": "rep_up", "value": (30, 80), "color": discord.Color.green()},
-    {"name": "Local Legend Pulled Up", "description": "An OG nobody had seen publicly in years showed up unannounced. Sat with {member} for two hours and gave his blessing in front of everyone.", "type": "rep_up", "value": (50, 130), "color": discord.Color.green()},
-    {"name": "Rival Set Sent a Message", "description": "A rival set sent someone through to check. They reported back — food, families, no trap. The rival set sent respect through a mutual.", "type": "rep_up", "value": (35, 90), "color": discord.Color.green()},
-    {"name": "Block Party Goes All Night", "description": "Started at 4pm, still going at 2am. {member} kept refilling the food. People who had work the next morning stayed. **{name}** runs this hood.", "type": "rep_up", "value": (45, 110), "color": discord.Color.green()},
+    {"name": "Community Showed Love", "description": "Families from three streets came through. {member} passed out food personally and checked on the elders.", "type": "rep_up", "value": (30, 80), "color": discord.Color.green()},
+    {"name": "Local Legend Pulled Up", "description": "An OG nobody had seen publicly in years showed up. Sat with {member} for two hours and gave his blessing in front of everyone.", "type": "rep_up", "value": (50, 130), "color": discord.Color.green()},
+    {"name": "Rival Set Sent Respect", "description": "A rival set sent someone through to check. They reported back — food, families, no trap. Respect came through a mutual.", "type": "rep_up", "value": (35, 90), "color": discord.Color.green()},
+    {"name": "Block Party Goes All Night", "description": "Started at 4pm, still going at 2am. {member} kept refilling the food. People who had work the next morning stayed.", "type": "rep_up", "value": (45, 110), "color": discord.Color.green()},
     {"name": "News Crew Showed Up", "description": "Local news came through. {member} handled the camera — spoke about giving back, never said anything wrong. Segment aired next morning.", "type": "rep_up", "value": (40, 100), "color": discord.Color.green()},
-    {"name": "Young Ones Got Recruited", "description": "Three younger kids watched **{name}** all night. Before it was over all three made it clear they wanted in. The set is growing.", "type": "rep_up", "value": (25, 65), "color": discord.Color.green()},
+    {"name": "Young Ones Got Recruited", "description": "Three younger kids watched **{name}** all night. Before it was over all three made it clear they wanted in.", "type": "rep_up", "value": (25, 65), "color": discord.Color.green()},
     {"name": "Driveby — Party Shot Up", "description": "A dark car rolled through slow. {member} saw it half a second before it started. No time. Shots into the crowd then gone.", "type": "driveby", "color": discord.Color.dark_red()},
-    {"name": "Driveby — Second Pass", "description": "First pass was to see who flinched. Second car came from the opposite direction before anyone regrouped. By the time it was over the block was empty.", "type": "driveby", "color": discord.Color.dark_red()},
+    {"name": "Driveby — Second Pass", "description": "First pass was to see who flinched. Second car came from the opposite direction. By the time it was over the block was empty.", "type": "driveby", "color": discord.Color.dark_red()},
     {"name": "Opps Crashed the Party", "description": "Six of them walked up from the alley. {member} tried to de-escalate but one went straight for confrontation. Full brawl in the street.", "type": "brawl", "color": discord.Color.red()},
-    {"name": "Police Rolled Through", "description": "Two patrol cars parked at opposite ends. Officers walked through asking questions nobody answered. {member} kept the crew calm. They left after forty minutes.", "type": "police_harassment", "color": discord.Color.blue()},
-    {"name": "Task Force Showed Up", "description": "Four unmarked cars and a van hit simultaneously. Task force moved through demanding ID, running names. {member} got detained two hours then released.", "type": "police_raid", "color": discord.Color.blue()},
+    {"name": "Police Rolled Through", "description": "Two patrol cars parked at opposite ends. Officers asked questions nobody answered. {member} kept the crew calm. They left after forty minutes.", "type": "police_harassment", "color": discord.Color.blue()},
+    {"name": "Task Force Showed Up", "description": "Four unmarked cars hit simultaneously. Task force moved through demanding ID. {member} got detained two hours then released.", "type": "police_raid", "color": discord.Color.blue()},
     {"name": "Police Arrested Several", "description": "Officers started running warrants after dark. {member} watched crew members get walked to patrol cars in front of the whole neighborhood.", "type": "police_arrests", "color": discord.Color.blue()},
-    {"name": "Undercover in the Crowd", "description": "Word came back through a lawyer two days later — undercovers had been in the crowd the whole time taking photos. **{name}** went quiet immediately.", "type": "rep_down", "value": (30, 80), "color": discord.Color.orange()},
-    {"name": "Fight Broke Out", "description": "Something small escalated fast. {member} tried to step in but it spread to a full brawl. Tables down, food everywhere. The party became a crime scene.", "type": "rep_down", "value": (20, 60), "color": discord.Color.orange()},
-    {"name": "Someone Got Stabbed", "description": "The ambulance showed up to **{name}**'s party. Nobody saw who or why. Didn't matter — it was on their block, under their name.", "type": "rep_down", "value": (40, 100), "color": discord.Color.orange()},
-    {"name": "Rain Killed the Vibe", "description": "Sunny all week until it wasn't. Sky opened up an hour in. People scattered, food soaked, equipment damaged. **{name}** spent the money for nothing.", "type": "nothing", "color": discord.Color.greyple()},
-    {"name": "Turnout Was Low", "description": "Setup was solid but people didn't show. {member} stood at a half-empty block for three hours. **{name}** put in the effort. Just a quiet night.", "type": "nothing", "color": discord.Color.greyple()},
+    {"name": "Undercover in the Crowd", "description": "Word came back through a lawyer two days later — undercovers had been in the crowd the whole time. **{name}** went quiet immediately.", "type": "rep_down", "value": (30, 80), "color": discord.Color.orange()},
+    {"name": "Fight Broke Out", "description": "Something small escalated fast. {member} tried to step in but it spread. Tables down, food everywhere. The party became a crime scene.", "type": "rep_down", "value": (20, 60), "color": discord.Color.orange()},
+    {"name": "Someone Got Stabbed", "description": "The ambulance showed up to **{name}**'s party. Nobody saw who or why. It was on their block, under their name.", "type": "rep_down", "value": (40, 100), "color": discord.Color.orange()},
+    {"name": "Rain Killed the Vibe", "description": "Sky opened up an hour in. People scattered, food soaked, equipment damaged. **{name}** spent the money for nothing.", "type": "nothing", "color": discord.Color.greyple()},
+    {"name": "Turnout Was Low", "description": "Setup was solid but people didn't show. {member} stood at a half-empty block for three hours. Just a quiet night.", "type": "nothing", "color": discord.Color.greyple()},
 ]
 
 # ─── Bot Events ────────────────────────────────────────────────────────────────
