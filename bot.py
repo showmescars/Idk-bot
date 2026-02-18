@@ -14,10 +14,6 @@ intents = discord.Intents.default()
 intents.message_content = True
 bot = commands.Bot(command_prefix='?', intents=intents)
 
-# ─────────────────────────────────────────────
-# STATUS SYSTEM
-# ─────────────────────────────────────────────
-
 STATUS_TAGS = {
     "BEAST":       "Goes harder than anyone. Earned it in blood.",
     "GHOST":       "Moves unseen. Never caught lacking.",
@@ -68,12 +64,8 @@ def evaluate_status(member):
 
 def format_status_line(member):
     tags = evaluate_status(member)
-    return "  ".join([f"[{t}]" for t in tags]) if tags else "--"
+    return "  ".join(tags) if tags else ""
 
-
-# ─────────────────────────────────────────────
-# DATA
-# ─────────────────────────────────────────────
 
 STREET_NAMES = [
     "Big Loc", "Joker", "Tiny", "Demon", "Ghost", "Cisco", "Drowsy", "Spanky",
@@ -303,10 +295,6 @@ SENTENCE_TIERS = [
 ]
 SENTENCE_WEIGHTS = [30, 25, 20, 12, 8, 3, 2]
 
-# ─────────────────────────────────────────────
-# HELPERS
-# ─────────────────────────────────────────────
-
 def is_admin(message):
     member = message.author
     if isinstance(member, discord.Member):
@@ -401,9 +389,12 @@ def format_member_list(members):
         name = m['name']
         kills = m.get('kills', 0)
         tags = evaluate_status(m)
-        tag_str = "  ".join(tags) if tags else "--"
+        tag_str = "  ".join(tags) if tags else ""
         status = get_member_status(m)
-        lines.append(f"{name}  |  {tag_str}  |  {kills} kills  |  {status}")
+        if tag_str:
+            lines.append(f"{name}  {tag_str}  {kills} kills  {status}")
+        else:
+            lines.append(f"{name}  {kills} kills  {status}")
     return "\n".join(lines)
 
 
@@ -432,10 +423,6 @@ def remove_revenge_target(gang, gang_name):
         return
     gang['revenge_targets'] = [t for t in gang['revenge_targets'] if t['gang'] != gang_name]
 
-
-# ─────────────────────────────────────────────
-# SLIDE OUTCOME
-# ─────────────────────────────────────────────
 
 def calculate_slide_outcome(gang, rolling_members, enemy_rep, is_revenge=False):
     player_rep = gang['rep']
@@ -475,7 +462,7 @@ def calculate_slide_outcome(gang, rolling_members, enemy_rep, is_revenge=False):
             m['kills'] = old_kills + 1
             m['missions_survived'] = m.get('missions_survived', 0) + 1
             kills_this_fight[m['name']] = kills_this_fight.get(m['name'], 0) + 1
-            line = random.choice(win_kill_templates).replace("{member}", f"`{m['name']}`")
+            line = random.choice(win_kill_templates).replace("{member}", f"{m['name']}")
             outcome_lines.append(line)
 
         if len(get_alive_members(gang)) > 1 and random.randint(1, 100) <= 20:
@@ -485,13 +472,13 @@ def calculate_slide_outcome(gang, rolling_members, enemy_rep, is_revenge=False):
                 casualty['alive'] = False
                 casualty['deaths'] = casualty.get('deaths', 0) + 1
                 friendly_loss_lines = [
-                    f"`{casualty['name']}` caught a round in the chest during the exchange. Stayed on his feet long enough to make it back to the car but was gone before they reached the block. Won the fight but the set lost somebody real tonight.",
-                    f"`{casualty['name']}` took a shot from someone hiding behind a car on the far end of the block. The crew didn't realize until they were already pulling off. He didn't make it to the hospital.",
-                    f"One of the opps who was already down still had enough left to get a shot off. `{casualty['name']}` caught it in the neck. The crew held the block but held a funeral three days later.",
-                    f"`{casualty['name']}` took a stray during the chaos — wrong place, wrong angle, bad luck. The streets claimed another one that night. Set won the slide but the victory felt hollow.",
-                    f"`{casualty['name']}` pushed too deep into their territory without cover and got cut off. By the time the crew circled back it was too late. Another name on the wall.",
-                    f"`{casualty['name']}` was covering the exit when a shooter appeared from a second floor window nobody had eyes on. Took two shots to the back and was gone before the ambulance was even called.",
-                    f"The celebration was cut short. `{casualty['name']}` had been hit early in the fight but kept moving on adrenaline and nobody realized how bad it was until the car was three blocks away. He didn't make it to morning.",
+                    f"{casualty['name']} caught a round in the chest during the exchange. Stayed on his feet long enough to make it back to the car but was gone before they reached the block. Won the fight but the set lost somebody real tonight.",
+                    f"{casualty['name']} took a shot from someone hiding behind a car on the far end of the block. The crew didn't realize until they were already pulling off. He didn't make it to the hospital.",
+                    f"One of the opps who was already down still had enough left to get a shot off. {casualty['name']} caught it in the neck. The crew held the block but held a funeral three days later.",
+                    f"{casualty['name']} took a stray during the chaos — wrong place, wrong angle, bad luck. The streets claimed another one that night. Set won the slide but the victory felt hollow.",
+                    f"{casualty['name']} pushed too deep into their territory without cover and got cut off. By the time the crew circled back it was too late. Another name on the wall.",
+                    f"{casualty['name']} was covering the exit when a shooter appeared from a second floor window nobody had eyes on. Took two shots to the back and was gone before the ambulance was even called.",
+                    f"The celebration was cut short. {casualty['name']} had been hit early in the fight but kept moving on adrenaline and nobody realized how bad it was until the car was three blocks away. He didn't make it to morning.",
                 ]
                 outcome_lines.append(random.choice(friendly_loss_lines))
 
@@ -502,12 +489,12 @@ def calculate_slide_outcome(gang, rolling_members, enemy_rep, is_revenge=False):
                 jailed = random.choice(still_free)
                 sentence = send_to_jail(jailed)
                 jail_after_win_lines = [
-                    f"Task force had been sitting on the block all week waiting for exactly this. `{jailed['name']}` got flagged leaving the scene — plate ran, warrant pulled, lights on before they made it two miles. Facing {sentence} and the DA isn't offering anything.",
-                    f"A neighbor two houses down had a camera pointed at the street and handed the footage over the next morning. `{jailed['name']}`'s face was clear as day on four different frames. Got picked up at a family member's house by noon. {sentence} sentence.",
-                    f"Somebody in the area talked. Whether it was fear or money nobody knows, but `{jailed['name']}`'s description was in the system before sunrise. Knocked at the gas station the following evening. {sentence} — no bail hearing for thirty days.",
-                    f"`{jailed['name']}` went back to the block an hour later to check on things and rolled straight into a plainclothes unit that had been watching since the incident. Didn't even realize it was happening until the cuffs were on. {sentence} and the lawyer isn't optimistic.",
-                    f"Phone records and cell tower data put `{jailed['name']}` at the exact location at the exact time. Federal involvement made bail impossible. {sentence} sentence and every appeal got denied.",
-                    f"A traffic stop two exits away turned into a full search when the officer ran the plates. `{jailed['name']}` had no way to explain what was found in the car. {sentence} — the public defender said take the deal.",
+                    f"Task force had been sitting on the block all week waiting for exactly this. {jailed['name']} got flagged leaving the scene — plate ran, warrant pulled, lights on before they made it two miles. Facing {sentence} and the DA isn't offering anything.",
+                    f"A neighbor two houses down had a camera pointed at the street and handed the footage over the next morning. {jailed['name']}'s face was clear as day on four different frames. Got picked up at a family member's house by noon. {sentence} sentence.",
+                    f"Somebody in the area talked. Whether it was fear or money nobody knows, but {jailed['name']}'s description was in the system before sunrise. Knocked at the gas station the following evening. {sentence} — no bail hearing for thirty days.",
+                    f"{jailed['name']} went back to the block an hour later to check on things and rolled straight into a plainclothes unit that had been watching since the incident. Didn't even realize it was happening until the cuffs were on. {sentence} and the lawyer isn't optimistic.",
+                    f"Phone records and cell tower data put {jailed['name']} at the exact location at the exact time. Federal involvement made bail impossible. {sentence} sentence and every appeal got denied.",
+                    f"A traffic stop two exits away turned into a full search when the officer ran the plates. {jailed['name']} had no way to explain what was found in the car. {sentence} — the public defender said take the deal.",
                 ]
                 outcome_lines.append(random.choice(jail_after_win_lines))
 
@@ -532,39 +519,39 @@ def calculate_slide_outcome(gang, rolling_members, enemy_rep, is_revenge=False):
                 m['alive'] = False
                 m['deaths'] = m.get('deaths', 0) + 1
                 death_lines = [
-                    f"`{m['name']}` was the one who moved first and caught the first shot because of it. Took two rounds before he hit the ground and never got back up. The crew had to leave him there and couldn't even go back until the next morning.",
-                    f"`{m['name']}` got cut off from the rest of the crew when the opps came from a second direction nobody had seen. Cornered between two buildings with no way out. They found the body two hours after the crew made it back.",
-                    f"`{m['name']}` took a shot through a car window trying to provide cover for the others. The bullet went through the glass and hit something vital. Was gone before anyone could get to him.",
-                    f"The opps had numbers and positioning that the crew didn't account for. `{m['name']}` was the one who took the worst of it — caught in the open with nowhere to go. Died on that block.",
-                    f"`{m['name']}` stood his ground even when the crew started falling back. Refused to leave until everyone else was out. That decision cost him his life. He held the line but didn't make it off it.",
-                    f"A shooter came from a rooftop that nobody had checked. `{m['name']}` never even saw where the shot came from. Dropped in the middle of the street. The set lost one of their realest that night.",
-                    f"`{m['name']}` tried to make it to the car but the opps had the exit cut off. Took three shots trying to push through and collapsed ten feet short of the door. The crew had to pull off without him.",
-                    f"`{m['name']}` took a round to the stomach early in the exchange and kept fighting for another two minutes before the blood loss caught up. He went out swinging.",
+                    f"{m['name']} was the one who moved first and caught the first shot because of it. Took two rounds before he hit the ground and never got back up. The crew had to leave him there and couldn't even go back until the next morning.",
+                    f"{m['name']} got cut off from the rest of the crew when the opps came from a second direction nobody had seen. Cornered between two buildings with no way out. They found the body two hours after the crew made it back.",
+                    f"{m['name']} took a shot through a car window trying to provide cover for the others. The bullet went through the glass and hit something vital. Was gone before anyone could get to him.",
+                    f"The opps had numbers and positioning that the crew didn't account for. {m['name']} was the one who took the worst of it — caught in the open with nowhere to go. Died on that block.",
+                    f"{m['name']} stood his ground even when the crew started falling back. Refused to leave until everyone else was out. That decision cost him his life. He held the line but didn't make it off it.",
+                    f"A shooter came from a rooftop that nobody had checked. {m['name']} never even saw where the shot came from. Dropped in the middle of the street. The set lost one of their realest that night.",
+                    f"{m['name']} tried to make it to the car but the opps had the exit cut off. Took three shots trying to push through and collapsed ten feet short of the door. The crew had to pull off without him.",
+                    f"{m['name']} took a round to the stomach early in the exchange and kept fighting for another two minutes before the blood loss caught up. He went out swinging.",
                 ]
                 outcome_lines.append(random.choice(death_lines))
             else:
                 if random.randint(1, 100) <= 30 and m['alive']:
                     sentence = send_to_jail(m)
                     escape_then_caught_lines = [
-                        f"`{m['name']}` made it out of the immediate situation but the block was already surrounded by the time they reached the car. Got hemmed up at the intersection a quarter mile away with everything still on them. {sentence} and they're not getting out on bail.",
-                        f"`{m['name']}` ran through yards and back streets for twenty minutes before collapsing from exhaustion two neighborhoods over. A patrol unit found them sitting on a curb. {sentence} sentence — the DA stacked every charge available.",
-                        f"`{m['name']}` escaped the gunfire but a helicopter was already in the air. Tracked on foot for six blocks and taken down by a K9 unit. Facing {sentence} and multiple charges that won't help the case.",
-                        f"Cameras on the bus route caught `{m['name']}`'s full face and route. Task force knocked on the door the next morning with a warrant already signed. {sentence} — no negotiating with what they have.",
-                        f"`{m['name']}` made it back to the hood but somebody on the block had already been talking to detectives. Got scooped up sitting on the porch the next afternoon. {sentence} sentence.",
-                        f"The getaway car broke down four blocks away. `{m['name']}` was still sitting in it when the first patrol unit rolled up. {sentence} — caught red handed with nowhere to go.",
+                        f"{m['name']} made it out of the immediate situation but the block was already surrounded by the time they reached the car. Got hemmed up at the intersection a quarter mile away with everything still on them. {sentence} and they're not getting out on bail.",
+                        f"{m['name']} ran through yards and back streets for twenty minutes before collapsing from exhaustion two neighborhoods over. A patrol unit found them sitting on a curb. {sentence} sentence — the DA stacked every charge available.",
+                        f"{m['name']} escaped the gunfire but a helicopter was already in the air. Tracked on foot for six blocks and taken down by a K9 unit. Facing {sentence} and multiple charges that won't help the case.",
+                        f"Cameras on the bus route caught {m['name']}'s full face and route. Task force knocked on the door the next morning with a warrant already signed. {sentence} — no negotiating with what they have.",
+                        f"{m['name']} made it back to the hood but somebody on the block had already been talking to detectives. Got scooped up sitting on the porch the next afternoon. {sentence} sentence.",
+                        f"The getaway car broke down four blocks away. {m['name']} was still sitting in it when the first patrol unit rolled up. {sentence} — caught red handed with nowhere to go.",
                     ]
                     outcome_lines.append(random.choice(escape_then_caught_lines))
                 else:
                     m['missions_survived'] = m.get('missions_survived', 0) + 1
                     survived_lines = [
-                        f"`{m['name']}` took a round through the shoulder that spun him completely around but somehow kept moving. Made it back to the car bleeding through his shirt, jaw tight, not saying a word the whole drive. Alive but not the same after that night.",
-                        f"`{m['name']}` dove behind a parked truck when the shooting started and stayed flat on the ground for four minutes while rounds hit the vehicle above him. Crawled to the alley when it went quiet and made it back on foot. Shaken but breathing.",
-                        f"`{m['name']}` caught a graze across the ribs — burned like fire but nothing that would kill him. Wrapped it with a shirt in the backseat and didn't go to the hospital. Walked into the trap house two hours later looking like nothing happened.",
-                        f"`{m['name']}` took a hit in the leg during the retreat but refused to go down. Leaned on the car door the whole ride back and bit through the pain without a sound. Still standing. Still in it.",
-                        f"`{m['name']}` took a pistol grip to the face when the opps rushed — cut above the eye, nose broken, vision blurred. Made it out but took a beating that the whole set saw.",
-                        f"`{m['name']}` ran the wrong direction and ended up cornered in a dead end, had to climb a fence with shots landing around his feet. Made it over. Landed hard. Got back to the block two hours later. Still counts as making it out.",
-                        f"`{m['name']}` took a fragment to the forearm from a round that hit the concrete next to him. Deep enough to need stitches but not deep enough to stop him. Got patched up in someone's bathroom and was back on the block by morning.",
-                        f"`{m['name']}` got clipped in the ear — half an inch to the left and that would have been it. Walked back to the car with blood running down his neck like it was nothing.",
+                        f"{m['name']} took a round through the shoulder that spun him completely around but somehow kept moving. Made it back to the car bleeding through his shirt, jaw tight, not saying a word the whole drive. Alive but not the same after that night.",
+                        f"{m['name']} dove behind a parked truck when the shooting started and stayed flat on the ground for four minutes while rounds hit the vehicle above him. Crawled to the alley when it went quiet and made it back on foot. Shaken but breathing.",
+                        f"{m['name']} caught a graze across the ribs — burned like fire but nothing that would kill him. Wrapped it with a shirt in the backseat and didn't go to the hospital. Walked into the trap house two hours later looking like nothing happened.",
+                        f"{m['name']} took a hit in the leg during the retreat but refused to go down. Leaned on the car door the whole ride back and bit through the pain without a sound. Still standing. Still in it.",
+                        f"{m['name']} took a pistol grip to the face when the opps rushed — cut above the eye, nose broken, vision blurred. Made it out but took a beating that the whole set saw.",
+                        f"{m['name']} ran the wrong direction and ended up cornered in a dead end, had to climb a fence with shots landing around his feet. Made it over. Landed hard. Got back to the block two hours later. Still counts as making it out.",
+                        f"{m['name']} took a fragment to the forearm from a round that hit the concrete next to him. Deep enough to need stitches but not deep enough to stop him. Got patched up in someone's bathroom and was back on the block by morning.",
+                        f"{m['name']} got clipped in the ear — half an inch to the left and that would have been it. Walked back to the car with blood running down his neck like it was nothing.",
                     ]
                     outcome_lines.append(random.choice(survived_lines))
 
@@ -630,7 +617,7 @@ async def send_slide_result(channel, gang, enemy_gang_info, result, is_revenge=F
 
     kills_lines = []
     for name, k in result.get('kills_this_fight', {}).items():
-        kills_lines.append(f"{name} — {k} kill{'s' if k != 1 else ''} this run")
+        kills_lines.append(f"{name}  {k} kill{'s' if k != 1 else ''} this run")
     kills_text = "\n".join(kills_lines) if kills_lines else "No bodies this run."
 
     summary_embed = discord.Embed(title="Run Summary", color=color)
@@ -638,10 +625,6 @@ async def send_slide_result(channel, gang, enemy_gang_info, result, is_revenge=F
     summary_embed.set_footer(text=footer)
     await channel.send(embed=summary_embed)
 
-
-# ─────────────────────────────────────────────
-# EVENTS
-# ─────────────────────────────────────────────
 
 EVENTS = [
     {"name": "Corner Locked Down", "description": "{member} spent the whole night putting in work on Figueroa, muscling every last corner boy off the strip until nobody dared step foot on it. By morning, **{name}** owned every inch of that block and the whole neighborhood knew it.", "type": "rep_up", "value": (20, 80), "color": discord.Color.green()},
@@ -742,9 +725,6 @@ SOLO_KILLED_LINES = [
     "Going solo was the choice {member} made and the streets don't negotiate with that kind of courage. Made it to the target, handled the business, and caught three on the way out. Didn't make it back. The set carries that weight now. The name won't be forgotten.",
 ]
 
-# ─────────────────────────────────────────────
-# COMMAND HANDLERS
-# ─────────────────────────────────────────────
 
 async def handle_solo(message, args):
     if len(args) < 2:
@@ -755,7 +735,7 @@ async def handle_solo(message, args):
     member_name = " ".join(args[1:])
 
     if code not in gangs:
-        await message.channel.send(f"No crew found with code `{code}`.")
+        await message.channel.send(f"No crew found with code {code}.")
         return
 
     gang = gangs[code]
@@ -803,11 +783,11 @@ async def handle_solo(message, args):
     ]
 
     tags = evaluate_status(target_member)
-    tag_str = "  ".join(tags) if tags else "--"
+    tag_str = "  ".join(tags) if tags else ""
 
     intro_embed = discord.Embed(title="Solo Mission", description=random.choice(send_off_lines), color=discord.Color.dark_red())
     intro_embed.add_field(name="Soldier", value=target_member['name'], inline=True)
-    intro_embed.add_field(name="Tags", value=tag_str, inline=True)
+    intro_embed.add_field(name="Tags", value=tag_str if tag_str else "None", inline=True)
     intro_embed.add_field(name="Kills", value=str(target_member.get('kills', 0)), inline=True)
     intro_embed.add_field(name="Target Territory", value=f"{enemy_gang_info['name']} — {enemy_gang_info['hood']}", inline=False)
     intro_embed.set_footer(text="One man. No backup. Whatever happens next happens alone.")
@@ -823,7 +803,7 @@ async def handle_solo(message, args):
         gang['rep'] = player_rep + rep_gain
         story = random.choice(SOLO_WIN_LINES).replace("{member}", target_member['name'])
         new_tags = evaluate_status(target_member)
-        new_tag_str = "  ".join(new_tags) if new_tags else "--"
+        new_tag_str = "  ".join(new_tags) if new_tags else "None"
 
         result_embed = discord.Embed(title="Solo Mission — Target Down", description=story, color=discord.Color.green())
         result_embed.add_field(name="Soldier", value=target_member['name'], inline=True)
@@ -842,7 +822,7 @@ async def handle_solo(message, args):
 
         result_embed = discord.Embed(title="Solo Mission — Made It Back", description=story, color=discord.Color.orange())
         result_embed.add_field(name="Soldier", value=target_member['name'], inline=True)
-        result_embed.add_field(name="Tags", value=tag_str, inline=True)
+        result_embed.add_field(name="Tags", value=tag_str if tag_str else "None", inline=True)
         result_embed.add_field(name="Kills", value=str(target_member.get('kills', 0)), inline=True)
         result_embed.add_field(name="Cred Lost", value=f"-{rep_loss}", inline=True)
         result_embed.add_field(name="New Street Cred", value=f"{player_rep} -> {gang['rep']}", inline=True)
@@ -857,7 +837,7 @@ async def handle_solo(message, args):
 
         result_embed = discord.Embed(title="Solo Mission — Knocked", description=story, color=discord.Color.blue())
         result_embed.add_field(name="Soldier", value=target_member['name'], inline=True)
-        result_embed.add_field(name="Tags", value=tag_str, inline=True)
+        result_embed.add_field(name="Tags", value=tag_str if tag_str else "None", inline=True)
         result_embed.add_field(name="Sentence", value=sentence, inline=True)
         result_embed.add_field(name="Cred Lost", value=f"-{rep_loss}", inline=True)
         result_embed.add_field(name="New Street Cred", value=f"{player_rep} -> {gang['rep']}", inline=True)
@@ -875,7 +855,7 @@ async def handle_solo(message, args):
 
             result_embed = discord.Embed(title="Solo Mission — Fallen", description=story, color=discord.Color.dark_grey())
             result_embed.add_field(name="Soldier", value=target_member['name'], inline=True)
-            result_embed.add_field(name="Final Tags", value=tag_str, inline=True)
+            result_embed.add_field(name="Final Tags", value=tag_str if tag_str else "None", inline=True)
             result_embed.add_field(name="Kills", value=str(target_member.get('kills', 0)), inline=True)
             result_embed.add_field(name="Cred Lost", value=f"-{rep_loss}", inline=True)
             result_embed.add_field(name="New Street Cred", value=f"{player_rep} -> {gang['rep']}", inline=True)
@@ -890,7 +870,7 @@ async def handle_solo(message, args):
 
             result_embed = discord.Embed(title="Solo Mission — Knocked", description=story, color=discord.Color.blue())
             result_embed.add_field(name="Soldier", value=target_member['name'], inline=True)
-            result_embed.add_field(name="Tags", value=tag_str, inline=True)
+            result_embed.add_field(name="Tags", value=tag_str if tag_str else "None", inline=True)
             result_embed.add_field(name="Sentence", value=sentence, inline=True)
             result_embed.add_field(name="Cred Lost", value=f"-{rep_loss}", inline=True)
             result_embed.add_field(name="New Street Cred", value=f"{player_rep} -> {gang['rep']}", inline=True)
@@ -905,7 +885,7 @@ async def handle_block(message, args):
 
     code = args[0].upper()
     if code not in gangs:
-        await message.channel.send(f"No crew found with code `{code}`.")
+        await message.channel.send(f"No crew found with code {code}.")
         return
 
     gang = gangs[code]
@@ -1064,7 +1044,7 @@ async def handle_block(message, args):
     summary_embed.add_field(name="Members Alive", value=str(len(get_alive_members(gang))), inline=True)
     summary_embed.add_field(name="Members Free", value=str(len(get_free_members(gang))), inline=True)
     if members_killed:
-        summary_embed.add_field(name="Fallen Tonight", value="\n".join([f"{n}" for n in members_killed]), inline=False)
+        summary_embed.add_field(name="Fallen Tonight", value="\n".join(members_killed), inline=False)
     if members_jailed:
         summary_embed.add_field(name="Locked Up Tonight", value="\n".join([f"{name} — {sentence}" for name, sentence in members_jailed]), inline=False)
 
@@ -1150,9 +1130,9 @@ async def handle_show(message, args):
                 f"Code: {g['code']}",
                 f"Shot Caller: {g.get('leader', 'Unknown')}",
                 f"Street Cred: {g['rep']}",
-                f"Record: {fights_won}W — {fights_lost}L   |   Win Rate: {win_rate}",
-                f"Kills: {get_gang_bodies(g)}   |   Deaths: {get_gang_deaths(g)}",
-                f"Alive: {len(get_alive_members(g))}   |   Free: {len(get_free_members(g))}",
+                f"Record: {fights_won}W — {fights_lost}L   Win Rate: {win_rate}",
+                f"Kills: {get_gang_bodies(g)}   Deaths: {get_gang_deaths(g)}",
+                f"Alive: {len(get_alive_members(g))}   Free: {len(get_free_members(g))}",
             ]
             if targets:
                 for t in targets:
@@ -1163,10 +1143,13 @@ async def handle_show(message, args):
             roster_lines = []
             for m in g['members']:
                 tags = evaluate_status(m)
-                tag_str = "  ".join(tags) if tags else "--"
+                tag_str = "  ".join(tags) if tags else ""
                 status = get_member_status(m)
                 kills = m.get('kills', 0)
-                roster_lines.append(f"{m['name']}  |  {tag_str}  |  {kills} kills  |  {status}")
+                if tag_str:
+                    roster_lines.append(f"{m['name']}  {tag_str}  {kills} kills  {status}")
+                else:
+                    roster_lines.append(f"{m['name']}  {kills} kills  {status}")
 
             embed.add_field(name="Roster", value="\n".join(roster_lines) if roster_lines else "None left.", inline=False)
             embed.add_field(name="\u200b", value="\u200b", inline=False)
@@ -1184,7 +1167,7 @@ async def handle_mission(message, args):
 
     code = args[0].upper()
     if code not in gangs:
-        await message.channel.send(f"No crew found with code `{code}`.")
+        await message.channel.send(f"No crew found with code {code}.")
         return
 
     gang = gangs[code]
@@ -1205,7 +1188,7 @@ async def handle_mission(message, args):
     rep = gang['rep']
     old_kills = featured_member.get('kills', 0)
     tags = evaluate_status(featured_member)
-    tag_str = "  ".join(tags) if tags else "--"
+    tag_str = "  ".join(tags) if tags else "None"
 
     embed = discord.Embed(
         title=event['name'],
@@ -1225,7 +1208,7 @@ async def handle_mission(message, args):
             embed.add_field(name="Kill", value=f"{featured_member['name']} +1", inline=True)
         embed.add_field(name="Street Cred", value=f"{rep} -> {gang['rep']} (+{gain})", inline=True)
         updated_tags = evaluate_status(featured_member)
-        embed.add_field(name="Updated Tags", value="  ".join(updated_tags) if updated_tags else "--", inline=True)
+        embed.add_field(name="Updated Tags", value="  ".join(updated_tags) if updated_tags else "None", inline=True)
         embed.set_footer(text="Rep rising on the streets...")
 
     elif event['type'] == 'rep_down':
@@ -1247,7 +1230,7 @@ async def handle_mission(message, args):
             embed.add_field(name="What Happened", value="\n".join(extra_info), inline=False)
         embed.add_field(name="Street Cred", value=f"{rep} -> {gang['rep']} (-{actual_loss})", inline=True)
         updated_tags = evaluate_status(featured_member)
-        embed.add_field(name="Updated Tags", value="  ".join(updated_tags) if updated_tags else "--", inline=True)
+        embed.add_field(name="Updated Tags", value="  ".join(updated_tags) if updated_tags else "None", inline=True)
         embed.set_footer(text="Taking an L on the streets...")
 
     elif event['type'] == 'nothing':
@@ -1264,7 +1247,7 @@ async def handle_recruit(message, args):
 
     code = args[0].upper()
     if code not in gangs:
-        await message.channel.send(f"No crew found with code `{code}`.")
+        await message.channel.send(f"No crew found with code {code}.")
         return
 
     gang = gangs[code]
@@ -1299,10 +1282,10 @@ async def handle_recruit(message, args):
         }
         gang['members'].append(new_member)
         descriptions = [
-            f"**{new_name}** had been hanging around the block for weeks watching how **{gang['name']}** moved. Finally pulled them aside, looked them in the eye, and put them on. They didn't hesitate.",
-            f"Word got to **{new_name}** through a mutual that **{gang['name']}** was looking. They showed up the next day ready to work. No questions, no hesitation — just loyalty.",
-            f"**{new_name}** proved themselves during a situation last month that nobody forgot. After that, the decision to put them on with **{gang['name']}** was unanimous.",
-            f"**{new_name}** grew up two blocks over and always had love for **{gang['name']}**. When the invitation finally came, they were ready — had been ready for a long time.",
+            f"{new_name} had been hanging around the block for weeks watching how **{gang['name']}** moved. Finally pulled them aside, looked them in the eye, and put them on. They didn't hesitate.",
+            f"Word got to {new_name} through a mutual that **{gang['name']}** was looking. They showed up the next day ready to work. No questions, no hesitation — just loyalty.",
+            f"{new_name} proved themselves during a situation last month that nobody forgot. After that, the decision to put them on with **{gang['name']}** was unanimous.",
+            f"{new_name} grew up two blocks over and always had love for **{gang['name']}**. When the invitation finally came, they were ready — had been ready for a long time.",
         ]
         embed = discord.Embed(title="New Member", description=random.choice(descriptions), color=discord.Color.teal())
         embed.add_field(name="Gang", value=gang['name'], inline=True)
@@ -1335,7 +1318,7 @@ async def handle_slide(message, args):
 
     code = args[0].upper()
     if code not in gangs:
-        await message.channel.send(f"No crew found with code `{code}`.")
+        await message.channel.send(f"No crew found with code {code}.")
         return
 
     gang = gangs[code]
@@ -1363,9 +1346,7 @@ async def handle_slide(message, args):
 
     actual_count = min(requested_count, len(free_members), 10)
     if actual_count < requested_count:
-        await message.channel.send(
-            f"Only {len(free_members)} members are free right now. Rolling with {actual_count}."
-        )
+        await message.channel.send(f"Only {len(free_members)} members are free right now. Rolling with {actual_count}.")
 
     rolling_members = random.sample(free_members, actual_count)
 
@@ -1410,7 +1391,7 @@ async def handle_revenge(message, args):
 
     code = args[0].upper()
     if code not in gangs:
-        await message.channel.send(f"No crew found with code `{code}`.")
+        await message.channel.send(f"No crew found with code {code}.")
         return
 
     gang = gangs[code]
@@ -1484,10 +1465,6 @@ async def handle_revenge(message, args):
         followup.set_footer(text=f"Type revenge {code} again to go after another one.")
         await message.channel.send(embed=followup)
 
-
-# ─────────────────────────────────────────────
-# BOT EVENTS
-# ─────────────────────────────────────────────
 
 COMMANDS = {
     "gang": handle_gang,
