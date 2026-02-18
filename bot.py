@@ -5,6 +5,8 @@ from dotenv import load_dotenv
 import os
 import asyncio
 import time
+from keep_alive import keep_alive
+
 
 load_dotenv()
 
