@@ -286,7 +286,12 @@ def add_revenge_target(gang, killer_name, enemy_info, enemy_rep):
             t['name'] = killer_name
             t['enemy_rep'] = enemy_rep
             return
-    targets.append({"name": killer_name, "gang": enemy_info['name'], "gang_info": enemy_info, "enemy_rep": enemy_rep})
+    targets.append({
+        "name": killer_name,
+        "gang": enemy_info['name'],
+        "gang_info": enemy_info,
+        "enemy_rep": enemy_rep
+    })
 
 def get_revenge_targets(gang):
     return gang.get('revenge_targets', [])
@@ -297,9 +302,9 @@ def remove_revenge_target(gang, gang_name):
 async def safe_send(channel, embed=None, content=None):
     try:
         if embed:
-            await channel.send(embed=embed)
+            return await channel.send(embed=embed)
         elif content:
-            await channel.send(content)
+            return await channel.send(content)
     except discord.HTTPException as e:
         print(f"safe_send error: {e}")
 
@@ -424,11 +429,12 @@ async def send_slide_result(channel, gang, enemy_info, result, rolling, is_reven
     cred_line = f"{result['old_rep']} -> {result['new_rep']} (+{result['rep_gain']})" if result['won'] else f"{result['old_rep']} -> {result['new_rep']} (-{result['rep_loss']})"
 
     rolling_names = ", ".join(f"`{m['name']}`" for m in rolling if not is_jailed(m))
-    intro = discord.Embed(title="Slide", color=discord.Color.dark_red())
+    intro = discord.Embed(title="Slide" if not is_revenge else "Revenge Slide", color=discord.Color.dark_red())
     intro.description = (
         f"**{gang['name']}** vs **{enemy_info['name']}**\n"
+        f"Hood: {enemy_info['hood']}\n"
         f"Your Cred: {result['old_rep']}  |  Opp Cred: {result['enemy_rep']}\n\n"
-        f"Rolling: {rolling_names}"
+        f"Rolling: {rolling_names if rolling_names else 'Nobody free'}"
     )
     await safe_send(channel, embed=intro)
     await asyncio.sleep(MSG_DELAY)
@@ -439,7 +445,7 @@ async def send_slide_result(channel, gang, enemy_info, result, rolling, is_reven
     desc = (
         f"**Cred:** {cred_line}\n"
         f"**Still Standing:** {result['members_alive']}\n\n"
-        f"**Crew**\n{crew_lines}\n\n"
+        f"**Crew Report**\n{crew_lines}\n\n"
         f"**Kills**\n{kills_lines}"
     )
     if result['fallen']:
@@ -506,7 +512,6 @@ async def handle_mission(message, args):
             if event.get('snitch'):
                 member['times_snitched'] += 1
             extra = []
-            free_now = get_free_members(gang)
             if random.randint(1, 100) <= 15 and len(get_alive_members(gang)) > 1 and not is_jailed(member):
                 member['alive'] = False
                 member['deaths'] += 1
@@ -573,7 +578,7 @@ async def run_drug_mission(channel, gang, member, code):
     await safe_send(channel, embed=embed)
 
 
-# DP Command -- Disciplinary Punishment
+# DP Command
 
 async def handle_dp(message, args):
     if len(args) < 2:
@@ -610,6 +615,7 @@ async def handle_dp(message, args):
         await safe_send(message.channel, content="Nobody free to handle the DP right now.")
         return
 
+    # Send intro embed
     intro = discord.Embed(title="Disciplinary Punishment", color=discord.Color.dark_red())
     intro.description = (
         f"**{gang['name']}** is handling business internally.\n\n"
@@ -619,31 +625,33 @@ async def handle_dp(message, args):
     await safe_send(message.channel, embed=intro)
     await asyncio.sleep(MSG_DELAY)
 
-    beat_lines = []
+    # Build beating scene
     num_involved = min(len(beaters), random.randint(2, 5))
     involved = random.sample(beaters, num_involved)
 
     beating_phrases = [
-        f"`{m['name']}` stepped up first and caught `{target['name']}` with a clean one.",
-        f"`{m['name']}` didn't say a word -- just went straight to work.",
-        f"`{m['name']}` made sure `{target['name']}` felt every second of it.",
-        f"`{m['name']}` held `{target['name']}` up so the rest could get their licks in.",
-        f"`{m['name']}` came in last but hit the hardest.",
-        f"`{m['name']}` didn't hold back. No mercy, no words.",
-        f"`{m['name']}` went in swinging and didn't stop till someone pulled him off.",
-        f"`{m['name']}` caught `{target['name']}` with a right hand that dropped him to the ground.",
+        f"`{'{name}'}` stepped up first and caught `{target['name']}` with a clean one.",
+        f"`{'{name}'}` didn't say a word -- just went straight to work on `{target['name']}`.",
+        f"`{'{name}'}` made sure `{target['name']}` felt every second of it.",
+        f"`{'{name}'}` held `{target['name']}` up so the rest could get their licks in.",
+        f"`{'{name}'}` came in last but hit the hardest.",
+        f"`{'{name}'}` went in swinging and didn't stop till someone pulled him off.",
+        f"`{'{name}'}` caught `{target['name']}` with a right hand that dropped him.",
+        f"`{'{name}'}` didn't hold back. No mercy, no words.",
     ]
 
+    beat_lines = []
     for m in involved:
-        beat_lines.append(random.choice(beating_phrases).replace(f"`{m['name']}`", f"`{m['name']}`"))
+        phrase = random.choice(beating_phrases).replace("{name}", m['name'])
+        beat_lines.append(phrase)
 
-    await asyncio.sleep(MSG_DELAY)
-
-    beat_embed = discord.Embed(title="The DP", color=discord.Color.dark_gold())
+    beat_embed = discord.Embed(title="The DP -- Going Down", color=discord.Color.dark_gold())
     beat_embed.description = "\n".join(beat_lines)
+    beat_embed.set_footer(text=f"{len(involved)} members put in work on `{target['name']}`.")
     await safe_send(message.channel, embed=beat_embed)
     await asyncio.sleep(MSG_DELAY)
 
+    # Determine outcome
     roll = random.randint(1, 100)
 
     if roll <= 15:
@@ -652,17 +660,17 @@ async def handle_dp(message, args):
             target['alive'] = False
             target['deaths'] += 1
             check_and_mark_dead(code)
-            result_embed = discord.Embed(title="DP -- Didn't Make It", color=discord.Color.dark_grey())
+            result_embed = discord.Embed(title="DP Result -- Didn't Make It", color=discord.Color.dark_grey())
             result_embed.description = (
                 f"`{target['name']}` took too much. They didn't walk away from this one.\n\n"
-                f"The set made a decision and that decision is final.\n"
+                f"The set went too far. That decision is final.\n\n"
                 f"Members Alive: {len(get_alive_members(gang))}"
             )
-            result_embed.set_footer(text="That name stays off the wall. They chose this.")
+            result_embed.set_footer(text="That name won't be spoken again.")
         else:
-            result_embed = discord.Embed(title="DP -- Last Man Standing", color=discord.Color.orange())
+            result_embed = discord.Embed(title="DP Result -- Can't Finish It", color=discord.Color.orange())
             result_embed.description = (
-                f"`{target['name']}` is the last one breathing. Can't finish what got started.\n"
+                f"`{target['name']}` is the last one alive. Can't finish what got started.\n"
                 f"They live -- for now."
             )
             result_embed.set_footer(text="Unfinished business.")
@@ -670,22 +678,23 @@ async def handle_dp(message, args):
     elif roll <= 45:
         # Kicked out
         gang['members'].remove(target)
-        result_embed = discord.Embed(title="DP -- Kicked Out", color=discord.Color.red())
+        result_embed = discord.Embed(title="DP Result -- Kicked Out the Set", color=discord.Color.red())
         result_embed.description = (
             f"`{target['name']}` got beat out of the set.\n\n"
-            f"They took their licks and when it was over they were told to walk.\n"
-            f"They are no longer part of **{gang['name']}**.\n"
-            f"Members Alive: {len(get_alive_members(gang))}"
+            f"They took their licks and when it was done they were told to walk.\n"
+            f"`{target['name']}` is no longer part of **{gang['name']}**.\n\n"
+            f"Members Remaining: {len(get_alive_members(gang))}"
         )
         result_embed.set_footer(text="Don't come back around.")
 
     else:
         # Beaten but stays in
-        result_embed = discord.Embed(title="DP -- Beat Down, Still In", color=discord.Color.orange())
+        result_embed = discord.Embed(title="DP Result -- Beat Down, Still In", color=discord.Color.orange())
         result_embed.description = (
-            f"`{target['name']}` took the DP and is still standing -- barely.\n\n"
-            f"They took every hit without running. The set decided that counts for something.\n"
-            f"`{target['name']}` is still part of **{gang['name']}** but they know what time it is now."
+            f"`{target['name']}` took the full DP and is still standing -- barely.\n\n"
+            f"They didn't run. They didn't fold. The set decided that counts for something.\n"
+            f"`{target['name']}` is still part of **{gang['name']}** but they know what time it is now.\n\n"
+            f"Members Alive: {len(get_alive_members(gang))}"
         )
         result_embed.set_footer(text="One more slip and it won't end the same way.")
 
@@ -757,7 +766,7 @@ async def handle_show(message, args):
             targets = get_revenge_targets(g)
             blood_lines = ""
             if targets:
-                blood_lines = "\n" + "\n".join(f"Blood Owed: `{t['name']}` | {t['gang']}" for t in targets)
+                blood_lines = "\n" + "\n".join(f"Blood Owed: `{t['name']}` from **{t['gang']}**" for t in targets)
             desc += (
                 f"\n\n**{g['name']}**\n"
                 f"Hood: {g.get('hood', 'Unknown')}\n"
@@ -942,7 +951,7 @@ async def handle_revenge(message, args):
 
     targets = get_revenge_targets(gang)
     if not targets:
-        await safe_send(message.channel, content="No blood owed right now.")
+        await safe_send(message.channel, content="No blood owed right now. Your set is clean.")
         return
 
     free = get_free_members(gang)
@@ -950,10 +959,30 @@ async def handle_revenge(message, args):
         await safe_send(message.channel, content="Nobody free to roll out. Everyone is locked up or dead.")
         return
 
-    target = random.choice(targets)
-    enemy_info = target['gang_info']
+    # Show who we are going after first
+    target = targets[0]
+    enemy_info = target.get('gang_info')
+
+    if not enemy_info:
+        remove_revenge_target(gang, target['gang'])
+        await safe_send(message.channel, content="That target info got corrupted. Removed from the list.")
+        return
+
     enemy_rep = target.get('enemy_rep', random.randint(10, 500))
-    rolling = random.sample(free, random.randint(1, min(3, len(free))))
+    num_rolling = random.randint(1, min(3, len(free)))
+    rolling = random.sample(free, num_rolling)
+
+    # Send a setup embed showing who we are going after
+    setup = discord.Embed(title="Revenge", color=discord.Color.dark_red())
+    setup.description = (
+        f"**{gang['name']}** is going after **{enemy_info['name']}**.\n"
+        f"Hood: {enemy_info['hood']}\n"
+        f"Target: `{target['name']}`\n\n"
+        f"Rolling: {', '.join(f'`{m[chr(110)+(chr(97)+chr(109)+chr(101))]}`' for m in rolling)}"
+    )
+    setup.set_footer(text="Blood owed. Time to collect.")
+    await safe_send(message.channel, embed=setup)
+    await asyncio.sleep(MSG_DELAY)
 
     alive_before = {m['name'] for m in get_alive_members(gang)}
     result = calculate_slide_outcome(gang, rolling, enemy_rep, is_revenge=True)
@@ -967,14 +996,20 @@ async def handle_revenge(message, args):
     check_and_mark_dead(code)
     await send_slide_result(message.channel, gang, enemy_info, result, rolling, is_revenge=True)
 
-    remaining_after = get_revenge_targets(gang)
-    if remaining_after:
+    await asyncio.sleep(1)
+    remaining = get_revenge_targets(gang)
+    if remaining:
         followup = discord.Embed(
             title="Blood Still Owed",
-            description="\n".join(f"**{t['gang']}** | `{t['name']}`" for t in remaining_after) + f"\n\nType `revenge {code}` again.",
             color=discord.Color.dark_red()
         )
+        lines = "\n".join(f"**{t['gang']}** | `{t['name']}`" for t in remaining)
+        followup.description = f"{lines}\n\nType `revenge {code}` again to keep going."
         await safe_send(message.channel, embed=followup)
+    elif result['won']:
+        clear = discord.Embed(title="All Debts Settled", color=discord.Color.green())
+        clear.description = f"**{gang['name']}** has no more blood owed. The set is clean."
+        await safe_send(message.channel, embed=clear)
 
 
 async def handle_solo(message, args):
