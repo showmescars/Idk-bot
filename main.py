@@ -60,7 +60,6 @@ def evaluate_status(member):
     missions_survived = member.get('missions_survived', 0)
 
     tags = []
-
     if times_snitched > 0:
         tags.append("SNITCH")
     if kills >= 15 and deaths == 0:
@@ -82,7 +81,6 @@ def evaluate_status(member):
     if times_jailed == 0 and deaths == 0 and kills >= 3:
         tags.append("LOYAL")
 
-    # Only keep top 2 most meaningful tags
     priority = ["SNITCH", "UNTOUCHABLE", "BEAST", "GHOST", "CURSED", "LOCKED", "MARKED", "FALLEN", "RISEN", "LOYAL"]
     tags = sorted(tags, key=lambda t: priority.index(t) if t in priority else 99)
     return tags[:2]
@@ -111,15 +109,15 @@ def check_rank_up(member, old_kills):
 
 
 RANK_UP_LINES = {
-    "Corner Boy":  [
+    "Corner Boy": [
         "{member} put in enough work to get off the bottom. Not just hanging around anymore — they're on the corner now and the set sees it.",
         "{member} graduated from nobody to somebody. Small step but the block noticed.",
     ],
-    "Soldier":     [
+    "Soldier": [
         "{member} is a Soldier now. Not just posting up — actually putting in. The set moves different when they're around.",
         "The rank is official. {member} has done enough to be called a Soldier and everyone in the set knows why.",
     ],
-    "OG":          [
+    "OG": [
         "{member} is an OG now. Years of work, blood spilled, battles won. The younger ones look up and the older ones nod.",
         "Can't take the OG status away from {member}. They earned every bit of it the hard way.",
     ],
@@ -127,7 +125,7 @@ RANK_UP_LINES = {
         "{member} is calling shots now. The set listens when they speak. That kind of authority doesn't get handed out — it gets taken.",
         "The crew doesn't make moves without checking with {member} first. Shot Caller status is official.",
     ],
-    "Legend":      [
+    "Legend": [
         "{member} is a Legend. The streets will be telling stories about what they did long after they're gone.",
         "There's nothing higher. {member} reached the top and the whole city knows the name.",
     ],
@@ -144,26 +142,86 @@ RANK_DOWN_LINES = [
 # ─────────────────────────────────────────────
 
 STREET_NAMES = [
-    "Lil Menace", "Big Loc", "Joker", "Tiny", "Demon", "Ghost", "Lil Creep",
-    "Youngsta", "Lil Caps", "Big Hurt", "Shadow", "Lil Diablo", "Cisco",
-    "Drowsy", "Spanky", "Lil Wicked", "Chuco", "Travieso", "Sleepy",
-    "Lil Payaso", "Boxer", "Dopey", "Scrappy", "Sinner", "Lil Evil",
-    "Big Trigg", "Lil Trigg", "Cartoon", "Psycho", "Lil Psycho",
-    "Big Psycho", "Casper", "Lil Casper", "Smiley", "Lil Smiley",
-    "Big Smiley", "Termite", "Lil Monster", "Big Monster", "Lil Lobo",
-    "Big Lobo", "Pnut", "Lil Pnut", "Wino", "Lil Wino", "Coyote",
-    "Lil Coyote", "Grumpy", "Lil Grumpy", "Chino", "Lil Chino",
-    "Big Chino", "Stomper", "Lil Stomper", "Danger", "Lil Danger",
-    "Vicious", "Lil Vicious", "Puppet", "Lil Puppet", "Sad Eyes",
-    "Lil Sad Eyes", "Trigger", "Lil Trigger", "Mosco", "Lil Mosco",
-    "Huero", "Lil Huero", "Big Huero", "Flaco", "Lil Flaco",
-    "Gordo", "Lil Gordo", "Speedy", "Lil Speedy", "Terminator",
-    "Lil Terminator", "Mugsy", "Lil Mugsy", "Sniper", "Lil Sniper",
-    "Looney", "Lil Looney", "Big Looney", "Crazy", "Lil Crazy",
-    "Big Crazy", "Silent", "Lil Silent", "Savage", "Lil Savage",
-    "Big Savage", "Bandit", "Lil Bandit", "Sinister", "Lil Sinister",
-    "Diablo", "Big Diablo", "Capone", "Lil Capone", "Scarface",
-    "Lil Scarface", "Hitman", "Lil Hitman", "Naughty", "Lil Naughty"
+    # Original crew — trimmed heavy Lil duplicates
+    "Big Loc", "Joker", "Tiny", "Demon", "Ghost", "Cisco", "Drowsy", "Spanky",
+    "Travieso", "Sleepy", "Boxer", "Dopey", "Scrappy", "Sinner", "Cartoon",
+    "Psycho", "Casper", "Smiley", "Termite", "Coyote", "Grumpy", "Stomper",
+    "Danger", "Vicious", "Puppet", "Trigger", "Mosco", "Huero", "Flaco",
+    "Gordo", "Speedy", "Terminator", "Mugsy", "Sniper", "Looney", "Crazy",
+    "Silent", "Savage", "Bandit", "Sinister", "Diablo", "Capone", "Scarface",
+    "Hitman", "Naughty", "Shadow", "Youngsta", "Wino", "Sad Eyes", "Pnut",
+    "Lil Menace", "Lil Creep", "Lil Caps", "Lil Diablo", "Lil Wicked",
+    "Lil Payaso", "Lil Evil", "Lil Trigg", "Lil Psycho", "Lil Casper",
+    "Lil Smiley", "Lil Monster", "Lil Lobo", "Lil Pnut", "Lil Wino",
+    "Lil Coyote", "Lil Grumpy", "Lil Chino", "Lil Stomper", "Lil Danger",
+    "Lil Vicious", "Lil Puppet", "Lil Sad Eyes", "Lil Trigger", "Lil Mosco",
+    "Lil Huero", "Lil Flaco", "Lil Gordo", "Lil Speedy", "Lil Terminator",
+    "Lil Mugsy", "Lil Sniper", "Lil Looney", "Lil Crazy", "Lil Silent",
+    "Lil Savage", "Lil Bandit", "Lil Sinister", "Lil Capone", "Lil Scarface",
+    "Lil Hitman", "Lil Naughty",
+
+    # 250 new names — street handles, minimal Lil prefix
+    "Creeper", "Vulture", "Venom", "Reaper", "Cobra", "Phantom", "Wraith",
+    "Raider", "Chaos", "Menace", "Havoc", "Reckless", "Infamous", "Renegade",
+    "Outlaw", "Maverick", "Rebel", "Diesel", "Bruiser", "Crusher", "Tank",
+    "Boulder", "Razor", "Blade", "Cutthroat", "Buckshot", "Hollow", "Gauge",
+    "Caliber", "Barrel", "Hammer", "Spike", "Cleaver", "Machete", "Crowbar",
+    "Wrench", "Knuckles", "Fist", "Brawler", "Slugger", "Mauler", "Bonebreaker",
+    "Jawbreaker", "Headbuster", "Kneecap", "Ribcracker", "Necksnap", "Backbreaker",
+    "Undertaker", "Gravedigger", "Casket", "Tombstone", "Cipher", "Riddle",
+    "Maze", "Labyrinth", "Puzzle", "Ridgeline", "Plateau", "Badlands",
+    "Dusty", "Rusty", "Crusty", "Grimey", "Grimy", "Grime", "Filth",
+    "Murk", "Muddy", "Ashy", "Chalky", "Smoky", "Foggy", "Hazy",
+    "Cloudy", "Stormy", "Thunder", "Lightning", "Tempest", "Cyclone",
+    "Tornado", "Hurricane", "Typhoon", "Tsunami", "Avalanche", "Landslide",
+    "Rockslide", "Mudslide", "Flashflood", "Earthquake", "Tremor", "Aftershock",
+    "Rubble", "Ruins", "Wreckage", "Debris", "Remnant", "Relic",
+    "Fossil", "Bones", "Marrow", "Skull", "Ribs", "Spine",
+    "Fracture", "Splinter", "Shatter", "Crumble", "Collapse", "Implode",
+    "Detonate", "Ignite", "Blaze", "Inferno", "Ember", "Ash",
+    "Cinder", "Char", "Scorch", "Burn", "Smolder", "Flicker",
+    "Flare", "Flash", "Streak", "Bolt", "Spark", "Surge",
+    "Current", "Voltage", "Static", "Conductor", "Reactor", "Meltdown",
+    "Fallout", "Hazmat", "Toxic", "Venom", "Plague", "Outbreak",
+    "Infection", "Fever", "Frostbite", "Hypothermia", "Exposure", "Blackout",
+    "Whiteout", "Blindside", "Sucker", "Ambush", "Bushwhack", "Backstab",
+    "Blindspot", "Deadzone", "Killzone", "Warzone", "Frontline", "Trenches",
+    "Foxhole", "Bunker", "Fortify", "Fortress", "Rampart", "Bastion",
+    "Citadel", "Stockade", "Garrison", "Warden", "Marshal", "Sheriff",
+    "Lawless", "Untamed", "Feral", "Rabid", "Savage Rex", "Predator",
+    "Apex", "Alpha", "Omega", "Titan", "Colossus", "Behemoth",
+    "Leviathan", "Goliath", "Juggernaut", "Wrecking Ball", "Battering Ram",
+    "Sledge", "Maul", "Pulverize", "Devastate", "Obliterate", "Annihilate",
+    "Exterminate", "Execute", "Terminate", "Eliminate", "Eradicate", "Vanquish",
+    "Conquer", "Dominate", "Subjugate", "Oppress", "Suppress", "Crush",
+    "Flatten", "Steamroll", "Bulldoze", "Plow", "Mow", "Sweep",
+    "Wipe", "Cleanse", "Purge", "Scour", "Scrap", "Strip",
+    "Peel", "Flay", "Skin", "Scalp", "Carve", "Chisel",
+    "Etch", "Brand", "Scar", "Mark", "Stamp", "Seal",
+    "Cipher Zero", "Ghost Rider", "Night Crawler", "Day Walker", "Street King",
+    "Block God", "Corner Lord", "Trap Star", "Hustle King", "Grind Lord",
+    "Money Bags", "Cash Rules", "Broke Never", "Rich Forever", "Stack Heavy",
+    "Guap", "Gwap", "Bankroll", "Rolodex", "Portfolio", "Offshore",
+    "Cayman", "Swiss", "Numbered", "Encrypted", "Coded", "Classified",
+    "Redacted", "Blacklisted", "Wanted", "Fugitive", "Exile", "Outcast",
+    "Pariah", "Leper", "Phantom Pain", "Ghost Protocol", "Dark Matter",
+    "Black Hole", "Event Horizon", "Singularity", "Anomaly", "Glitch",
+    "Error", "Corrupt", "Virus", "Malware", "Trojan", "Payload",
+    "Detonator", "Trigger Man", "Hitlist", "Contract", "Bounty", "Warrant",
+    "Indictment", "Verdict", "Sentence", "Conviction", "Appeal", "Acquit",
+    "Alibi", "Witness", "Evidence", "Exhibit", "Docket", "Case",
+    "Charge", "Count", "Felony", "Misdemeanor", "Statute", "Code",
+    "Section", "Article", "Amendment", "Override", "Veto", "Injunction",
+    "Restraining", "Order", "Warrant", "Writ", "Subpoena", "Summons",
+    "Dispatch", "Deploy", "Advance", "Retreat", "Flank", "Maneuver",
+    "Tactic", "Strategy", "Operation", "Mission", "Objective", "Target",
+    "Marker", "Waypoint", "Checkpoint", "Rendezvous", "Extraction", "Infiltrate",
+    "Exfil", "Breach", "Clear", "Secure", "Lockdown", "Standoff",
+    "Deadlock", "Stalemate", "Standstill", "Impasse", "Gridlock", "Bottleneck",
+    "Choke", "Strangle", "Suffocate", "Smother", "Muffle", "Silence",
+    "Hush", "Whisper", "Murmur", "Echo", "Reverberate", "Resonate",
+    "Amplify", "Distort", "Warp", "Bend", "Twist", "Contort",
+    "Disfigure", "Deface", "Deform", "Mutilate", "Mangle", "Maim",
 ]
 
 LA_GANGS = [
@@ -309,10 +367,9 @@ def format_member_list(members):
     for m in members:
         status = get_member_status(m)
         kills = m.get('kills', 0)
-        rank = get_rank_name(m)
         tags = evaluate_status(m)
         tag_str = " ".join([f"[{t}]" for t in tags]) if tags else ""
-        lines.append(f"`{m['name']}`  |  {rank}  {tag_str}  |  {kills} kills  |  {status}")
+        lines.append(f"`{m['name']}`  |  {get_rank_name(m)}  {tag_str}  |  {kills} kills  |  {status}")
     return "\n".join(lines)
 
 
@@ -346,22 +403,14 @@ async def post_rank_changes(channel, rank_ups, rank_downs):
     for member_name, new_rank in rank_ups:
         lines = RANK_UP_LINES.get(new_rank, ["{member} ranked up."])
         line = random.choice(lines).replace("{member}", f"`{member_name}`")
-        embed = discord.Embed(
-            title=f"Rank Up — {new_rank}",
-            description=line,
-            color=discord.Color.gold()
-        )
+        embed = discord.Embed(title=f"Rank Up — {new_rank}", description=line, color=discord.Color.gold())
         embed.set_footer(text=f"New rank: {new_rank}")
         await channel.send(embed=embed)
         await asyncio.sleep(1)
 
     for member_name in rank_downs:
         line = random.choice(RANK_DOWN_LINES).replace("{member}", f"`{member_name}`")
-        embed = discord.Embed(
-            title="Reputation Slipping",
-            description=line,
-            color=discord.Color.dark_orange()
-        )
+        embed = discord.Embed(title="Reputation Slipping", description=line, color=discord.Color.dark_orange())
         await channel.send(embed=embed)
         await asyncio.sleep(1)
 
@@ -768,13 +817,12 @@ async def handle_solo(message, args):
         result_embed = discord.Embed(title="Solo Mission — Target Down", description=story, color=discord.Color.green())
         result_embed.add_field(name="Soldier", value=f"`{target_member['name']}`", inline=True)
         result_embed.add_field(name="Rank", value=get_rank_name(target_member), inline=True)
-        result_embed.add_field(name="Status Tags", value=format_status_line(target_member), inline=True)
+        result_embed.add_field(name="Status", value=format_status_line(target_member), inline=True)
         result_embed.add_field(name="Kills", value=str(target_member['kills']), inline=True)
         result_embed.add_field(name="Cred Gained", value=f"+{rep_gain}", inline=True)
         result_embed.add_field(name="New Street Cred", value=f"{player_rep} -> **{gang['rep']}**", inline=True)
         result_embed.set_footer(text="Solo work. The set eats off one man's courage tonight.")
         await message.channel.send(embed=result_embed)
-
         if ranked_up:
             await post_rank_changes(message.channel, [(target_member['name'], ranked_up)], [])
 
@@ -787,7 +835,7 @@ async def handle_solo(message, args):
         result_embed = discord.Embed(title="Solo Mission — Made It Back", description=story, color=discord.Color.orange())
         result_embed.add_field(name="Soldier", value=f"`{target_member['name']}`", inline=True)
         result_embed.add_field(name="Rank", value=get_rank_name(target_member), inline=True)
-        result_embed.add_field(name="Status Tags", value=format_status_line(target_member), inline=True)
+        result_embed.add_field(name="Status", value=format_status_line(target_member), inline=True)
         result_embed.add_field(name="Cred Lost", value=f"-{rep_loss}", inline=True)
         result_embed.add_field(name="New Street Cred", value=f"{player_rep} -> **{gang['rep']}**", inline=True)
         result_embed.set_footer(text="Came back alive. That has to count for something.")
@@ -802,7 +850,7 @@ async def handle_solo(message, args):
         result_embed = discord.Embed(title="Solo Mission — Knocked", description=story, color=discord.Color.blue())
         result_embed.add_field(name="Soldier", value=f"`{target_member['name']}`", inline=True)
         result_embed.add_field(name="Rank", value=get_rank_name(target_member), inline=True)
-        result_embed.add_field(name="Status Tags", value=format_status_line(target_member), inline=True)
+        result_embed.add_field(name="Status", value=format_status_line(target_member), inline=True)
         result_embed.add_field(name="Sentence", value=sentence, inline=True)
         result_embed.add_field(name="Cred Lost", value=f"-{rep_loss}", inline=True)
         result_embed.add_field(name="New Street Cred", value=f"{player_rep} -> **{gang['rep']}**", inline=True)
@@ -836,7 +884,7 @@ async def handle_solo(message, args):
             result_embed = discord.Embed(title="Solo Mission — Knocked", description=story, color=discord.Color.blue())
             result_embed.add_field(name="Soldier", value=f"`{target_member['name']}`", inline=True)
             result_embed.add_field(name="Rank", value=get_rank_name(target_member), inline=True)
-            result_embed.add_field(name="Status Tags", value=format_status_line(target_member), inline=True)
+            result_embed.add_field(name="Status", value=format_status_line(target_member), inline=True)
             result_embed.add_field(name="Sentence", value=sentence, inline=True)
             result_embed.add_field(name="Cred Lost", value=f"-{rep_loss}", inline=True)
             result_embed.add_field(name="New Street Cred", value=f"{player_rep} -> **{gang['rep']}**", inline=True)
@@ -1186,7 +1234,6 @@ async def handle_mission(message, args):
         embed.set_footer(text="Nothing popped off tonight.")
 
     await message.channel.send(embed=embed)
-
     if ranked_up:
         await post_rank_changes(message.channel, [(featured_member['name'], ranked_up)], [])
 
