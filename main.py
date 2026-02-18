@@ -181,12 +181,10 @@ def calculate_beef_outcome(gang, rolling_members, enemy_rep, is_revenge=False):
     win_chance = 50 + int((rep_diff / 500) * 40)
     win_chance = max(10, min(90, win_chance))
 
-    # Revenge gives a slight boost to win chance — the crew is motivated
     if is_revenge:
         win_chance = min(95, win_chance + 10)
 
     player_won = random.randint(1, 100) <= win_chance
-
     outcome_lines = []
 
     if player_won:
@@ -220,7 +218,7 @@ def calculate_beef_outcome(gang, rolling_members, enemy_rep, is_revenge=False):
                 casualty['deaths'] = casualty.get('deaths', 0) + 1
                 friendly_loss_lines = [
                     f"{casualty['name']} caught a round in the chest during the exchange. Stayed on his feet long enough to make it back to the car but was gone before they reached the block. Won the fight but the set lost somebody real tonight.",
-                    f"{casualty['name']} was the last one out and took a shot from someone hiding behind a car on the far end of the block. The crew didn't realize until they were already pulling off. He didn't make it to the hospital.",
+                    f"{casualty['name']} took a shot from someone hiding behind a car on the far end of the block. The crew didn't realize until they were already pulling off. He didn't make it to the hospital.",
                     f"One of the opps who was already down still had enough left to get a shot off. {casualty['name']} caught it in the neck. The crew held the block but held a funeral three days later.",
                     f"{casualty['name']} took a stray during the chaos — wrong place, wrong angle, bad luck. The streets claimed another one that night. Set won the beef but the victory felt hollow.",
                     f"{casualty['name']} pushed too deep into their territory without cover and got cut off. By the time the crew circled back it was too late. Another name on the wall.",
@@ -276,7 +274,7 @@ def calculate_beef_outcome(gang, rolling_members, enemy_rep, is_revenge=False):
                     escape_then_caught_lines = [
                         f"{m['name']} made it out of the immediate situation but the block was already surrounded by the time they reached the car. Got hemmed up at the intersection a quarter mile away with everything still on them. {sentence} and they're not getting out on bail.",
                         f"{m['name']} ran through yards and back streets for twenty minutes before collapsing from exhaustion two neighborhoods over. A patrol unit found them sitting on a curb. {sentence} sentence — the DA stacked every charge available.",
-                        f"{m['name']} escaped the gunfire but a helicopter was already in the air. Tracked on foot for six blocks and taken down by a K9 unit. Facing {sentence} and multiple use of force charges that won't help the case.",
+                        f"{m['name']} escaped the gunfire but a helicopter was already in the air. Tracked on foot for six blocks and taken down by a K9 unit. Facing {sentence} and multiple charges that won't help the case.",
                         f"Cameras on the bus route caught {m['name']}'s full face and route. Task force knocked on the door the next morning with a warrant already signed. {sentence} — no negotiating with what they have.",
                     ]
                     outcome_lines.append(random.choice(escape_then_caught_lines))
@@ -285,7 +283,7 @@ def calculate_beef_outcome(gang, rolling_members, enemy_rep, is_revenge=False):
                         f"{m['name']} took a round through the shoulder that spun him completely around but somehow kept moving. Made it back to the car bleeding through his shirt, jaw tight, not saying a word the whole drive. Alive but not the same after that night.",
                         f"{m['name']} dove behind a parked truck when the shooting started and stayed flat on the ground for four minutes while rounds hit the vehicle above him. Crawled to the alley when it went quiet and made it back on foot. Shaken but breathing.",
                         f"{m['name']} caught a graze across the ribs — burned like fire but nothing that would kill him. Wrapped it with a shirt in the backseat and didn't go to the hospital. Walked into the trap house two hours later looking like nothing happened.",
-                        f"{m['name']} got hit in the leg during the retreat but refused to go down. Leaned on the car door the whole ride back and bit through the pain without a sound. Still standing. Still in it.",
+                        f"{m['name']} took a hit in the leg during the retreat but refused to go down. Leaned on the car door the whole ride back and bit through the pain without a sound. Still standing. Still in it.",
                         f"{m['name']} took a pistol grip to the face when the opps rushed the position — cut above the eye, nose broken, vision blurred. Made it out but took a beating that the whole set saw. Streets noticed.",
                         f"{m['name']} ran the wrong direction initially and ended up cornered in a dead end, had to climb a fence with shots landing around his feet. Made it over. Landed hard. Twisted the ankle bad but got back to the block two hours later. Still counts as making it out.",
                     ]
@@ -823,7 +821,6 @@ async def handle_beef(message, args):
     intro_embed.set_footer(text="It's on...")
     await message.channel.send(embed=intro_embed)
 
-    # Track who killed members for revenge
     alive_before = set(m['name'] for m in get_alive_members(gang))
 
     result = calculate_beef_outcome(gang, rolling_members, enemy_rep)
@@ -843,11 +840,6 @@ async def handle_beef(message, args):
 
     await asyncio.sleep(3)
     await message.channel.send(embed=result_embed)
-
-    if killed_this_fight and gang['alive']:
-        await message.channel.send(
-            f"**{gang['name']}** lost someone tonight. Type `revenge {code}` to go after the ones responsible."
-        )
 
 
 async def handle_revenge(message, args):
@@ -871,7 +863,7 @@ async def handle_revenge(message, args):
     last_killer = gang.get('last_killer')
     if not last_killer:
         await message.channel.send(
-            f"**{gang['name']}** has no blood owed right now. Nobody has taken one of yours. Run `beef` first."
+            f"**{gang['name']}** has no blood owed right now. Nobody has taken one of yours."
         )
         return
 
@@ -930,12 +922,9 @@ async def handle_revenge(message, args):
     alive_after = set(m['name'] for m in get_alive_members(gang))
     killed_this_fight = alive_before - alive_after
 
-    # Clear the last killer if revenge was successful
     if result['won']:
         gang['last_killer'] = None
-
-    # If revenge failed and more members died, update the last killer
-    if not result['won'] and killed_this_fight:
+    elif killed_this_fight:
         gang['last_killer'] = {
             "name": random.choice([m['name'] for m in enemy_members]),
             "gang": enemy_gang_info['name'],
@@ -948,15 +937,6 @@ async def handle_revenge(message, args):
 
     await asyncio.sleep(3)
     await message.channel.send(embed=result_embed)
-
-    if not result['won'] and killed_this_fight and gang['alive']:
-        await message.channel.send(
-            f"The debt just got deeper. Type `revenge {code}` again when the crew is ready."
-        )
-    elif result['won']:
-        await message.channel.send(
-            f"The debt is settled. **{gang['name']}** honored their fallen. The streets know what happened here."
-        )
 
 
 COMMANDS = {
