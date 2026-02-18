@@ -203,11 +203,15 @@ def calculate_beef_outcome(gang, rolling_members, enemy_rep, is_revenge=False):
             "{member} caught the opp's lieutenant coming out the back of the trap house alone at the worst possible time. Blocked the exit, made sure they understood who sent the message, and left them there as a reminder of who owns these streets.",
             "{member} moved through the whole block like he had a map of every corner in his head. Hit the first two before they even looked up, kept moving, caught a third one trying to make it to a car. By the time sirens were anywhere in earshot the crew was already gone.",
             "{member} waited until the shift changed and the block was thinnest, then struck with everything the crew had. By the time the opps realized how bad they were outnumbered it was already over. The ones who ran spread the word themselves.",
+            "{member} had been watching their patterns for three days straight before making a move. Knew exactly when the corner would be down to two people and hit it at that exact window. Precision over power — the whole thing was surgical.",
+            "{member} linked up with a connect who had inside information on where the opps were stashing product and used that to hit them where it hurt most. Took the stash, left a message, and walked out with enough to flip the whole situation in **{gang}**'s favor.",
+            "{member} set up a fake meet through a mutual contact, lured the opp's right hand man out to a neutral location, and handled business there before they ever realized what was happening. By the time the rest of the set found out, it was already done.",
+            "{member} went in through the back while the rest of the crew created a distraction at the front. The opps split their attention and that half-second of confusion was all {member} needed. Came out clean while the enemy was still trying to figure out what just happened.",
         ]
 
         for m in rolling_members:
             m['kills'] = m.get('kills', 0) + 1
-            line = random.choice(win_kill_templates).replace("{member}", m['name'])
+            line = random.choice(win_kill_templates).replace("{member}", m['name']).replace("{gang}", gang['name'])
             outcome_lines.append(line)
 
         if len(get_alive_members(gang)) > 1 and random.randint(1, 100) <= 20:
@@ -222,6 +226,8 @@ def calculate_beef_outcome(gang, rolling_members, enemy_rep, is_revenge=False):
                     f"One of the opps who was already down still had enough left to get a shot off. {casualty['name']} caught it in the neck. The crew held the block but held a funeral three days later.",
                     f"{casualty['name']} took a stray during the chaos — wrong place, wrong angle, bad luck. The streets claimed another one that night. Set won the beef but the victory felt hollow.",
                     f"{casualty['name']} pushed too deep into their territory without cover and got cut off. By the time the crew circled back it was too late. Another name on the wall.",
+                    f"{casualty['name']} was covering the exit when a shooter appeared from a second floor window that nobody had eyes on. Took two shots to the back and was gone before the ambulance was even called. The crew carried the win and the loss home together.",
+                    f"The celebration was cut short. {casualty['name']} had been hit early in the fight but kept moving on adrenaline and nobody realized how bad it was until the car was three blocks away. He didn't make it to morning.",
                 ]
                 outcome_lines.append(random.choice(friendly_loss_lines))
 
@@ -237,6 +243,8 @@ def calculate_beef_outcome(gang, rolling_members, enemy_rep, is_revenge=False):
                     f"Somebody in the area talked. Whether it was fear or money nobody knows, but {jailed['name']}'s description was in the system before sunrise. Knocked at the gas station the following evening. {sentence} — no bail hearing for thirty days.",
                     f"{jailed['name']} went back to the block an hour later to check on things and rolled straight into a plainclothes unit that had been watching since the incident. Didn't even realize it was happening until the cuffs were on. {sentence} and the lawyer isn't optimistic.",
                     f"Phone records and cell tower data put {jailed['name']} at the exact location at the exact time. Federal involvement made bail impossible. {sentence} sentence and every appeal got denied.",
+                    f"A traffic stop two exits away turned into a full search when the officer ran the plates and a flag came up connected to the incident. {jailed['name']} had no way to explain what was found in the car. {sentence} — the public defender said take the deal.",
+                    f"The opps had someone watching the block who called in a description the moment the crew pulled off. {jailed['name']} matched it exactly and got pulled over six blocks away. Everything in the car became evidence. Facing {sentence} with no way out.",
                 ]
                 outcome_lines.append(random.choice(jail_after_win_lines))
 
@@ -266,6 +274,9 @@ def calculate_beef_outcome(gang, rolling_members, enemy_rep, is_revenge=False):
                     f"The opps had numbers and positioning that the crew didn't account for. {m['name']} was the one who took the worst of it — caught in the open with nowhere to go. Died on that block.",
                     f"{m['name']} stood his ground even when the crew started falling back. Refused to leave until everyone else was out. That decision cost him his life. He held the line but didn't make it off it.",
                     f"A shooter came from a rooftop that nobody had checked. {m['name']} never even saw where the shot came from. Dropped in the middle of the street. The set lost one of their realest that night.",
+                    f"{m['name']} tried to make it to the car but the opps had the exit cut off. Took three shots trying to push through and collapsed ten feet short of the door. The crew had to pull off without him.",
+                    f"The ambush came from both sides simultaneously — the crew had walked into something planned. {m['name']} was in the middle of it with no cover and no exit. The set paid a heavy price for underestimating what they were walking into.",
+                    f"{m['name']} took a round to the stomach early in the exchange and kept fighting for another two minutes before the blood loss caught up. By the time the crew realized how bad it was there was nothing anyone could do. He went out swinging.",
                 ]
                 outcome_lines.append(random.choice(death_lines))
             else:
@@ -276,6 +287,8 @@ def calculate_beef_outcome(gang, rolling_members, enemy_rep, is_revenge=False):
                         f"{m['name']} ran through yards and back streets for twenty minutes before collapsing from exhaustion two neighborhoods over. A patrol unit found them sitting on a curb. {sentence} sentence — the DA stacked every charge available.",
                         f"{m['name']} escaped the gunfire but a helicopter was already in the air. Tracked on foot for six blocks and taken down by a K9 unit. Facing {sentence} and multiple charges that won't help the case.",
                         f"Cameras on the bus route caught {m['name']}'s full face and route. Task force knocked on the door the next morning with a warrant already signed. {sentence} — no negotiating with what they have.",
+                        f"{m['name']} made it back to the hood but somebody on the block had already been talking to detectives. Got scooped up sitting on the porch the next afternoon. {sentence} sentence — they had more evidence than anyone expected.",
+                        f"The getaway car got clipped during the exchange and broke down four blocks away. {m['name']} was still sitting in it when the first patrol unit rolled up. {sentence} — caught red handed with nowhere to go and nothing to say.",
                     ]
                     outcome_lines.append(random.choice(escape_then_caught_lines))
                 else:
@@ -286,6 +299,8 @@ def calculate_beef_outcome(gang, rolling_members, enemy_rep, is_revenge=False):
                         f"{m['name']} took a hit in the leg during the retreat but refused to go down. Leaned on the car door the whole ride back and bit through the pain without a sound. Still standing. Still in it.",
                         f"{m['name']} took a pistol grip to the face when the opps rushed the position — cut above the eye, nose broken, vision blurred. Made it out but took a beating that the whole set saw. Streets noticed.",
                         f"{m['name']} ran the wrong direction initially and ended up cornered in a dead end, had to climb a fence with shots landing around his feet. Made it over. Landed hard. Twisted the ankle bad but got back to the block two hours later. Still counts as making it out.",
+                        f"{m['name']} took a fragment to the forearm from a round that hit the concrete next to him. Deep enough to need stitches but not deep enough to stop him. Got patched up in someone's bathroom and was back on the block by morning.",
+                        f"{m['name']} got clipped in the ear — half an inch to the left and that would have been it. Walked back to the car with blood running down his neck like it was nothing. The crew didn't say a word the whole ride. Some things don't need to be talked about.",
                     ]
                     outcome_lines.append(random.choice(survived_lines))
 
@@ -445,6 +460,36 @@ EVENTS = [
         "type": "rep_up", "value": (80, 200), "color": discord.Color.green()
     },
     {
+        "name": "Weapons Cache Found",
+        "description": "{member} got a tip from a connect about a stash that a rival set had buried near the rail yard. Went out there at 3am with two others, dug it up, and brought everything back to the block. **{name}** is better equipped tonight than they were yesterday morning.",
+        "type": "rep_up", "value": (50, 140), "color": discord.Color.green()
+    },
+    {
+        "name": "Court Case Dismissed",
+        "description": "{member} had been facing serious charges that had the whole set walking on eggshells for months. The DA's key witness stopped cooperating and without testimony the case fell apart completely. {member} walked out of the courthouse and came straight back to the block. **{name}** is at full strength.",
+        "type": "rep_up", "value": (40, 110), "color": discord.Color.green()
+    },
+    {
+        "name": "Neighborhood Loyalty",
+        "description": "Three different families on the block independently told detectives they saw nothing, knew nothing, and had nothing to say when investigators came around asking questions about **{name}**. {member} built that loyalty over years of showing up for people when it mattered. Now it's paying off.",
+        "type": "rep_up", "value": (35, 95), "color": discord.Color.green()
+    },
+    {
+        "name": "Set the Trap",
+        "description": "{member} spent two weeks feeding false information to someone they suspected was talking to the opposition. When the opps showed up exactly where the false tip said to be, **{name}** was waiting. The ambush was clean and the source problem was handled at the same time.",
+        "type": "rep_up", "value": (70, 180), "color": discord.Color.green()
+    },
+    {
+        "name": "Made Bail",
+        "description": "One of **{name}**'s most important members had been sitting in county for three months while the set scraped together what was needed. {member} coordinated the whole effort — called in favors, moved money, found the right bondsman. That soldier walked out yesterday and the set is stronger for it.",
+        "type": "rep_up", "value": (30, 80), "color": discord.Color.green()
+    },
+    {
+        "name": "New Connect",
+        "description": "{member} got introduced to a supplier through a mutual from up north who vouched for **{name}** personally. The first order came in clean, the price was right, and the quality was better than anything the set had been working with before. The operation just leveled up.",
+        "type": "rep_up", "value": (60, 150), "color": discord.Color.green()
+    },
+    {
         "name": "Snitch in the Ranks",
         "description": "The feds had been watching **{name}** for weeks and nobody could figure out how they knew so much. Then a sealed document leaked through a lawyer's office — {member}'s name was on it. Cooperating since the summer. The set is fractured. Trust is gone. Rep is in the dirt.",
         "type": "rep_down", "value": (30, 100), "color": discord.Color.orange()
@@ -500,6 +545,26 @@ EVENTS = [
         "type": "rep_down", "value": (40, 100), "color": discord.Color.orange()
     },
     {
+        "name": "Car Got Pulled Over Dirty",
+        "description": "{member} was riding dirty through the wrong part of town when a routine traffic stop turned into a full search. The officer found everything — product, a pistol, and a scale. **{name}** lost a soldier and a significant amount of supply in one stop that could have been avoided.",
+        "type": "rep_down", "value": (35, 95), "color": discord.Color.orange()
+    },
+    {
+        "name": "Stash House Burned",
+        "description": "Somebody gave up the location of **{name}**'s secondary stash house. The opps hit it at noon when it was lightly guarded — {member} barely made it out the back window. Everything inside was gone. Months of work wiped out in under ten minutes.",
+        "type": "rep_down", "value": (55, 150), "color": discord.Color.orange()
+    },
+    {
+        "name": "Connect Cut Them Off",
+        "description": "Word got back to **{name}**'s main connect that {member} had been moving product independently on the side and cutting the connect out of the margins. The relationship ended immediately and the supply dried up overnight. The set is scrambling and the streets can tell something is off.",
+        "type": "rep_down", "value": (45, 120), "color": discord.Color.orange()
+    },
+    {
+        "name": "Funeral Turned Violent",
+        "description": "The set gathered to bury one of their own and the opps chose that moment to pull up and show out. {member} tried to keep things calm but it escalated fast. Three people got hit, the service had to be abandoned, and the disrespect spread through the whole hood by nightfall. **{name}**'s grief turned to fury.",
+        "type": "rep_down", "value": (60, 160), "color": discord.Color.orange()
+    },
+    {
         "name": "Quiet Night",
         "description": "{member} held down the corner all night from sundown to sunrise — stayed alert, watched the block, kept things moving. But there was nothing to report. No moves, no incidents, no problems. Sometimes the streets just go still. **{name}** is positioned and ready, just waiting for the moment.",
         "type": "nothing", "color": discord.Color.greyple()
@@ -509,9 +574,260 @@ EVENTS = [
         "description": "There has been too much heat in the area lately — patrol cars circling every hour, a couple of unfamiliar faces asking questions, and word that the task force has been running plates. {member} made the call to keep **{name}** off the corners for the night. Smart move. Live to eat another day.",
         "type": "nothing", "color": discord.Color.greyple()
     },
+    {
+        "name": "Watching and Waiting",
+        "description": "{member} spent the night riding through the area, getting eyes on enemy positions, counting heads, and logging patterns. No action taken tonight — this was reconnaissance. **{name}** is building a picture and when the time comes to move, they will move informed.",
+        "type": "nothing", "color": discord.Color.greyple()
+    },
+    {
+        "name": "Regrouping",
+        "description": "After recent events the crew needed a night to regroup. {member} called everyone in, sat them down, and had a real conversation about what went wrong and what needs to change. **{name}** came out of that meeting more focused than they have been in months. Sometimes standing still is the right move.",
+        "type": "nothing", "color": discord.Color.greyple()
+    },
 ]
 
 EVENT_WEIGHTS = [200 for _ in EVENTS]
+
+BLOCK_PARTY_EVENTS = [
+    {
+        "name": "Block Party Jumping",
+        "description": "The whole hood came out. Music rattling windows two blocks over, kids on bikes, OGs posted on lawn chairs, young ones dancing in the street. {member} kept the energy right all night — making sure everyone was fed, everyone was good, and **{name}**'s name stayed on every lip in a positive way. By the end of the night the community felt like one unit.",
+        "type": "rep_up", "value": (40, 100), "color": discord.Color.green()
+    },
+    {
+        "name": "Community Showed Love",
+        "description": "Families from three streets over came through specifically because they heard **{name}** was throwing it down. {member} made sure every single person felt welcome — passed out food personally, checked on the elders, kept the little ones entertained. The neighborhood didn't just attend the party. They claimed it.",
+        "type": "rep_up", "value": (30, 80), "color": discord.Color.green()
+    },
+    {
+        "name": "Local Legend Pulled Up",
+        "description": "A respected OG who hadn't been seen publicly in years showed up unannounced and spent two hours at **{name}**'s block party. Sat with {member} for a long time. Told stories. Gave his blessing in front of everyone who mattered. That kind of endorsement doesn't get bought — it gets earned.",
+        "type": "rep_up", "value": (50, 130), "color": discord.Color.green()
+    },
+    {
+        "name": "Rival Set Sent a Message",
+        "description": "Word got back before midnight that a rival set had sent someone through earlier in the day to see if the party was real or a setup. When they reported back that it was genuine — food, families, no apparent setup — the rival set sent a message through a mutual: they respected the move. **{name}**'s rep climbed just from doing things right.",
+        "type": "rep_up", "value": (35, 90), "color": discord.Color.green()
+    },
+    {
+        "name": "Block Party Goes All Night",
+        "description": "What started at 4pm was still going strong at 2am. {member} kept refilling the food, kept the speakers on, kept the vibe elevated. People who had to work the next morning stayed anyway. By the time it finally wound down the whole block had been fed, watered, and reminded why **{name}** runs this hood. Rep up across the board.",
+        "type": "rep_up", "value": (45, 110), "color": discord.Color.green()
+    },
+    {
+        "name": "News Crew Showed Up",
+        "description": "A local news segment on community events came through to film. {member} handled the camera perfectly — spoke about giving back, spoke about the neighborhood, never said anything that could be used wrong. The segment aired the next morning and **{name}**'s hood got shown in a light people don't usually see. Respect from angles that normally never notice.",
+        "type": "rep_up", "value": (40, 100), "color": discord.Color.green()
+    },
+    {
+        "name": "Young Ones Got Recruited",
+        "description": "Three younger kids from the block spent the whole party watching how **{name}** moved — how {member} carried themselves, how the crew operated, how they were treated by everyone around them. Before the night was over all three had made it clear they wanted in. The set is growing from the roots up.",
+        "type": "rep_up", "value": (25, 65), "color": discord.Color.green()
+    },
+    {
+        "name": "Driveby — Party Shot Up",
+        "description": "Everything was going right until a dark car rolled through slow from the north end of the block. {member} saw it coming a half second before it started but there was no time. Three shots fired into the crowd before the car accelerated and disappeared. People scattered, someone got hit, and the night that was supposed to build community ended in chaos and blood.",
+        "type": "driveby", "color": discord.Color.dark_red()
+    },
+    {
+        "name": "Driveby — Second Pass",
+        "description": "The first pass was just to see who flinched. {member} tried to get people moving but the second car came from the opposite direction before anyone could regroup. It was coordinated — two vehicles, two angles, maximum confusion. By the time it was over the block was empty, someone was down, and the party was over before the food even ran out.",
+        "type": "driveby", "color": discord.Color.dark_red()
+    },
+    {
+        "name": "Opps Crashed the Party",
+        "description": "Six of them walked up on foot from the alley acting like they belonged. {member} clocked them immediately and tried to de-escalate but one of the opps went straight for confrontation. What started as words turned into a full brawl in the middle of the street with kids and elders still on the block. Three people got hurt before it broke up. The night was ruined and the hood felt it.",
+        "type": "brawl", "color": discord.Color.red()
+    },
+    {
+        "name": "Police Rolled Through",
+        "description": "Two patrol cars pulled up slow around 9pm and parked at opposite ends of the block. Officers got out and started walking through the party, hands on belts, asking questions nobody was going to answer. {member} kept the crew calm and told everyone to keep moving and stay cool. After forty minutes of harassment with nothing to show for it the officers left — but the mood never recovered.",
+        "type": "police_harassment", "color": discord.Color.blue()
+    },
+    {
+        "name": "Task Force Showed Up",
+        "description": "Four unmarked cars and a van pulled up simultaneously from different directions — clearly planned. Task force officers in tactical gear moved through the crowd demanding ID, running names, pulling people aside for questioning. {member} got detained for two hours in the back of one of the vans before being released without charges. Half the party left the moment the vans showed up. The other half wished they had.",
+        "type": "police_raid", "color": discord.Color.blue()
+    },
+    {
+        "name": "Police Arrested Three",
+        "description": "Officers came through on foot shortly after dark and started running warrants on anyone they could stop. {member} watched helplessly as three members of the crew got walked to patrol cars in front of the whole neighborhood — hands behind their backs, faces forward, the block watching in silence. The party was over the moment the first set of cuffs came out.",
+        "type": "police_arrests", "color": discord.Color.blue()
+    },
+    {
+        "name": "Undercover in the Crowd",
+        "description": "Two days after the block party, word came back through a lawyer that there had been undercover officers in the crowd the entire time taking photos and recording conversations. {member} hadn't noticed anything off. Everything said, everything seen, everything that happened that night was potentially documented. **{name}** went quiet immediately and stayed that way.",
+        "type": "rep_down", "value": (30, 80), "color": discord.Color.orange()
+    },
+    {
+        "name": "Fight Broke Out",
+        "description": "An argument over something small — someone bumped into someone, someone said something to the wrong person — escalated faster than anyone expected. {member} tried to step in but by then it had already spread to a full crowd brawl. Tables knocked over, food everywhere, people running. The block party became a crime scene. Took three days for people to start talking to **{name}** normally again.",
+        "type": "rep_down", "value": (20, 60), "color": discord.Color.orange()
+    },
+    {
+        "name": "Someone Got Stabbed",
+        "description": "Nobody saw who did it or why but the ambulance showed up to **{name}**'s block party for someone who had been stabbed near the back of the crowd. {member} didn't know the victim or the situation but it didn't matter — the party was on their block, under their name, and the reputation damage was immediate. The hood talked about it for weeks.",
+        "type": "rep_down", "value": (40, 100), "color": discord.Color.orange()
+    },
+    {
+        "name": "Rain Killed the Vibe",
+        "description": "It had been sunny all week and the forecast looked fine until it didn't. {member} had everything set up perfectly — food, speakers, decorations — when the sky opened up an hour in. People scattered. The food got soaked. Equipment got damaged. **{name}** spent the money but the neighborhood barely got to enjoy it. Sometimes the weather just takes an L.",
+        "type": "nothing", "color": discord.Color.greyple()
+    },
+    {
+        "name": "Turnout Was Low",
+        "description": "The word got out and the setup was solid but people just didn't show up the way they were supposed to. {member} stood at a half-empty block for three hours wondering what went wrong. Maybe the timing was off. Maybe there was something else going on in the neighborhood. **{name}** put in the effort but the result was a quiet night instead of the statement they wanted to make.",
+        "type": "nothing", "color": discord.Color.greyple()
+    },
+]
+
+
+async def handle_block(message, args):
+    if not args:
+        await message.channel.send("Usage: `block <code>`\nExample: `block XKRV`")
+        return
+
+    code = args[0].upper()
+    if code not in gangs:
+        await message.channel.send(f"No crew found with code `{code}`.")
+        return
+
+    gang = gangs[code]
+    if gang['owner_id'] != message.author.id:
+        await message.channel.send("That ain't your crew.")
+        return
+    if not gang['alive']:
+        await message.channel.send(f"**{gang['name']}** has been disbanded.")
+        return
+
+    free_members = get_free_members(gang)
+    if not free_members:
+        await message.channel.send(f"**{gang['name']}** has no free members to run the block party.")
+        return
+
+    host_member = random.choice(free_members)
+    rep = gang['rep']
+
+    setup_descriptions = [
+        f"**{gang['name']}** is setting up on {gang['hood']}. {host_member['name']} is running point — speakers getting dragged out, tables going up, word spreading through the block that tonight is the night.",
+        f"{host_member['name']} has been planning this for a week. Tables, food, music — everything is going up on the block right now. **{gang['name']}** is about to show the hood what they're really about.",
+        f"The whole crew is outside setting up for the **{gang['name']}** block party. {host_member['name']} is directing everything — where the speakers go, where the food tables go, who's on what corner keeping watch.",
+        f"**{gang['name']}** shut down the block for the night. {host_member['name']} called it three days ago and made it happen — food ordered, music lined up, the whole hood invited. People are already starting to gather.",
+    ]
+
+    setup_embed = discord.Embed(
+        title="Block Party",
+        description=random.choice(setup_descriptions),
+        color=discord.Color.dark_gold()
+    )
+    setup_embed.add_field(name="Hood", value=gang['hood'], inline=True)
+    setup_embed.add_field(name="Host", value=host_member['name'], inline=True)
+    setup_embed.add_field(name="Street Cred", value=str(rep), inline=True)
+    setup_embed.set_footer(text="The block is live...")
+    await message.channel.send(embed=setup_embed)
+
+    await asyncio.sleep(3)
+
+    # Roll 2-4 events for the block party
+    num_events = random.randint(2, 4)
+    party_results = []
+    rep_change = 0
+    members_jailed = []
+    members_killed = []
+    alive_members = get_alive_members(gang)
+
+    for _ in range(num_events):
+        event = random.choice(BLOCK_PARTY_EVENTS)
+        featured = random.choice(get_free_members(gang)) if get_free_members(gang) else host_member
+        party_results.append((event, featured))
+
+        if event['type'] == 'rep_up':
+            gain = random.randint(*event['value'])
+            rep_change += gain
+
+        elif event['type'] == 'rep_down':
+            loss = random.randint(*event['value'])
+            rep_change -= loss
+
+        elif event['type'] == 'driveby':
+            rep_change -= random.randint(40, 120)
+            if len(get_alive_members(gang)) > 1:
+                victims = random.sample(get_alive_members(gang), k=min(random.randint(1, 2), len(get_alive_members(gang)) - 1))
+                for v in victims:
+                    v['alive'] = False
+                    v['deaths'] = v.get('deaths', 0) + 1
+                    members_killed.append(v['name'])
+
+        elif event['type'] == 'brawl':
+            rep_change -= random.randint(20, 70)
+            if get_free_members(gang) and random.randint(1, 100) <= 40:
+                victim = random.choice(get_free_members(gang))
+                sentence = send_to_jail(victim)
+                members_jailed.append((victim['name'], sentence))
+
+        elif event['type'] == 'police_harassment':
+            rep_change -= random.randint(10, 40)
+
+        elif event['type'] == 'police_raid':
+            rep_change -= random.randint(30, 80)
+            free_now = get_free_members(gang)
+            if free_now:
+                num_arrested = min(random.randint(1, 2), len(free_now))
+                arrested = random.sample(free_now, k=num_arrested)
+                for a in arrested:
+                    sentence = send_to_jail(a)
+                    members_jailed.append((a['name'], sentence))
+
+        elif event['type'] == 'police_arrests':
+            free_now = get_free_members(gang)
+            if free_now:
+                num_arrested = min(random.randint(1, 3), len(free_now))
+                arrested = random.sample(free_now, k=num_arrested)
+                for a in arrested:
+                    sentence = send_to_jail(a)
+                    members_jailed.append((a['name'], sentence))
+            rep_change -= random.randint(20, 60)
+
+    # Apply rep change
+    old_rep = gang['rep']
+    gang['rep'] = max(1, gang['rep'] + rep_change)
+    new_rep = gang['rep']
+
+    check_and_mark_dead(code)
+
+    # Build result embed
+    events_text = ""
+    for event, featured in party_results:
+        desc = event['description'].replace("{member}", featured['name']).replace("{name}", gang['name'])
+        events_text += f"**{event['name']}**\n{desc}\n\n"
+
+    result_embed = discord.Embed(
+        title="Block Party — Night Recap",
+        description=f"Here is everything that went down at **{gang['name']}**'s block party on {gang['hood']}.",
+        color=discord.Color.green() if rep_change >= 0 else discord.Color.orange()
+    )
+
+    result_embed.add_field(name="How the Night Went", value=events_text.strip() if events_text.strip() else "The night passed without much to report.", inline=False)
+
+    if members_killed:
+        result_embed.add_field(name="Fallen", value="\n".join(members_killed), inline=True)
+    if members_jailed:
+        jail_text = "\n".join([f"{name} — {sentence}" for name, sentence in members_jailed])
+        result_embed.add_field(name="Locked Up", value=jail_text, inline=True)
+
+    rep_display = f"{old_rep} -> **{new_rep}** (+{rep_change})" if rep_change >= 0 else f"{old_rep} -> **{new_rep}** ({rep_change})"
+    result_embed.add_field(name="Street Cred", value=rep_display, inline=False)
+    result_embed.add_field(name="Members Alive", value=str(len(get_alive_members(gang))), inline=True)
+    result_embed.add_field(name="Members Free", value=str(len(get_free_members(gang))), inline=True)
+
+    if rep_change >= 50:
+        result_embed.set_footer(text="The hood is talking. That party put the set on a different level.")
+    elif rep_change >= 0:
+        result_embed.set_footer(text="Night is over. The block is quiet now.")
+    else:
+        result_embed.set_footer(text="The party is over. Not the way anyone wanted it to end.")
+
+    await message.channel.send(embed=result_embed)
 
 
 async def handle_gang(message, args):
@@ -560,7 +876,7 @@ async def handle_gang(message, args):
     embed.add_field(name="Code", value=f"`{code}`", inline=True)
     embed.add_field(name="\u200b", value="\u200b", inline=True)
     embed.add_field(name="Crew", value=member_list, inline=False)
-    embed.set_footer(text="Type: mission <code> | beef <code> | recruit <code> | revenge <code> | show")
+    embed.set_footer(text="Type: mission <code> | beef <code> | recruit <code> | revenge <code> | block <code> | show")
     await message.channel.send(embed=embed)
 
 
@@ -614,7 +930,7 @@ async def handle_show(message, args):
     else:
         embed.add_field(name="No Active Crew", value="Your crew got disbanded. Type `gang` to start fresh.", inline=False)
 
-    embed.set_footer(text="Type: mission <code> | beef <code> | recruit <code> | revenge <code> | show")
+    embed.set_footer(text="Type: mission <code> | beef <code> | recruit <code> | revenge <code> | block <code> | show")
     await message.channel.send(embed=embed)
 
 
@@ -946,6 +1262,7 @@ COMMANDS = {
     "beef": handle_beef,
     "recruit": handle_recruit,
     "revenge": handle_revenge,
+    "block": handle_block,
 }
 
 
