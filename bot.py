@@ -292,24 +292,16 @@ def get_revenge_targets(gang):
 def remove_revenge_target(gang, gang_name):
     gang['revenge_targets'] = [t for t in gang.get('revenge_targets', []) if t['gang'] != gang_name]
 
-def truncate(text, limit=EMBED_DESC_LIMIT):
-    if len(text) <= limit:
-        return text
-    return text[:limit - 3] + "..."
-
 async def safe_send(channel, embed=None, content=None):
     try:
         if embed:
-            # Truncate description if too long
             if embed.description and len(embed.description) > EMBED_DESC_LIMIT:
                 embed.description = embed.description[:EMBED_DESC_LIMIT - 3] + "..."
-            # Truncate fields if too long
             for i, field in enumerate(embed.fields):
                 if len(field.value) > EMBED_FIELD_LIMIT:
                     embed.set_field_at(i, name=field.name, value=field.value[:EMBED_FIELD_LIMIT - 3] + "...", inline=field.inline)
             await channel.send(embed=embed)
         elif content:
-            # Split long content into chunks
             if len(content) > 2000:
                 chunks = [content[i:i+1990] for i in range(0, len(content), 1990)]
                 for chunk in chunks:
@@ -321,7 +313,6 @@ async def safe_send(channel, embed=None, content=None):
         print(f"safe_send error: {e}")
 
 async def send_chunked_embed(channel, title, lines, color, footer=None, chunk_size=20):
-    """Send a list of lines split across multiple embeds if needed."""
     chunks = [lines[i:i+chunk_size] for i in range(0, len(lines), chunk_size)]
     for idx, chunk in enumerate(chunks):
         embed = discord.Embed(
@@ -473,7 +464,6 @@ async def send_slide_result(channel, gang, enemy_info, result, rolling, is_reven
         if result['kills_this_fight'] else ["No bodies."]
     )
 
-    # Build result embed, splitting if needed
     base_desc = (
         f"**Cred:** {cred_line}\n"
         f"**Still Standing:** {result['members_alive']}\n"
@@ -489,7 +479,6 @@ async def send_slide_result(channel, gang, enemy_info, result, rolling, is_reven
     crew_text = "\n".join(crew_lines)
     kills_text = "\n".join(kills_lines)
 
-    # Add as fields, splitting if over limit
     if len(crew_text) <= EMBED_FIELD_LIMIT:
         result_embed.add_field(name="Crew", value=crew_text, inline=False)
     else:
@@ -588,7 +577,6 @@ async def handle_mission(message, args):
             embed.description += f"\n\nStreet Cred: {rep} (no change)"
             embed.set_footer(text="Nothing popped off.")
 
-        # Truncate if needed
         if len(embed.description) > EMBED_DESC_LIMIT:
             embed.description = embed.description[:EMBED_DESC_LIMIT - 3] + "..."
 
@@ -688,7 +676,6 @@ async def handle_gang(message, args):
 async def handle_show(message, args):
     user_id = message.author.id
 
-    # Allow show <code> for any gang owner
     if args:
         code = args[0].upper()
         target_gang = gangs.get(code)
@@ -709,14 +696,11 @@ async def handle_show(message, args):
     alive_gangs = [g for g in user_gangs if g['alive']]
     dead_count = len(user_gangs) - len(alive_gangs)
 
-    # Send one embed per gang to avoid size issues
-    header = discord.Embed(
-        title=f"{message.author.name}'s Crew",
-        description=f"Active: {len(alive_gangs)}   |   Disbanded: {dead_count}",
-        color=discord.Color.dark_grey()
-    )
-    await safe_send(message.channel, embed=header)
+    if not alive_gangs:
+        await safe_send(message.channel, content="No active crew. Type `gang` to start fresh.")
+        return
 
+    # Always exactly 2 embeds per gang: 1 stats embed, 1 roster embed
     for g in alive_gangs:
         fw = g.get('fights_won', 0)
         fl = g.get('fights_lost', 0)
@@ -724,66 +708,62 @@ async def handle_show(message, args):
         win_rate = f"{int((fw / total) * 100)}%" if total > 0 else "N/A"
         targets = get_revenge_targets(g)
 
-        blood_lines = ""
-        if targets:
-            blood_lines = "\n" + "\n".join(f"Blood Owed: `{t['name']}` | {t['gang']}" for t in targets)
-
-        gang_desc = (
+        # ── Embed 1: Gang stats ──
+        stats_desc = (
             f"Hood: {g.get('hood', 'Unknown')}\n"
             f"Shot Caller: `{g.get('leader', 'Unknown')}`\n"
             f"Street Cred: {g['rep']}\n"
             f"Record: {fw}W — {fl}L   Win Rate: {win_rate}\n"
             f"Kills: {get_gang_bodies(g)}   Deaths: {get_gang_deaths(g)}\n"
             f"Alive: {len(get_alive_members(g))}   Free: {len(get_free_members(g))}"
-            + blood_lines
         )
 
-        gang_embed = discord.Embed(
+        if targets:
+            stats_desc += "\n\n**Blood Owed:**\n" + "\n".join(
+                f"`{t['name']}` | {t['gang']}" for t in targets
+            )
+
+        stats_embed = discord.Embed(
             title=f"{g['name']} — `{g['code']}`",
-            description=gang_desc,
+            description=stats_desc,
+            color=discord.Color.dark_grey()
+        )
+        stats_embed.set_footer(text="mission | slide | recruit | revenge | block | solo | show | delete")
+        await safe_send(message.channel, embed=stats_embed)
+
+        # ── Embed 2: Full roster (alive + dead) in one embed ──
+        roster_embed = discord.Embed(
+            title=f"{g['name']} — Roster",
             color=discord.Color.dark_grey()
         )
 
         alive = get_alive_members(g)
-        if alive:
-            roster_lines = [
-                f"`{m['name']}` | {m['kills']}K | {get_member_status(m)}"
-                for m in alive
-            ]
-            # Split roster into chunks of 15
-            chunks = [roster_lines[i:i+15] for i in range(0, len(roster_lines), 15)]
-            for idx, chunk in enumerate(chunks):
-                field_name = "Active Roster" if idx == 0 else "Active Roster (cont.)"
-                field_val = "\n".join(chunk)
-                if len(field_val) <= EMBED_FIELD_LIMIT:
-                    gang_embed.add_field(name=field_name, value=field_val, inline=False)
-                else:
-                    gang_embed.add_field(name=field_name, value=field_val[:EMBED_FIELD_LIMIT - 3] + "...", inline=False)
-
-        gang_embed.set_footer(text="mission | slide | recruit | revenge | block | solo | show | delete")
-        await safe_send(message.channel, embed=gang_embed)
-
-        # Dead members in a separate embed if any
         dead = get_dead_members(g)
-        if dead:
-            dead_lines = [f"`{m['name']}` | {m['kills']} kills | Dead" for m in dead]
-            rip_embed = discord.Embed(
-                title=f"{g['name']} — Fallen",
-                color=discord.Color.dark_grey()
-            )
-            chunks = [dead_lines[i:i+15] for i in range(0, len(dead_lines), 15)]
-            for idx, chunk in enumerate(chunks):
-                field_name = "Rest In Power" if idx == 0 else "Rest In Power (cont.)"
-                field_val = "\n".join(chunk)
-                if len(field_val) <= EMBED_FIELD_LIMIT:
-                    rip_embed.add_field(name=field_name, value=field_val, inline=False)
-                else:
-                    rip_embed.add_field(name=field_name, value=field_val[:EMBED_FIELD_LIMIT - 3] + "...", inline=False)
-            rip_embed.set_footer(text="Gone but not forgotten.")
-            await safe_send(message.channel, embed=rip_embed)
 
-    if not alive_gangs:
-        await safe_send(message.channel, content="No active crew. Type `gang` to start fresh.")
+        if alive:
+            alive_lines = "\n".join(
+                f"`{m['name']}` | {m['kills']} kills | {get_member_status(m)}"
+                for m in alive
+            )
+            # Truncate field if somehow too long
+            if len(alive_lines) > EMBED_FIELD_LIMIT:
+                alive_lines = alive_lines[:EMBED_FIELD_LIMIT - 3] + "..."
+            roster_embed.add_field(name="Active", value=alive_lines, inline=False)
+
+        if dead:
+            dead_lines = "\n".join(
+                f"`{m['name']}` | {m['kills']} kills | Dead"
+                for m in dead
+            )
+            if len(dead_lines) > EMBED_FIELD_LIMIT:
+                dead_lines = dead_lines[:EMBED_FIELD_LIMIT - 3] + "..."
+            roster_embed.add_field(name="🕯️ Fallen", value=dead_lines, inline=False)
+
+        if not alive and not dead:
+            roster_embed.description = "No members."
+
+        roster_embed.set_footer(text="Gone but not forgotten." if dead else "Stay solid.")
+        await safe_send(message.channel, embed=roster_embed)
 
 
 async def handle_recruit(message, args):
@@ -995,12 +975,7 @@ async def handle_solo(message, args):
 
     target = next((m for m in gang['members'] if m['name'].lower() == member_name.lower()), None)
     if not target:
-        free = get_free_members(gang)
         roster = ", ".join(f"`{m['name']}`" for m in gang['members'])
-        if not roster:
-            await safe_send(message.channel, content="No members in this crew.")
-            return
-        # Send roster as chunks if too long
         if len(roster) > 1800:
             await safe_send(message.channel, content=f"No member named `{member_name}`.")
             lines = [f"`{m['name']}` — {get_member_status(m)}" for m in gang['members']]
@@ -1216,7 +1191,6 @@ async def handle_block(message, args):
         if not ev_embed.footer.text:
             ev_embed.set_footer(text=f"Event {i + 1} of {num_events}")
 
-        # Truncate if needed
         if len(ev_embed.description) > EMBED_DESC_LIMIT:
             ev_embed.description = ev_embed.description[:EMBED_DESC_LIMIT - 3] + "..."
 
@@ -1472,7 +1446,7 @@ async def on_message(message):
         except discord.HTTPException as e:
             print(f"HTTP error in {cmd}: {e}")
             try:
-                await message.channel.send(f"Something went wrong sending that message. Try again.")
+                await message.channel.send("Something went wrong sending that message. Try again.")
             except:
                 pass
         except Exception as e:
@@ -1480,7 +1454,7 @@ async def on_message(message):
             print(f"Error in {cmd}: {e}")
             traceback.print_exc()
             try:
-                await message.channel.send(f"An error occurred. Check the logs.")
+                await message.channel.send("An error occurred. Check the logs.")
             except:
                 pass
 
