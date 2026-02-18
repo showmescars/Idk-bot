@@ -209,6 +209,29 @@ MSG_DELAY = 2.1
 EMBED_DESC_LIMIT = 4000
 EMBED_FIELD_LIMIT = 1024
 
+PARTY_LOCATIONS = [
+    "a house party off Figueroa",
+    "a backyard kickback in Watts",
+    "a rooftop party in Inglewood",
+    "a quinceañera in Boyle Heights",
+    "a house party off Crenshaw",
+    "a block kickback in Compton",
+    "a house party in Hawthorne",
+    "a warehouse party in South LA",
+    "a birthday party in Carson",
+    "a kickback off Vermont Ave",
+    "a house party in Lynwood",
+    "a backyard party in Paramount",
+    "a house party off Florence Ave",
+    "a kickback in Gardena",
+    "a party off Manchester Blvd",
+    "a house party in Huntington Park",
+    "a backyard in Hyde Park",
+    "a kickback off Imperial Hwy",
+    "a house party in Eastside LA",
+    "a party in the Jungles",
+]
+
 # --- Helpers ---
 
 def is_admin(message):
@@ -667,7 +690,7 @@ async def handle_gang(message, args):
         ),
         color=discord.Color.dark_grey()
     )
-    embed.set_footer(text="mission | slide | recruit | revenge | block | solo | dp | show | delete")
+    embed.set_footer(text="mission | slide | recruit | revenge | block | solo | dp | party | show | delete")
     await safe_send(message.channel, embed=embed)
 
 
@@ -707,7 +730,6 @@ async def handle_show(message, args):
         alive = get_alive_members(g)
         dead = get_dead_members(g)
 
-        # Embed 1: Stats + Active Roster
         stats_desc = (
             f"Hood: {g.get('hood', 'Unknown')}\n"
             f"Shot Caller: `{g.get('leader', 'Unknown')}`\n"
@@ -736,10 +758,9 @@ async def handle_show(message, args):
             description=stats_desc,
             color=discord.Color.dark_grey()
         )
-        stats_embed.set_footer(text="mission | slide | recruit | revenge | block | solo | dp | show | delete")
+        stats_embed.set_footer(text="mission | slide | recruit | revenge | block | solo | dp | party | show | delete")
         await safe_send(message.channel, embed=stats_embed)
 
-        # Embed 2: Fallen only
         if dead:
             dead_lines = "\n".join(
                 f"`{m['name']}` | {m['kills']} kills | Dead"
@@ -1254,7 +1275,6 @@ async def handle_dp(message, args):
         return
 
     free = get_free_members(gang)
-    # Remove the target from the crew doing the jumping
     jumpers = [m for m in free if m['name'] != target['name']]
 
     if not jumpers:
@@ -1274,11 +1294,9 @@ async def handle_dp(message, args):
     await safe_send(message.channel, embed=intro)
     await asyncio.sleep(MSG_DELAY)
 
-    # Roll for outcome
     roll = random.randint(1, 100)
 
     if roll <= 15:
-        # Beaten to death
         target['alive'] = False
         target['deaths'] += 1
         check_and_mark_dead(code)
@@ -1297,7 +1315,6 @@ async def handle_dp(message, args):
         embed.set_footer(text="The set stays quiet about what happened.")
 
     elif roll <= 40:
-        # Kicked off the hood
         gang['members'].remove(target)
 
         outcome_lines = random.choice([
@@ -1314,7 +1331,6 @@ async def handle_dp(message, args):
         embed.set_footer(text="Hood don't claim him no more.")
 
     else:
-        # Regular beat down — member survives and stays
         rep_loss = random.randint(5, 20)
         gang['rep'] = max(1, gang['rep'] - rep_loss)
 
@@ -1334,6 +1350,280 @@ async def handle_dp(message, args):
         embed.set_footer(text="He took it. He's still in.")
 
     await safe_send(message.channel, embed=embed)
+
+
+async def handle_party(message, args):
+    if len(args) < 2:
+        await safe_send(message.channel, content="Usage: `party <code> <number>`")
+        return
+
+    code = args[0].upper()
+    gang = gangs.get(code)
+
+    if not gang:
+        await safe_send(message.channel, content=f"No crew found with code `{code}`.")
+        return
+    if gang['owner_id'] != message.author.id:
+        await safe_send(message.channel, content="That ain't your crew.")
+        return
+    if not gang['alive']:
+        await safe_send(message.channel, content=f"**{gang['name']}** has been disbanded.")
+        return
+
+    try:
+        requested = int(args[1])
+    except ValueError:
+        await safe_send(message.channel, content="Needs to be a number. Example: `party XKRV 3`")
+        return
+
+    if requested < 1:
+        await safe_send(message.channel, content="Send at least 1.")
+        return
+
+    free = get_free_members(gang)
+    if not free:
+        jailed = [m for m in gang['members'] if m['alive'] and is_jailed(m)]
+        if jailed:
+            await safe_send(message.channel, content=f"Nobody free to go out. {len(jailed)} locked up right now.")
+        else:
+            await safe_send(message.channel, content="Nobody free to go out.")
+        return
+
+    actual = min(requested, len(free), 10)
+    attending = random.sample(free, actual)
+    attending_names = ", ".join(f"`{m['name']}`" for m in attending)
+    location = random.choice(PARTY_LOCATIONS)
+    old_rep = gang['rep']
+
+    intro_embed = discord.Embed(title="Party Night", color=discord.Color.dark_purple())
+    intro_embed.description = (
+        f"**{gang['name']}** pulling up to {location}.\n\n"
+        f"Going: {attending_names}"
+    )
+    intro_embed.set_footer(text="Could be a good night. Could go sideways.")
+    await safe_send(message.channel, embed=intro_embed)
+    await asyncio.sleep(MSG_DELAY)
+
+    rep_change = 0
+    fallen = []
+    jailed_members = []
+    summary_lines = []
+
+    # Determine if rival gang shows up — 55% chance
+    rival_shows_up = random.randint(1, 100) <= 55
+    rival_info = random.choice(LA_GANGS) if rival_shows_up else None
+    rival_rep = random.randint(30, 400) if rival_shows_up else 0
+
+    if rival_shows_up:
+        rival_count = random.randint(2, 6)
+        encounter_embed = discord.Embed(title="Opps at the Party", color=discord.Color.red())
+        encounter_embed.description = random.choice([
+            f"**{rival_info['name']}** pulled up — {rival_count} deep. Everybody in the room felt it.",
+            f"{rival_count} from **{rival_info['name']}** walked in. The music kept playing but the energy changed.",
+            f"Word spread through the party fast — **{rival_info['name']}** was inside. {rival_count} of them.",
+            f"**{rival_info['name']}** crashed the spot. {rival_count} came through the side door and started mugging.",
+        ])
+        encounter_embed.set_footer(text="How this plays out depends on the numbers.")
+        await safe_send(message.channel, embed=encounter_embed)
+        await asyncio.sleep(MSG_DELAY)
+
+        # Determine fight outcome based on numbers and rep
+        numbers_advantage = actual - rival_count
+        rep_diff = gang['rep'] - rival_rep
+        win_chance = max(15, min(85, 50 + int((numbers_advantage / 5) * 20) + int((rep_diff / 500) * 25)))
+        fight_roll = random.randint(1, 100)
+
+        if fight_roll <= win_chance:
+            # Won the fight
+            rep_gain = random.randint(30, 100)
+            rep_change += rep_gain
+            gang['fights_won'] = gang.get('fights_won', 0) + 1
+
+            for m in attending:
+                m['kills'] += 1
+                m['missions_survived'] += 1
+
+            win_line = random.choice([
+                f"**{gang['name']}** ran them out. Every last one. The party went back to normal after.",
+                f"Hands went up and **{gang['name']}** handled it. **{rival_info['name']}** left short a few people.",
+                f"The whole set moved together. **{rival_info['name']}** didn't expect that kind of response. They got pushed out.",
+                f"One signal and everybody from **{gang['name']}** moved at once. The opps had no answer for it.",
+            ])
+
+            # Small chance someone gets jailed even on a win
+            if random.randint(1, 100) <= 20:
+                victim = random.choice(attending)
+                s = send_to_jail(victim)
+                jailed_members.append((victim['name'], s))
+                win_line += f"\n\n`{victim['name']}` got knocked when the police pulled up after. Facing {s}."
+
+            fight_embed = discord.Embed(title="Fight — Won", color=discord.Color.green())
+            fight_embed.description = (
+                f"{win_line}\n\n"
+                f"Cred: +{rep_gain}"
+            )
+            fight_embed.set_footer(text="The set put in work tonight.")
+            await safe_send(message.channel, embed=fight_embed)
+            summary_lines.append(f"Ran off {rival_info['name']}. +{rep_gain} cred.")
+
+        elif fight_roll <= win_chance + 25:
+            # Fight broke out but scattered — chaos outcome
+            rep_loss = random.randint(20, 60)
+            rep_change -= rep_loss
+            gang['fights_lost'] = gang.get('fights_lost', 0) + 1
+
+            chaos_line = random.choice([
+                f"It went sideways fast. Shots fired, everybody running. **{gang['name']}** got out but not clean.",
+                f"The fight spilled into the street. By the time it was over nobody knew who won. Police came and cleared everybody.",
+                f"Bottles, chairs, everything. **{gang['name']}** held their own but it was ugly. The spot is hot now.",
+            ])
+
+            alive_now = get_alive_members(gang)
+            if len(alive_now) > 1 and random.randint(1, 100) <= 35:
+                victim = random.choice([m for m in attending if m['alive']])
+                victim['alive'] = False
+                victim['deaths'] += 1
+                fallen.append(victim['name'])
+                chaos_line += f"\n\n`{victim['name']}` didn't make it out."
+                killer_name = random.choice(STREET_NAMES)
+                add_revenge_target(gang, killer_name, rival_info, rival_rep)
+
+            if random.randint(1, 100) <= 30:
+                still_free = [m for m in attending if m['alive'] and not is_jailed(m)]
+                if still_free:
+                    victim = random.choice(still_free)
+                    s = send_to_jail(victim)
+                    jailed_members.append((victim['name'], s))
+                    chaos_line += f"\n`{victim['name']}` got hemmed up — {s}."
+
+            chaos_embed = discord.Embed(title="Fight — Chaos", color=discord.Color.orange())
+            chaos_embed.description = (
+                f"{chaos_line}\n\n"
+                f"Cred: -{rep_loss}"
+            )
+            chaos_embed.set_footer(text="Took an L tonight.")
+            await safe_send(message.channel, embed=chaos_embed)
+            summary_lines.append(f"Chaos with {rival_info['name']}. -{rep_loss} cred.")
+
+        else:
+            # Lost the fight badly
+            rep_loss = random.randint(50, 130)
+            rep_change -= rep_loss
+            gang['fights_lost'] = gang.get('fights_lost', 0) + 1
+
+            loss_line = random.choice([
+                f"**{rival_info['name']}** came prepared. **{gang['name']}** got pushed out of their own spot.",
+                f"The numbers didn't add up. **{gang['name']}** took a bad one tonight.",
+                f"**{rival_info['name']}** moved first and the set never recovered. Walked out short.",
+            ])
+
+            alive_now = get_alive_members(gang)
+            victims_count = random.randint(1, min(2, max(1, len(alive_now) - 1)))
+            if len(alive_now) > 1:
+                victims = random.sample([m for m in attending if m['alive']], min(victims_count, len([m for m in attending if m['alive']])))
+                for v in victims:
+                    v['alive'] = False
+                    v['deaths'] += 1
+                    fallen.append(v['name'])
+                    loss_line += f"\n`{v['name']}` didn't make it."
+                killer_name = random.choice(STREET_NAMES)
+                add_revenge_target(gang, killer_name, rival_info, rival_rep)
+
+            if random.randint(1, 100) <= 40:
+                still_free = [m for m in attending if m['alive'] and not is_jailed(m)]
+                if still_free:
+                    victim = random.choice(still_free)
+                    s = send_to_jail(victim)
+                    jailed_members.append((victim['name'], s))
+                    loss_line += f"\n`{victim['name']}` got knocked leaving — {s}."
+
+            loss_embed = discord.Embed(title="Fight — Lost", color=discord.Color.dark_red())
+            loss_embed.description = (
+                f"{loss_line}\n\n"
+                f"Cred: -{rep_loss}"
+            )
+            loss_embed.set_footer(text=f"Type `revenge {code}` when ready.")
+            await safe_send(message.channel, embed=loss_embed)
+            summary_lines.append(f"Lost to {rival_info['name']}. -{rep_loss} cred.")
+
+        await asyncio.sleep(MSG_DELAY)
+
+    else:
+        # No rivals — peaceful party, random small events per member
+        clean_lines = []
+        for m in attending:
+            event_roll = random.randint(1, 100)
+            if event_roll <= 50:
+                gain = random.randint(5, 25)
+                rep_change += gain
+                m['missions_survived'] += 1
+                clean_lines.append(random.choice([
+                    f"`{m['name']}` networked with the right people. +{gain} cred.",
+                    f"`{m['name']}` repped the set all night. +{gain} cred.",
+                    f"`{m['name']}` linked up with some connected people. +{gain} cred.",
+                    f"`{m['name']}` made an impression at the party. +{gain} cred.",
+                ]))
+            elif event_roll <= 65:
+                s = send_to_jail(m)
+                jailed_members.append((m['name'], s))
+                loss = random.randint(10, 30)
+                rep_change -= loss
+                clean_lines.append(f"`{m['name']}` got knocked on the way out. Facing {s}. -{loss} cred.")
+            elif event_roll <= 75:
+                loss = random.randint(5, 20)
+                rep_change -= loss
+                clean_lines.append(random.choice([
+                    f"`{m['name']}` got into it with somebody at the party. -{loss} cred.",
+                    f"`{m['name']}` made a bad impression. -{loss} cred.",
+                ]))
+            else:
+                clean_lines.append(random.choice([
+                    f"`{m['name']}` had a quiet night. Nothing to report.",
+                    f"`{m['name']}` kept it low key all night.",
+                    f"`{m['name']}` stayed out of trouble.",
+                ]))
+
+        peaceful_embed = discord.Embed(title="No Opps Tonight", color=discord.Color.dark_purple())
+        peaceful_embed.description = "\n".join(clean_lines) if clean_lines else "Nothing to report."
+        peaceful_embed.set_footer(text="Clean night.")
+        await safe_send(message.channel, embed=peaceful_embed)
+        await asyncio.sleep(MSG_DELAY)
+
+    gang['rep'] = max(1, old_rep + rep_change)
+    check_and_mark_dead(code)
+
+    color = discord.Color.green() if rep_change >= 0 else discord.Color.orange()
+    rep_display = (
+        f"{old_rep} -> {gang['rep']} (+{rep_change})"
+        if rep_change >= 0
+        else f"{old_rep} -> {gang['rep']} ({rep_change})"
+    )
+
+    summary_embed = discord.Embed(title="Party — Night Over", color=color)
+    summary_embed.description = (
+        f"**{gang['name']}** back from {location}.\n\n"
+        f"Cred: {rep_display}\n"
+        f"Alive: {len(get_alive_members(gang))}  |  Free: {len(get_free_members(gang))}"
+    )
+
+    if fallen:
+        summary_embed.description += "\nFallen: " + ", ".join(f"`{n}`" for n in fallen)
+    if jailed_members:
+        summary_embed.description += "\nLocked Up: " + ", ".join(f"`{n}` ({s})" for n, s in jailed_members)
+
+    all_targets = get_revenge_targets(gang)
+    if all_targets:
+        blood_text = "\n".join(f"**{t['gang']}** | `{t['name']}`" for t in all_targets)
+        summary_embed.description += f"\n\nBlood Owed:\n{blood_text}\n\nType `revenge {code}` to collect."
+
+    if len(summary_embed.description) > EMBED_DESC_LIMIT:
+        summary_embed.description = summary_embed.description[:EMBED_DESC_LIMIT - 3] + "..."
+
+    summary_embed.set_footer(text="Night is done." if rep_change >= 0 else "Took losses tonight.")
+    await safe_send(message.channel, embed=summary_embed)
+
+    if not gang['alive']:
+        await safe_send(message.channel, content=f"**{gang['name']}** has been wiped out. Type `gang` to start fresh.")
 
 
 async def handle_delete(message, args):
@@ -1522,6 +1812,7 @@ COMMANDS = {
     "block": handle_block,
     "solo": handle_solo,
     "dp": handle_dp,
+    "party": handle_party,
     "delete": handle_delete,
 }
 
