@@ -14,57 +14,129 @@ intents = discord.Intents.default()
 intents.message_content = True
 bot = commands.Bot(command_prefix='?', intents=intents)
 
-STATUS_TAGS = {
-    "BEAST":       "Goes harder than anyone. Earned it in blood.",
-    "GHOST":       "Moves unseen. Never caught lacking.",
-    "MARKED":      "Enemies know the name. Got a target on their back.",
-    "SNITCH":      "Word on the street is they talked. Trust is gone.",
-    "LOCKED":      "Been through the system and came out harder.",
-    "CURSED":      "Bad luck follows this one everywhere.",
-    "LOYAL":       "Ride or die. Set comes before everything.",
-    "FALLEN":      "Took too many Ls. Reputation in the dirt.",
-    "RISEN":       "Came back from nothing. Streets respect the comeback.",
-    "UNTOUCHABLE": "Never took a loss. Still perfect.",
-}
+
+def generate_code():
+    while True:
+        code = ''.join(random.choices('ABCDEFGHIJKLMNOPQRSTUVWXYZ', k=4))
+        if code not in gangs:
+            return code
 
 
-def evaluate_status(member):
-    kills = member.get('kills', 0)
-    deaths = member.get('deaths', 0)
-    times_jailed = member.get('times_jailed', 0)
-    times_snitched = member.get('times_snitched', 0)
-    missions_survived = member.get('missions_survived', 0)
-
-    tags = []
-    if times_snitched > 0:
-        tags.append("SNITCH")
-    if kills >= 15 and deaths == 0:
-        tags.append("UNTOUCHABLE")
-    elif kills >= 10:
-        tags.append("BEAST")
-    if missions_survived >= 5 and times_jailed == 0:
-        tags.append("GHOST")
-    if deaths >= 3:
-        tags.append("CURSED")
-    if times_jailed >= 3:
-        tags.append("LOCKED")
-    if kills >= 5 and deaths >= 2:
-        tags.append("MARKED")
-    if kills == 0 and deaths >= 2:
-        tags.append("FALLEN")
-    if member.get('came_back_from_zero'):
-        tags.append("RISEN")
-    if times_jailed == 0 and deaths == 0 and kills >= 3:
-        tags.append("LOYAL")
-
-    priority = ["SNITCH", "UNTOUCHABLE", "BEAST", "GHOST", "CURSED", "LOCKED", "MARKED", "FALLEN", "RISEN", "LOYAL"]
-    tags = sorted(tags, key=lambda t: priority.index(t) if t in priority else 99)
-    return tags[:2]
+def generate_ai_members(count=5):
+    available = list(STREET_NAMES)
+    random.shuffle(available)
+    names = available[:min(count, len(available))]
+    members = []
+    for name in names:
+        members.append({
+            "name": name,
+            "rep": random.randint(10, 200),
+            "alive": True,
+            "kills": 0,
+            "deaths": 0,
+            "times_jailed": 0,
+            "times_snitched": 0,
+            "missions_survived": 0,
+            "came_back_from_zero": False,
+            "jail_until": None,
+            "jail_sentence": None,
+        })
+    return members
 
 
-def format_status_line(member):
-    tags = evaluate_status(member)
-    return "  ".join(tags) if tags else ""
+def get_alive_members(gang):
+    return [m for m in gang.get('members', []) if m['alive']]
+
+
+def get_free_members(gang):
+    now = time.time()
+    return [
+        m for m in gang.get('members', [])
+        if m['alive'] and (m.get('jail_until') is None or now >= m['jail_until'])
+    ]
+
+
+def get_gang_bodies(gang):
+    return sum(m.get('kills', 0) for m in gang.get('members', []))
+
+
+def get_gang_deaths(gang):
+    return sum(m.get('deaths', 0) for m in gang.get('members', []))
+
+
+def check_and_mark_dead(code):
+    gang = gangs[code]
+    if len(get_alive_members(gang)) == 0:
+        gang['alive'] = False
+        owner_id = gang['owner_id']
+        if not user_has_active_gang(owner_id):
+            active_gang_owners.discard(owner_id)
+
+
+def send_to_jail(member):
+    tier = random.choices(SENTENCE_TIERS, weights=SENTENCE_WEIGHTS, k=1)[0]
+    member['jail_until'] = time.time() + (tier['minutes'] * 60)
+    member['jail_sentence'] = tier['label']
+    member['times_jailed'] = member.get('times_jailed', 0) + 1
+    return tier['label']
+
+
+def get_member_status(m):
+    if not m['alive']:
+        return "Dead"
+    now = time.time()
+    if m.get('jail_until') and now < m['jail_until']:
+        return f"Locked Up ({m['jail_sentence']})"
+    return "Free"
+
+
+def format_member_list(members):
+    if not members:
+        return "None left."
+    lines = []
+    for m in members:
+        name = f"`{m['name']}`"
+        kills = m.get('kills', 0)
+        status = get_member_status(m)
+        lines.append(f"{name} | {kills} kills | {status}")
+    return "\n".join(lines)
+
+
+def add_revenge_target(gang, killer_name, enemy_gang_info, enemy_rep):
+    if 'revenge_targets' not in gang:
+        gang['revenge_targets'] = []
+    for target in gang['revenge_targets']:
+        if target['gang'] == enemy_gang_info['name']:
+            target['name'] = killer_name
+            target['enemy_rep'] = enemy_rep
+            return
+    gang['revenge_targets'].append({
+        "name": killer_name,
+        "gang": enemy_gang_info['name'],
+        "gang_info": enemy_gang_info,
+        "enemy_rep": enemy_rep,
+    })
+
+
+def get_revenge_targets(gang):
+    return gang.get('revenge_targets', [])
+
+
+def remove_revenge_target(gang, gang_name):
+    if 'revenge_targets' not in gang:
+        return
+    gang['revenge_targets'] = [t for t in gang['revenge_targets'] if t['gang'] != gang_name]
+
+
+def is_admin(message):
+    member = message.author
+    if isinstance(member, discord.Member):
+        return member.guild_permissions.administrator
+    return False
+
+
+def user_has_active_gang(user_id):
+    return any(g['owner_id'] == user_id and g['alive'] for g in gangs.values())
 
 
 STREET_NAMES = [
@@ -87,10 +159,10 @@ STREET_NAMES = [
     "Ember", "Scorch", "Flare", "Toxic", "Plague", "Blackout", "Ambush",
     "Warden", "Feral", "Rabid", "Predator", "Apex", "Titan", "Sledge",
     "Purge", "Scar", "Bounty", "Felony", "Breach", "Choke", "Silence",
-    "Wraith", "Phantom", "Venom", "Vulture", "Rogue", "Ronin", "Specter",
-    "Enforcer", "Kingpin", "Dagger", "Stiletto", "Shiv", "Grimm",
-    "Ranger", "Warlock", "Warlord", "Nero", "Brutus", "Maximus", "Atlas",
-    "Onyx", "Flint", "Cinder", "Colt", "Draco", "Mako", "Rook",
+    "Whisper", "Wraith", "Phantom", "Venom", "Vulture", "Rogue", "Ronin",
+    "Specter", "Enforcer", "Kingpin", "Dagger", "Stiletto", "Shiv",
+    "Grimm", "Ranger", "Warlock", "Warlord", "Nero", "Brutus", "Maximus",
+    "Atlas", "Onyx", "Flint", "Cinder", "Colt", "Draco", "Mako", "Rook",
     "Demon", "Blanco", "Bruno", "Damian", "Dario", "Diego", "Domingo",
     "Fabian", "Felix", "Fidel", "Frankie", "Freddy", "Gabriel", "Gerardo",
     "Giovani", "Gus", "Hugo", "Ivan", "Javier", "Joey", "Johnny",
@@ -109,13 +181,7 @@ STREET_NAMES = [
     "Fernando", "Felipe", "Hector", "Ignacio", "Jesus", "Jorge", "Jose",
     "Juan", "Julio", "Leonardo", "Lorenzo", "Luis", "Mario", "Miguel",
     "Oscar", "Pablo", "Ricardo", "Roberto", "Rodrigo", "Salvador",
-    "Santiago", "Victor", "Xavier", "Chaparro", "Guerrero", "Moreno",
-    "Prieto", "Rascal", "Droopy", "Snoopy", "Dopey", "Scooby", "Bugs",
-    "Rocky", "Swoop", "Rag", "Loc", "Cuzz", "Sixty", "Eighty", "Forty",
-    "Twenty", "Thirty", "Eleven", "Thirteen", "Fourteen", "Eighteen",
-    "Huesos", "Mosca", "Perico", "Changa", "Guerrero", "Catracho",
-    "Chilango", "Tejano", "Sureño", "Frontera", "Nando", "Beto",
-    "Chente", "Pelón",
+    "Santiago", "Victor", "Xavier",
 ]
 
 LA_GANGS = [
@@ -298,131 +364,6 @@ SENTENCE_TIERS = [
     {"label": "50 years", "minutes": 50},
 ]
 SENTENCE_WEIGHTS = [30, 25, 20, 12, 8, 3, 2]
-
-def is_admin(message):
-    member = message.author
-    if isinstance(member, discord.Member):
-        return member.guild_permissions.administrator
-    return False
-
-
-def user_has_active_gang(user_id):
-    return any(g['owner_id'] == user_id and g['alive'] for g in gangs.values())
-
-
-def generate_code():
-    while True:
-        code = ''.join(random.choices('ABCDEFGHIJKLMNOPQRSTUVWXYZ', k=4))
-        if code not in gangs:
-            return code
-
-
-def generate_ai_members(count=5):
-    available = list(STREET_NAMES)
-    random.shuffle(available)
-    names = available[:min(count, len(available))]
-    members = []
-    for name in names:
-        members.append({
-            "name": name,
-            "rep": random.randint(10, 200),
-            "alive": True,
-            "kills": 0,
-            "deaths": 0,
-            "times_jailed": 0,
-            "times_snitched": 0,
-            "missions_survived": 0,
-            "came_back_from_zero": False,
-            "jail_until": None,
-            "jail_sentence": None,
-        })
-    return members
-
-
-def get_alive_members(gang):
-    return [m for m in gang.get('members', []) if m['alive']]
-
-
-def get_free_members(gang):
-    now = time.time()
-    return [
-        m for m in gang.get('members', [])
-        if m['alive'] and (m.get('jail_until') is None or now >= m['jail_until'])
-    ]
-
-
-def get_gang_bodies(gang):
-    return sum(m.get('kills', 0) for m in gang.get('members', []))
-
-
-def get_gang_deaths(gang):
-    return sum(m.get('deaths', 0) for m in gang.get('members', []))
-
-
-def check_and_mark_dead(code):
-    gang = gangs[code]
-    if len(get_alive_members(gang)) == 0:
-        gang['alive'] = False
-        owner_id = gang['owner_id']
-        if not user_has_active_gang(owner_id):
-            active_gang_owners.discard(owner_id)
-
-
-def send_to_jail(member):
-    tier = random.choices(SENTENCE_TIERS, weights=SENTENCE_WEIGHTS, k=1)[0]
-    member['jail_until'] = time.time() + (tier['minutes'] * 60)
-    member['jail_sentence'] = tier['label']
-    member['times_jailed'] = member.get('times_jailed', 0) + 1
-    return tier['label']
-
-
-def get_member_status(m):
-    if not m['alive']:
-        return "Dead"
-    now = time.time()
-    if m.get('jail_until') and now < m['jail_until']:
-        return f"Locked Up ({m['jail_sentence']})"
-    return "Free"
-
-
-def format_member_list(members):
-    if not members:
-        return "None left."
-    lines = []
-    for m in members:
-        name = f"`{m['name']}`"
-        kills = m.get('kills', 0)
-        tags = evaluate_status(m)
-        tag_str = "  ".join(tags) if tags else "--"
-        status = get_member_status(m)
-        lines.append(f"{name} | {tag_str} | {kills} kills | {status}")
-    return "\n".join(lines)
-
-
-def add_revenge_target(gang, killer_name, enemy_gang_info, enemy_rep):
-    if 'revenge_targets' not in gang:
-        gang['revenge_targets'] = []
-    for target in gang['revenge_targets']:
-        if target['gang'] == enemy_gang_info['name']:
-            target['name'] = killer_name
-            target['enemy_rep'] = enemy_rep
-            return
-    gang['revenge_targets'].append({
-        "name": killer_name,
-        "gang": enemy_gang_info['name'],
-        "gang_info": enemy_gang_info,
-        "enemy_rep": enemy_rep,
-    })
-
-
-def get_revenge_targets(gang):
-    return gang.get('revenge_targets', [])
-
-
-def remove_revenge_target(gang, gang_name):
-    if 'revenge_targets' not in gang:
-        return
-    gang['revenge_targets'] = [t for t in gang['revenge_targets'] if t['gang'] != gang_name]
 
 
 def calculate_slide_outcome(gang, rolling_members, enemy_rep, is_revenge=False):
@@ -783,12 +724,8 @@ async def handle_solo(message, args):
         f"The rest of the set didn't even know `{target_member['name']}` had left until the door was already closed. Moving solo into **{enemy_gang_info['name']}** territory. No radio. No backup. Just the mission.",
     ]
 
-    tags = evaluate_status(target_member)
-    tag_str = "  ".join(tags) if tags else "--"
-
     intro_embed = discord.Embed(title="Solo Mission", description=random.choice(send_off_lines), color=discord.Color.dark_red())
     intro_embed.add_field(name="Soldier", value=f"`{target_member['name']}`", inline=True)
-    intro_embed.add_field(name="Tags", value=tag_str, inline=True)
     intro_embed.add_field(name="Kills", value=str(target_member.get('kills', 0)), inline=True)
     intro_embed.add_field(name="Target Territory", value=f"{enemy_gang_info['name']} — {enemy_gang_info['hood']}", inline=False)
     intro_embed.set_footer(text="One man. No backup. Whatever happens next happens alone.")
@@ -803,12 +740,9 @@ async def handle_solo(message, args):
         rep_gain = random.randint(15, 60)
         gang['rep'] = player_rep + rep_gain
         story = random.choice(SOLO_WIN_LINES).replace("{member}", f"`{target_member['name']}`")
-        new_tags = evaluate_status(target_member)
-        new_tag_str = "  ".join(new_tags) if new_tags else "--"
 
         result_embed = discord.Embed(title="Solo Mission — Target Down", description=story, color=discord.Color.green())
         result_embed.add_field(name="Soldier", value=f"`{target_member['name']}`", inline=True)
-        result_embed.add_field(name="Tags", value=new_tag_str, inline=True)
         result_embed.add_field(name="Kills", value=str(target_member['kills']), inline=True)
         result_embed.add_field(name="Cred Gained", value=f"+{rep_gain}", inline=True)
         result_embed.add_field(name="New Street Cred", value=f"{player_rep} -> {gang['rep']}", inline=True)
@@ -823,7 +757,6 @@ async def handle_solo(message, args):
 
         result_embed = discord.Embed(title="Solo Mission — Made It Back", description=story, color=discord.Color.orange())
         result_embed.add_field(name="Soldier", value=f"`{target_member['name']}`", inline=True)
-        result_embed.add_field(name="Tags", value=tag_str, inline=True)
         result_embed.add_field(name="Kills", value=str(target_member.get('kills', 0)), inline=True)
         result_embed.add_field(name="Cred Lost", value=f"-{rep_loss}", inline=True)
         result_embed.add_field(name="New Street Cred", value=f"{player_rep} -> {gang['rep']}", inline=True)
@@ -838,7 +771,6 @@ async def handle_solo(message, args):
 
         result_embed = discord.Embed(title="Solo Mission — Knocked", description=story, color=discord.Color.blue())
         result_embed.add_field(name="Soldier", value=f"`{target_member['name']}`", inline=True)
-        result_embed.add_field(name="Tags", value=tag_str, inline=True)
         result_embed.add_field(name="Sentence", value=sentence, inline=True)
         result_embed.add_field(name="Cred Lost", value=f"-{rep_loss}", inline=True)
         result_embed.add_field(name="New Street Cred", value=f"{player_rep} -> {gang['rep']}", inline=True)
@@ -856,7 +788,6 @@ async def handle_solo(message, args):
 
             result_embed = discord.Embed(title="Solo Mission — Fallen", description=story, color=discord.Color.dark_grey())
             result_embed.add_field(name="Soldier", value=f"`{target_member['name']}`", inline=True)
-            result_embed.add_field(name="Final Tags", value=tag_str, inline=True)
             result_embed.add_field(name="Kills", value=str(target_member.get('kills', 0)), inline=True)
             result_embed.add_field(name="Cred Lost", value=f"-{rep_loss}", inline=True)
             result_embed.add_field(name="New Street Cred", value=f"{player_rep} -> {gang['rep']}", inline=True)
@@ -871,7 +802,6 @@ async def handle_solo(message, args):
 
             result_embed = discord.Embed(title="Solo Mission — Knocked", description=story, color=discord.Color.blue())
             result_embed.add_field(name="Soldier", value=f"`{target_member['name']}`", inline=True)
-            result_embed.add_field(name="Tags", value=tag_str, inline=True)
             result_embed.add_field(name="Sentence", value=sentence, inline=True)
             result_embed.add_field(name="Cred Lost", value=f"-{rep_loss}", inline=True)
             result_embed.add_field(name="New Street Cred", value=f"{player_rep} -> {gang['rep']}", inline=True)
@@ -1143,11 +1073,9 @@ async def handle_show(message, args):
 
             roster_lines = []
             for m in g['members']:
-                tags = evaluate_status(m)
-                tag_str = "  ".join(tags) if tags else "--"
                 status = get_member_status(m)
                 kills = m.get('kills', 0)
-                roster_lines.append(f"`{m['name']}` | {tag_str} | {kills} kills | {status}")
+                roster_lines.append(f"`{m['name']}` | {kills} kills | {status}")
 
             embed.add_field(name="Roster", value="\n".join(roster_lines) if roster_lines else "None left.", inline=False)
             embed.add_field(name="\u200b", value="\u200b", inline=False)
@@ -1185,8 +1113,6 @@ async def handle_mission(message, args):
     event = random.choices(EVENTS, weights=EVENT_WEIGHTS, k=1)[0]
     rep = gang['rep']
     old_kills = featured_member.get('kills', 0)
-    tags = evaluate_status(featured_member)
-    tag_str = "  ".join(tags) if tags else "--"
 
     embed = discord.Embed(
         title=event['name'],
@@ -1195,7 +1121,6 @@ async def handle_mission(message, args):
     )
     embed.add_field(name="Crew", value=gang['name'], inline=True)
     embed.add_field(name="Member", value=f"`{featured_member['name']}`", inline=True)
-    embed.add_field(name="Tags", value=tag_str, inline=True)
 
     if event['type'] == 'rep_up':
         gain = random.randint(*event['value'])
@@ -1205,8 +1130,6 @@ async def handle_mission(message, args):
             featured_member['kills'] = old_kills + 1
             embed.add_field(name="Kill", value=f"`{featured_member['name']}` +1", inline=True)
         embed.add_field(name="Street Cred", value=f"{rep} -> {gang['rep']} (+{gain})", inline=True)
-        updated_tags = evaluate_status(featured_member)
-        embed.add_field(name="Updated Tags", value="  ".join(updated_tags) if updated_tags else "--", inline=True)
         embed.set_footer(text="Rep rising on the streets...")
 
     elif event['type'] == 'rep_down':
@@ -1227,8 +1150,6 @@ async def handle_mission(message, args):
         if extra_info:
             embed.add_field(name="What Happened", value="\n".join(extra_info), inline=False)
         embed.add_field(name="Street Cred", value=f"{rep} -> {gang['rep']} (-{actual_loss})", inline=True)
-        updated_tags = evaluate_status(featured_member)
-        embed.add_field(name="Updated Tags", value="  ".join(updated_tags) if updated_tags else "--", inline=True)
         embed.set_footer(text="Taking an L on the streets...")
 
     elif event['type'] == 'nothing':
