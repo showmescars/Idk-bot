@@ -206,6 +206,8 @@ SENTENCE_TIERS = [
 SENTENCE_WEIGHTS = [30, 25, 20, 12, 8, 3, 2]
 
 MSG_DELAY = 2.1
+EMBED_DESC_LIMIT = 4000
+EMBED_FIELD_LIMIT = 1024
 
 # ─── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -251,7 +253,9 @@ def get_gang_deaths(gang):
     return sum(m['deaths'] for m in gang['members'])
 
 def check_and_mark_dead(code):
-    gang = gangs[code]
+    gang = gangs.get(code)
+    if not gang:
+        return
     if not get_alive_members(gang):
         gang['alive'] = False
         if not user_has_active_gang(gang['owner_id']):
@@ -268,7 +272,9 @@ def get_member_status(m):
     if not m['alive']:
         return "Dead"
     if is_jailed(m):
-        return f"Locked Up ({m['jail_sentence']})"
+        remaining = m['jail_until'] - time.time()
+        minutes_left = int(remaining / 60)
+        return f"Locked Up ({m['jail_sentence']} | {minutes_left}m left)"
     return "Free"
 
 def add_revenge_target(gang, killer_name, enemy_info, enemy_rep):
@@ -286,14 +292,48 @@ def get_revenge_targets(gang):
 def remove_revenge_target(gang, gang_name):
     gang['revenge_targets'] = [t for t in gang.get('revenge_targets', []) if t['gang'] != gang_name]
 
+def truncate(text, limit=EMBED_DESC_LIMIT):
+    if len(text) <= limit:
+        return text
+    return text[:limit - 3] + "..."
+
 async def safe_send(channel, embed=None, content=None):
     try:
         if embed:
+            # Truncate description if too long
+            if embed.description and len(embed.description) > EMBED_DESC_LIMIT:
+                embed.description = embed.description[:EMBED_DESC_LIMIT - 3] + "..."
+            # Truncate fields if too long
+            for i, field in enumerate(embed.fields):
+                if len(field.value) > EMBED_FIELD_LIMIT:
+                    embed.set_field_at(i, name=field.name, value=field.value[:EMBED_FIELD_LIMIT - 3] + "...", inline=field.inline)
             await channel.send(embed=embed)
         elif content:
-            await channel.send(content)
+            # Split long content into chunks
+            if len(content) > 2000:
+                chunks = [content[i:i+1990] for i in range(0, len(content), 1990)]
+                for chunk in chunks:
+                    await channel.send(chunk)
+                    await asyncio.sleep(0.5)
+            else:
+                await channel.send(content)
     except discord.HTTPException as e:
         print(f"safe_send error: {e}")
+
+async def send_chunked_embed(channel, title, lines, color, footer=None, chunk_size=20):
+    """Send a list of lines split across multiple embeds if needed."""
+    chunks = [lines[i:i+chunk_size] for i in range(0, len(lines), chunk_size)]
+    for idx, chunk in enumerate(chunks):
+        embed = discord.Embed(
+            title=title if idx == 0 else f"{title} (cont.)",
+            description="\n".join(chunk),
+            color=color
+        )
+        if footer and idx == len(chunks) - 1:
+            embed.set_footer(text=footer)
+        await safe_send(channel, embed=embed)
+        if idx < len(chunks) - 1:
+            await asyncio.sleep(0.5)
 
 # ─── Short outcome phrases ──────────────────────────────────────────────────────
 
@@ -346,7 +386,7 @@ def calculate_slide_outcome(gang, rolling_members, enemy_rep, is_revenge=False):
     jailed = []
 
     if player_won:
-        rep_gain = random.randint(20, max(1, int(enemy_rep * 0.4)))
+        rep_gain = random.randint(20, max(21, int(enemy_rep * 0.4)))
         if is_revenge:
             rep_gain = int(rep_gain * 1.25)
         gang['rep'] = player_rep + rep_gain
@@ -398,7 +438,7 @@ def calculate_slide_outcome(gang, rolling_members, enemy_rep, is_revenge=False):
                 m['missions_survived'] += 1
                 member_lines.append(member_result_line(m['name'], "survived"))
 
-        rep_loss = random.randint(20, max(1, int(player_rep * 0.25)))
+        rep_loss = random.randint(20, max(21, int(player_rep * 0.25)))
         gang['rep'] = max(1, player_rep - rep_loss)
 
         return {
@@ -411,7 +451,11 @@ def calculate_slide_outcome(gang, rolling_members, enemy_rep, is_revenge=False):
 async def send_slide_result(channel, gang, enemy_info, result, rolling, is_revenge=False):
     overall_color = discord.Color.green() if result['won'] else discord.Color.orange()
     title = ("Revenge Collected" if is_revenge else "Slide Won") if result['won'] else ("Revenge Failed" if is_revenge else "Slide Lost")
-    cred_line = f"{result['old_rep']} → {result['new_rep']} (+{result['rep_gain']})" if result['won'] else f"{result['old_rep']} → {result['new_rep']} (-{result['rep_loss']})"
+    cred_line = (
+        f"{result['old_rep']} → {result['new_rep']} (+{result['rep_gain']})"
+        if result['won']
+        else f"{result['old_rep']} → {result['new_rep']} (-{result['rep_loss']})"
+    )
 
     rolling_names = ", ".join(f"`{m['name']}`" for m in rolling)
     intro = discord.Embed(title="Slide", color=discord.Color.dark_red())
@@ -423,26 +467,56 @@ async def send_slide_result(channel, gang, enemy_info, result, rolling, is_reven
     await safe_send(channel, embed=intro)
     await asyncio.sleep(MSG_DELAY)
 
-    crew_lines = "\n".join(result['member_lines']) if result['member_lines'] else "Nothing to report."
-    kills_lines = "\n".join(f"`{n}` — {k} kill{'s' if k != 1 else ''}" for n, k in result['kills_this_fight'].items()) if result['kills_this_fight'] else "No bodies."
+    crew_lines = result['member_lines'] if result['member_lines'] else ["Nothing to report."]
+    kills_lines = (
+        [f"`{n}` — {k} kill{'s' if k != 1 else ''}" for n, k in result['kills_this_fight'].items()]
+        if result['kills_this_fight'] else ["No bodies."]
+    )
 
-    desc = (
+    # Build result embed, splitting if needed
+    base_desc = (
         f"**Cred:** {cred_line}\n"
-        f"**Still Standing:** {result['members_alive']}\n\n"
-        f"**Crew**\n{crew_lines}\n\n"
-        f"**Kills**\n{kills_lines}"
+        f"**Still Standing:** {result['members_alive']}\n"
     )
     if result['fallen']:
-        desc += "\n\n**Fallen:** " + ", ".join(f"`{n}`" for n in result['fallen'])
+        base_desc += "\n**Fallen:** " + ", ".join(f"`{n}`" for n in result['fallen'])
     if result['jailed']:
-        desc += "\n**Locked Up:** " + ", ".join(f"`{n}` ({s})" for n, s in result['jailed'])
+        base_desc += "\n**Locked Up:** " + ", ".join(f"`{n}` ({s})" for n, s in result['jailed'])
 
-    result_embed = discord.Embed(title=title, description=desc, color=overall_color)
+    result_embed = discord.Embed(title=title, color=overall_color)
+    result_embed.description = base_desc
+
+    crew_text = "\n".join(crew_lines)
+    kills_text = "\n".join(kills_lines)
+
+    # Add as fields, splitting if over limit
+    if len(crew_text) <= EMBED_FIELD_LIMIT:
+        result_embed.add_field(name="Crew", value=crew_text, inline=False)
+    else:
+        chunks = [crew_lines[i:i+10] for i in range(0, len(crew_lines), 10)]
+        for idx, chunk in enumerate(chunks):
+            result_embed.add_field(
+                name="Crew" if idx == 0 else "Crew (cont.)",
+                value="\n".join(chunk),
+                inline=False
+            )
+
+    if len(kills_text) <= EMBED_FIELD_LIMIT:
+        result_embed.add_field(name="Kills", value=kills_text, inline=False)
+    else:
+        chunks = [kills_lines[i:i+10] for i in range(0, len(kills_lines), 10)]
+        for idx, chunk in enumerate(chunks):
+            result_embed.add_field(
+                name="Kills" if idx == 0 else "Kills (cont.)",
+                value="\n".join(chunk),
+                inline=False
+            )
+
     result_embed.set_footer(text="They won't touch yours again." if result['won'] else "Regroup. Come back harder.")
     await safe_send(channel, embed=result_embed)
 
 
-# ─── Mission handler with drug dealing type ────────────────────────────────────
+# ─── Mission handler ───────────────────────────────────────────────────────────
 
 async def handle_mission(message, args):
     if not args:
@@ -463,22 +537,22 @@ async def handle_mission(message, args):
 
     free = get_free_members(gang)
     if not free:
-        await safe_send(message.channel, content=f"**{gang['name']}** has no free members right now.")
+        jailed_count = len([m for m in gang['members'] if m['alive'] and is_jailed(m)])
+        if jailed_count > 0:
+            await safe_send(message.channel, content=f"**{gang['name']}** has no free members. {jailed_count} locked up.")
+        else:
+            await safe_send(message.channel, content=f"**{gang['name']}** has no members left.")
         return
 
     member = random.choice(free)
-    rep = gang['rep']
 
-    # Pick mission category: 60% regular event, 40% drug deal
     if random.randint(1, 100) <= 40:
         await run_drug_mission(message.channel, gang, member, code)
     else:
         event = random.choice(EVENTS)
-        embed = discord.Embed(
-            title=event['name'],
-            description=event['description'].format(name=gang['name'], member=f"`{member['name']}`"),
-            color=event['color']
-        )
+        rep = gang['rep']
+        desc = event['description'].format(name=gang['name'], member=f"`{member['name']}`")
+        embed = discord.Embed(title=event['name'], description=desc, color=event['color'])
 
         if event['type'] == 'rep_up':
             gain = random.randint(*event['value'])
@@ -500,6 +574,7 @@ async def handle_mission(message, args):
             if random.randint(1, 100) <= 15 and len(get_alive_members(gang)) > 1:
                 member['alive'] = False
                 member['deaths'] += 1
+                check_and_mark_dead(code)
                 extra.append(f"`{member['name']}` didn't make it out.")
             elif random.randint(1, 100) <= 25:
                 s = send_to_jail(member)
@@ -513,17 +588,18 @@ async def handle_mission(message, args):
             embed.description += f"\n\nStreet Cred: {rep} (no change)"
             embed.set_footer(text="Nothing popped off.")
 
+        # Truncate if needed
+        if len(embed.description) > EMBED_DESC_LIMIT:
+            embed.description = embed.description[:EMBED_DESC_LIMIT - 3] + "..."
+
         await safe_send(message.channel, embed=embed)
 
 
 async def run_drug_mission(channel, gang, member, code):
     rep = gang['rep']
     event = random.choice(DRUG_EVENTS)
-    embed = discord.Embed(
-        title=event['name'],
-        description=event['description'].format(name=gang['name'], member=f"`{member['name']}`"),
-        color=event['color']
-    )
+    desc = event['description'].format(name=gang['name'], member=f"`{member['name']}`")
+    embed = discord.Embed(title=event['name'], description=desc, color=event['color'])
 
     if event['type'] == 'drug_win':
         gain = random.randint(*event['value'])
@@ -546,7 +622,11 @@ async def run_drug_mission(channel, gang, member, code):
             member['alive'] = False
             member['deaths'] += 1
             check_and_mark_dead(code)
-            embed.description += f"\n\n`{member['name']}` didn't make it back.\nStreet Cred: {rep} → {gang['rep']} (-{loss})\nMembers Alive: {len(get_alive_members(gang))}"
+            embed.description += (
+                f"\n\n`{member['name']}` didn't make it back.\n"
+                f"Street Cred: {rep} → {gang['rep']} (-{loss})\n"
+                f"Members Alive: {len(get_alive_members(gang))}"
+            )
         else:
             s = send_to_jail(member)
             embed.description += f"\n\n`{member['name']}` got knocked — {s}.\nStreet Cred: {rep} → {gang['rep']} (-{loss})"
@@ -555,6 +635,9 @@ async def run_drug_mission(channel, gang, member, code):
     elif event['type'] == 'drug_nothing':
         embed.description += f"\n\nStreet Cred: {rep} (no change)"
         embed.set_footer(text="Slow night on the trap.")
+
+    if len(embed.description) > EMBED_DESC_LIMIT:
+        embed.description = embed.description[:EMBED_DESC_LIMIT - 3] + "..."
 
     await safe_send(channel, embed=embed)
 
@@ -604,7 +687,20 @@ async def handle_gang(message, args):
 
 async def handle_show(message, args):
     user_id = message.author.id
-    user_gangs = [g for g in gangs.values() if g['owner_id'] == user_id]
+
+    # Allow show <code> for any gang owner
+    if args:
+        code = args[0].upper()
+        target_gang = gangs.get(code)
+        if not target_gang:
+            await safe_send(message.channel, content=f"No crew found with code `{code}`.")
+            return
+        if target_gang['owner_id'] != user_id and not is_admin(message):
+            await safe_send(message.channel, content="That ain't your crew.")
+            return
+        user_gangs = [target_gang]
+    else:
+        user_gangs = [g for g in gangs.values() if g['owner_id'] == user_id]
 
     if not user_gangs:
         await safe_send(message.channel, content="You got no crew. Type `gang` to start one.")
@@ -613,60 +709,81 @@ async def handle_show(message, args):
     alive_gangs = [g for g in user_gangs if g['alive']]
     dead_count = len(user_gangs) - len(alive_gangs)
 
-    desc = f"Active: {len(alive_gangs)}   |   Disbanded: {dead_count}"
+    # Send one embed per gang to avoid size issues
+    header = discord.Embed(
+        title=f"{message.author.name}'s Crew",
+        description=f"Active: {len(alive_gangs)}   |   Disbanded: {dead_count}",
+        color=discord.Color.dark_grey()
+    )
+    await safe_send(message.channel, embed=header)
 
-    if alive_gangs:
-        for g in alive_gangs:
-            fw = g.get('fights_won', 0)
-            fl = g.get('fights_lost', 0)
-            total = fw + fl
-            win_rate = f"{int((fw / total) * 100)}%" if total > 0 else "N/A"
-            targets = get_revenge_targets(g)
-            blood_lines = ""
-            if targets:
-                blood_lines = "\n" + "\n".join(f"Blood Owed: `{t['name']}` | {t['gang']}" for t in targets)
-            desc += (
-                f"\n\n**{g['name']}**\n"
-                f"Hood: {g.get('hood', 'Unknown')}\n"
-                f"Code: `{g['code']}`\n"
-                f"Shot Caller: `{g.get('leader', 'Unknown')}`\n"
-                f"Street Cred: {g['rep']}\n"
-                f"Record: {fw}W — {fl}L   Win Rate: {win_rate}\n"
-                f"Kills: {get_gang_bodies(g)}   Deaths: {get_gang_deaths(g)}\n"
-                f"Alive: {len(get_alive_members(g))}   Free: {len(get_free_members(g))}"
-                + blood_lines
-            )
-    else:
-        desc += "\n\nNo active crew. Type `gang` to start fresh."
+    for g in alive_gangs:
+        fw = g.get('fights_won', 0)
+        fl = g.get('fights_lost', 0)
+        total = fw + fl
+        win_rate = f"{int((fw / total) * 100)}%" if total > 0 else "N/A"
+        targets = get_revenge_targets(g)
 
-    embed = discord.Embed(title=f"{message.author.name}'s Crew", description=desc, color=discord.Color.dark_grey())
+        blood_lines = ""
+        if targets:
+            blood_lines = "\n" + "\n".join(f"Blood Owed: `{t['name']}` | {t['gang']}" for t in targets)
 
-    if alive_gangs:
-        for g in alive_gangs:
-            alive = get_alive_members(g)
-            if alive:
-                roster_lines = "\n".join(
-                    f"`{m['name']}` | {m['kills']} kills | {get_member_status(m)}" for m in alive
-                )
-                embed.add_field(name=f"{g['name']} — Active Roster", value=roster_lines, inline=False)
+        gang_desc = (
+            f"Hood: {g.get('hood', 'Unknown')}\n"
+            f"Shot Caller: `{g.get('leader', 'Unknown')}`\n"
+            f"Street Cred: {g['rep']}\n"
+            f"Record: {fw}W — {fl}L   Win Rate: {win_rate}\n"
+            f"Kills: {get_gang_bodies(g)}   Deaths: {get_gang_deaths(g)}\n"
+            f"Alive: {len(get_alive_members(g))}   Free: {len(get_free_members(g))}"
+            + blood_lines
+        )
 
-    embed.set_footer(text="mission | slide | recruit | revenge | block | solo | show | delete")
-    await safe_send(message.channel, embed=embed)
-
-    has_dead = any(get_dead_members(g) for g in alive_gangs)
-    if has_dead:
-        rip_embed = discord.Embed(
-            title="🕯️ Rest In Power",
-            description="Homies who fell in the streets. Their names stay on the wall.",
+        gang_embed = discord.Embed(
+            title=f"{g['name']} — `{g['code']}`",
+            description=gang_desc,
             color=discord.Color.dark_grey()
         )
-        for g in alive_gangs:
-            dead = get_dead_members(g)
-            if dead:
-                dead_lines = "\n".join(f"`{m['name']}` | {m['kills']} kills | Dead" for m in dead)
-                rip_embed.add_field(name=f"{g['name']} — Fallen", value=dead_lines, inline=False)
-        rip_embed.set_footer(text="Gone but not forgotten.")
-        await safe_send(message.channel, embed=rip_embed)
+
+        alive = get_alive_members(g)
+        if alive:
+            roster_lines = [
+                f"`{m['name']}` | {m['kills']}K | {get_member_status(m)}"
+                for m in alive
+            ]
+            # Split roster into chunks of 15
+            chunks = [roster_lines[i:i+15] for i in range(0, len(roster_lines), 15)]
+            for idx, chunk in enumerate(chunks):
+                field_name = "Active Roster" if idx == 0 else "Active Roster (cont.)"
+                field_val = "\n".join(chunk)
+                if len(field_val) <= EMBED_FIELD_LIMIT:
+                    gang_embed.add_field(name=field_name, value=field_val, inline=False)
+                else:
+                    gang_embed.add_field(name=field_name, value=field_val[:EMBED_FIELD_LIMIT - 3] + "...", inline=False)
+
+        gang_embed.set_footer(text="mission | slide | recruit | revenge | block | solo | show | delete")
+        await safe_send(message.channel, embed=gang_embed)
+
+        # Dead members in a separate embed if any
+        dead = get_dead_members(g)
+        if dead:
+            dead_lines = [f"`{m['name']}` | {m['kills']} kills | Dead" for m in dead]
+            rip_embed = discord.Embed(
+                title=f"{g['name']} — Fallen",
+                color=discord.Color.dark_grey()
+            )
+            chunks = [dead_lines[i:i+15] for i in range(0, len(dead_lines), 15)]
+            for idx, chunk in enumerate(chunks):
+                field_name = "Rest In Power" if idx == 0 else "Rest In Power (cont.)"
+                field_val = "\n".join(chunk)
+                if len(field_val) <= EMBED_FIELD_LIMIT:
+                    rip_embed.add_field(name=field_name, value=field_val, inline=False)
+                else:
+                    rip_embed.add_field(name=field_name, value=field_val[:EMBED_FIELD_LIMIT - 3] + "...", inline=False)
+            rip_embed.set_footer(text="Gone but not forgotten.")
+            await safe_send(message.channel, embed=rip_embed)
+
+    if not alive_gangs:
+        await safe_send(message.channel, content="No active crew. Type `gang` to start fresh.")
 
 
 async def handle_recruit(message, args):
@@ -703,7 +820,7 @@ async def handle_recruit(message, args):
     existing = {m['name'] for m in gang['members']}
     available = [n for n in STREET_NAMES if n not in existing]
     if not available:
-        await safe_send(message.channel, content=f"**{gang['name']}** roster is maxed out.")
+        await safe_send(message.channel, content=f"**{gang['name']}** roster is maxed out — all street names are taken.")
         return
 
     actual = min(requested, len(available))
@@ -761,7 +878,7 @@ async def handle_slide(message, args):
     try:
         requested = int(args[1])
     except ValueError:
-        await safe_send(message.channel, content="Needs to be a number.")
+        await safe_send(message.channel, content="Needs to be a number. Example: `slide XKRV 3`")
         return
 
     if requested < 1:
@@ -770,7 +887,11 @@ async def handle_slide(message, args):
 
     free = get_free_members(gang)
     if not free:
-        await safe_send(message.channel, content="Nobody free to roll out.")
+        jailed = [m for m in gang['members'] if m['alive'] and is_jailed(m)]
+        if jailed:
+            await safe_send(message.channel, content=f"Nobody free to roll out. {len(jailed)} locked up right now.")
+        else:
+            await safe_send(message.channel, content="Nobody free to roll out.")
         return
 
     actual = min(requested, len(free), 10)
@@ -788,6 +909,9 @@ async def handle_slide(message, args):
 
     check_and_mark_dead(code)
     await send_slide_result(message.channel, gang, enemy_info, result, rolling)
+
+    if not gang['alive']:
+        await safe_send(message.channel, content=f"**{gang['name']}** has been wiped out. Type `gang` to start fresh.")
 
 
 async def handle_revenge(message, args):
@@ -809,12 +933,16 @@ async def handle_revenge(message, args):
 
     targets = get_revenge_targets(gang)
     if not targets:
-        await safe_send(message.channel, content="No blood owed right now.")
+        await safe_send(message.channel, content="No blood owed right now. Keep grinding.")
         return
 
     free = get_free_members(gang)
     if not free:
-        await safe_send(message.channel, content="Nobody free to roll out.")
+        jailed = [m for m in gang['members'] if m['alive'] and is_jailed(m)]
+        if jailed:
+            await safe_send(message.channel, content=f"Nobody free to roll out. {len(jailed)} locked up.")
+        else:
+            await safe_send(message.channel, content="Nobody free to roll out.")
         return
 
     target = random.choice(targets)
@@ -842,6 +970,8 @@ async def handle_revenge(message, args):
             color=discord.Color.dark_red()
         )
         await safe_send(message.channel, embed=followup)
+    elif result['won']:
+        await safe_send(message.channel, content="All debts collected. Nothing owed.")
 
 
 async def handle_solo(message, args):
@@ -865,14 +995,25 @@ async def handle_solo(message, args):
 
     target = next((m for m in gang['members'] if m['name'].lower() == member_name.lower()), None)
     if not target:
+        free = get_free_members(gang)
         roster = ", ".join(f"`{m['name']}`" for m in gang['members'])
-        await safe_send(message.channel, content=f"No member named `{member_name}`.\nRoster: {roster}")
+        if not roster:
+            await safe_send(message.channel, content="No members in this crew.")
+            return
+        # Send roster as chunks if too long
+        if len(roster) > 1800:
+            await safe_send(message.channel, content=f"No member named `{member_name}`.")
+            lines = [f"`{m['name']}` — {get_member_status(m)}" for m in gang['members']]
+            await send_chunked_embed(message.channel, "Roster", lines, discord.Color.dark_grey())
+        else:
+            await safe_send(message.channel, content=f"No member named `{member_name}`.\nRoster: {roster}")
         return
     if not target['alive']:
         await safe_send(message.channel, content=f"`{target['name']}` is dead.")
         return
     if is_jailed(target):
-        await safe_send(message.channel, content=f"`{target['name']}` is locked up.")
+        remaining = int((target['jail_until'] - time.time()) / 60)
+        await safe_send(message.channel, content=f"`{target['name']}` is locked up. {remaining} minutes left on their sentence.")
         return
 
     enemy_info = random.choice(LA_GANGS)
@@ -966,7 +1107,11 @@ async def handle_block(message, args):
 
     free = get_free_members(gang)
     if not free:
-        await safe_send(message.channel, content="No free members to run the block party.")
+        jailed = [m for m in gang['members'] if m['alive'] and is_jailed(m)]
+        if jailed:
+            await safe_send(message.channel, content=f"No free members to run the block party. {len(jailed)} locked up.")
+        else:
+            await safe_send(message.channel, content="No free members to run the block party.")
         return
 
     host = random.choice(free)
@@ -989,7 +1134,9 @@ async def handle_block(message, args):
     for i in range(num_events):
         await asyncio.sleep(MSG_DELAY)
         current_free = get_free_members(gang)
-        featured = random.choice(current_free) if current_free else host
+        if not current_free:
+            break
+        featured = random.choice(current_free)
         event = random.choice(BLOCK_PARTY_EVENTS)
         desc = event['description'].replace("{member}", f"`{featured['name']}`").replace("{name}", gang['name'])
 
@@ -1017,7 +1164,8 @@ async def handle_block(message, args):
             rep_change -= loss
             alive_now = get_alive_members(gang)
             if len(alive_now) > 1:
-                victims = random.sample(alive_now, min(random.randint(1, 2), len(alive_now) - 1))
+                num_victims = min(random.randint(1, 2), len(alive_now) - 1)
+                victims = random.sample(alive_now, num_victims)
                 for v in victims:
                     v['alive'] = False
                     v['deaths'] += 1
@@ -1067,6 +1215,11 @@ async def handle_block(message, args):
 
         if not ev_embed.footer.text:
             ev_embed.set_footer(text=f"Event {i + 1} of {num_events}")
+
+        # Truncate if needed
+        if len(ev_embed.description) > EMBED_DESC_LIMIT:
+            ev_embed.description = ev_embed.description[:EMBED_DESC_LIMIT - 3] + "..."
+
         await safe_send(message.channel, embed=ev_embed)
 
     gang['rep'] = max(1, gang['rep'] + rep_change)
@@ -1074,7 +1227,11 @@ async def handle_block(message, args):
     await asyncio.sleep(MSG_DELAY)
 
     color = discord.Color.green() if rep_change >= 0 else discord.Color.orange()
-    rep_display = f"{old_rep} → {gang['rep']} (+{rep_change})" if rep_change >= 0 else f"{old_rep} → {gang['rep']} ({rep_change})"
+    rep_display = (
+        f"{old_rep} → {gang['rep']} (+{rep_change})"
+        if rep_change >= 0
+        else f"{old_rep} → {gang['rep']} ({rep_change})"
+    )
 
     summary = discord.Embed(title="Block Party — Done", color=color)
     summary.description = (
@@ -1086,12 +1243,20 @@ async def handle_block(message, args):
         summary.description += "\nFallen: " + ", ".join(f"`{n}`" for n in members_killed)
     if members_jailed:
         summary.description += "\nLocked Up: " + ", ".join(f"`{n}` ({s})" for n, s in members_jailed)
+
     all_targets = get_revenge_targets(gang)
     if all_targets:
-        summary.description += "\n\nBlood Owed:\n" + "\n".join(f"**{t['gang']}** | `{t['name']}`" for t in all_targets)
-        summary.description += f"\n\nType `revenge {code}` to go after them."
+        blood_text = "\n".join(f"**{t['gang']}** | `{t['name']}`" for t in all_targets)
+        summary.description += f"\n\nBlood Owed:\n{blood_text}\n\nType `revenge {code}` to go after them."
+
+    if len(summary.description) > EMBED_DESC_LIMIT:
+        summary.description = summary.description[:EMBED_DESC_LIMIT - 3] + "..."
+
     summary.set_footer(text="Night is over." if rep_change >= 0 else "Not the way anyone wanted it to end.")
     await safe_send(message.channel, embed=summary)
+
+    if not gang['alive']:
+        await safe_send(message.channel, content=f"**{gang['name']}** has been wiped out. Type `gang` to start fresh.")
 
 
 async def handle_delete(message, args):
@@ -1126,7 +1291,6 @@ async def handle_delete(message, args):
 # ─── Drug Mission Events ────────────────────────────────────────────────────────
 
 DRUG_EVENTS = [
-    # Wins
     {"name": "Trap Popping", "description": "{member} had the trap running smooth all night. Fiends lining up, money counted twice. **{name}** ate good tonight.", "type": "drug_win", "value": (40, 120), "color": discord.Color.green()},
     {"name": "Bulk Move", "description": "{member} connected with a buyer moving weight — whole brick gone in one transaction. **{name}** just made more in an hour than most make in a week.", "type": "drug_win", "value": (80, 200), "color": discord.Color.green()},
     {"name": "New Corner Opened", "description": "{member} posted up on a fresh corner nobody had claimed yet. By midnight it was running full. **{name}** just expanded the operation.", "type": "drug_win", "value": (50, 130), "color": discord.Color.green()},
@@ -1142,7 +1306,6 @@ DRUG_EVENTS = [
     {"name": "Corner Tax Collected", "description": "A smaller operation was running on **{name}**'s turf without permission. {member} paid them a visit and now they pay rent every week.", "type": "drug_win", "value": (40, 100), "color": discord.Color.green()},
     {"name": "Stepped on Right", "description": "{member} stretched the product without killing the quality. Same profit margin, twice the volume. **{name}**'s operation just scaled up.", "type": "drug_win", "value": (50, 120), "color": discord.Color.green()},
     {"name": "Opp Trap Taken Over", "description": "The opps had a corner running. {member} moved in when they were understaffed and took it over clean. **{name}** is now running their spot.", "type": "drug_win", "value": (80, 180), "color": discord.Color.green()},
-    # Jail outcomes
     {"name": "Undercover Buyer", "description": "{member} was moving product when a buyer didn't feel right. Too late — badge came out before the deal was even done. Knocked at the scene.", "type": "drug_jail", "value": (30, 80), "color": discord.Color.blue()},
     {"name": "Traffic Stop Gone Wrong", "description": "{member} was running a delivery when a routine stop turned into a full search. Product found in the center console. Everything fell apart from there.", "type": "drug_jail", "value": (25, 70), "color": discord.Color.blue()},
     {"name": "Controlled Buy", "description": "Detectives had been running controlled buys on the corner for two weeks. {member} didn't know. The arrest was already planned before they even stepped outside.", "type": "drug_jail", "value": (35, 90), "color": discord.Color.blue()},
@@ -1153,13 +1316,11 @@ DRUG_EVENTS = [
     {"name": "Trap Phone Seized", "description": "Officers pulled {member} over and found the trap phone. Two thousand contacts and a full call log. Built the whole case from that one device.", "type": "drug_jail", "value": (35, 85), "color": discord.Color.blue()},
     {"name": "Corner Sweep", "description": "LAPD ran a sweep on the block and grabbed everyone standing outside. {member} was holding and got charged. Wrong place, wrong time, wrong pockets.", "type": "drug_jail", "value": (25, 65), "color": discord.Color.blue()},
     {"name": "Drug Task Force", "description": "A specialized narcotics unit had **{name}**'s operation mapped out for months. Hit four locations simultaneously at 6am. {member} was at one of them.", "type": "drug_jail", "value": (55, 140), "color": discord.Color.blue()},
-    # Killed outcomes
     {"name": "Robbery Gone Wrong", "description": "Someone came for the stash and wasn't planning to leave witnesses. {member} was at the trap when they kicked the door. Didn't make it out.", "type": "drug_killed", "value": (40, 100), "color": discord.Color.dark_red()},
     {"name": "Opps Hit the Trap", "description": "The opps knew exactly where **{name}** was running the operation. They came in force and {member} was caught inside with no backup and no exit.", "type": "drug_killed", "value": (50, 120), "color": discord.Color.dark_red()},
     {"name": "Bad Deal Turned Deadly", "description": "A deal with an unknown buyer went sideways fast. {member} realized too late they weren't buyers — they were robbers with guns already out.", "type": "drug_killed", "value": (45, 110), "color": discord.Color.dark_red()},
     {"name": "Retaliation Hit at the Trap", "description": "The opps came back over something that happened three weeks ago and {member} was the one they found. Caught slipping at the spot with no crew around.", "type": "drug_killed", "value": (55, 130), "color": discord.Color.dark_red()},
     {"name": "Set Up by a Plug", "description": "The connect {member} had been using set them up. Sent them to a location with product and the opps were already there waiting. No way out.", "type": "drug_killed", "value": (60, 150), "color": discord.Color.dark_red()},
-    # Nothing outcomes
     {"name": "Slow Night", "description": "{member} held the corner for six hours and barely moved anything. Nobody came through. **{name}**'s trap had a quiet one tonight.", "type": "drug_nothing", "color": discord.Color.greyple()},
     {"name": "Too Much Heat", "description": "Patrol cars were circling every twenty minutes. {member} kept the product put away all night rather than risk it. Smart call but no money made.", "type": "drug_nothing", "color": discord.Color.greyple()},
     {"name": "Bad Batch", "description": "The product that came in wasn't what was promised. {member} tested it and shut the trap down rather than move garbage. **{name}** has a reputation to protect.", "type": "drug_nothing", "color": discord.Color.greyple()},
@@ -1288,7 +1449,7 @@ COMMANDS = {
 
 @bot.event
 async def on_ready():
-    print(f'{bot.user} is online')
+    print(f'{bot.user} is online and ready.')
 
 @bot.event
 async def on_message(message):
@@ -1310,8 +1471,18 @@ async def on_message(message):
             await COMMANDS[cmd](message, args)
         except discord.HTTPException as e:
             print(f"HTTP error in {cmd}: {e}")
+            try:
+                await message.channel.send(f"Something went wrong sending that message. Try again.")
+            except:
+                pass
         except Exception as e:
+            import traceback
             print(f"Error in {cmd}: {e}")
+            traceback.print_exc()
+            try:
+                await message.channel.send(f"An error occurred. Check the logs.")
+            except:
+                pass
 
 if __name__ == "__main__":
     TOKEN = os.getenv('DISCORD_TOKEN')
