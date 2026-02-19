@@ -278,6 +278,7 @@ def get_gang_deaths(gang):
 def update_shot_caller(gang):
     alive = get_alive_members(gang)
     if not alive:
+        gang['leader'] = "None"
         return
     top = max(alive, key=lambda m: m['kills'])
     gang['leader'] = top['name']
@@ -417,8 +418,9 @@ def calculate_slide_outcome(gang, rolling_members, enemy_rep, is_revenge=False):
             kills_this_fight[m['name']] = kills_this_fight.get(m['name'], 0) + 1
             member_lines.append(member_result_line(m['name'], "kill"))
 
+        # Friendly fire — any member can die, no last-man guard
         free_rolling = [m for m in rolling_members if not is_jailed(m)]
-        if len(get_alive_members(gang)) > 1 and random.randint(1, 100) <= 20 and free_rolling:
+        if free_rolling and random.randint(1, 100) <= 20:
             c = random.choice(free_rolling)
             c['alive'] = False
             c['deaths'] += 1
@@ -445,7 +447,8 @@ def calculate_slide_outcome(gang, rolling_members, enemy_rep, is_revenge=False):
         for m in rolling_members:
             if is_jailed(m):
                 continue
-            if len(get_alive_members(gang)) > 1 and random.randint(1, 100) <= 40:
+            # Any member can die now — no last-man guard
+            if random.randint(1, 100) <= 40:
                 m['alive'] = False
                 m['deaths'] += 1
                 fallen.append(m['name'])
@@ -592,7 +595,8 @@ async def handle_mission(message, args):
             if event.get('snitch'):
                 member['times_snitched'] += 1
             extra = []
-            if random.randint(1, 100) <= 15 and len(get_alive_members(gang)) > 1:
+            # Any member can die — no last-man guard
+            if random.randint(1, 100) <= 15:
                 member['alive'] = False
                 member['deaths'] += 1
                 check_and_mark_dead(code)
@@ -614,6 +618,9 @@ async def handle_mission(message, args):
             embed.description = embed.description[:EMBED_DESC_LIMIT - 3] + "..."
 
         await safe_send(message.channel, embed=embed)
+        check_and_mark_dead(code)
+        if not gang['alive']:
+            await safe_send(message.channel, content=f"**{gang['name']}** has been wiped out. Type `gang` to start fresh.")
 
 
 async def run_drug_mission(channel, gang, member, code):
@@ -641,20 +648,16 @@ async def run_drug_mission(channel, gang, member, code):
     elif event['type'] == 'drug_killed':
         loss = random.randint(*event.get('value', (30, 80)))
         gang['rep'] = max(1, rep - loss)
-        if len(get_alive_members(gang)) > 1:
-            member['alive'] = False
-            member['deaths'] += 1
-            check_and_mark_dead(code)
-            update_shot_caller(gang)
-            embed.description += (
-                f"\n\n`{member['name']}` didn't make it back.\n"
-                f"Street Cred: {rep} -> {gang['rep']} (-{loss})\n"
-                f"Members Alive: {len(get_alive_members(gang))}"
-            )
-        else:
-            s = send_to_jail(member)
-            update_shot_caller(gang)
-            embed.description += f"\n\n`{member['name']}` got knocked — {s}.\nStreet Cred: {rep} -> {gang['rep']} (-{loss})"
+        # Any member can die — no last-man guard
+        member['alive'] = False
+        member['deaths'] += 1
+        check_and_mark_dead(code)
+        update_shot_caller(gang)
+        embed.description += (
+            f"\n\n`{member['name']}` didn't make it back.\n"
+            f"Street Cred: {rep} -> {gang['rep']} (-{loss})\n"
+            f"Members Alive: {len(get_alive_members(gang))}"
+        )
         embed.set_footer(text="The streets took another one.")
 
     elif event['type'] == 'drug_nothing':
@@ -665,6 +668,8 @@ async def run_drug_mission(channel, gang, member, code):
         embed.description = embed.description[:EMBED_DESC_LIMIT - 3] + "..."
 
     await safe_send(channel, embed=embed)
+    if not gang['alive']:
+        await safe_send(channel, content=f"**{gang['name']}** has been wiped out. Type `gang` to start fresh.")
 
 
 # --- Commands ---
@@ -970,6 +975,10 @@ async def handle_revenge(message, args):
     check_and_mark_dead(code)
     await send_slide_result(message.channel, gang, enemy_info, result, rolling, is_revenge=True)
 
+    if not gang['alive']:
+        await safe_send(message.channel, content=f"**{gang['name']}** has been wiped out. Type `gang` to start fresh.")
+        return
+
     remaining_after = get_revenge_targets(gang)
     if remaining_after:
         followup = discord.Embed(
@@ -1069,33 +1078,25 @@ async def handle_solo(message, args):
         )
         embed.set_footer(text="One man down.")
     else:
+        # Any member can die — no last-man guard
         rep_loss = random.randint(20, 60)
         gang['rep'] = max(1, player_rep - rep_loss)
-        if len(get_alive_members(gang)) > 1:
-            target['alive'] = False
-            target['deaths'] += 1
-            check_and_mark_dead(code)
-            update_shot_caller(gang)
-            embed = discord.Embed(title="Solo — Fallen", color=discord.Color.dark_grey())
-            embed.description = (
-                f"`{target['name']}` didn't come back. Another name on the wall.\n\n"
-                f"Kills: {target['kills']}  |  Cred: {player_rep} -> {gang['rep']} (-{rep_loss})\n"
-                f"Members Alive: {len(get_alive_members(gang))}\n"
-                f"Shot Caller: `{gang['leader']}`"
-            )
-            embed.set_footer(text="Gone but not forgotten.")
-        else:
-            s = send_to_jail(target)
-            update_shot_caller(gang)
-            embed = discord.Embed(title="Solo — Knocked", color=discord.Color.blue())
-            embed.description = (
-                f"`{target['name']}` got caught. Facing {s}.\n\n"
-                f"Cred: {player_rep} -> {gang['rep']} (-{rep_loss})\n"
-                f"Shot Caller: `{gang['leader']}`"
-            )
-            embed.set_footer(text="Last man standing is locked up.")
+        target['alive'] = False
+        target['deaths'] += 1
+        check_and_mark_dead(code)
+        update_shot_caller(gang)
+        embed = discord.Embed(title="Solo — Fallen", color=discord.Color.dark_grey())
+        embed.description = (
+            f"`{target['name']}` didn't come back. Another name on the wall.\n\n"
+            f"Kills: {target['kills']}  |  Cred: {player_rep} -> {gang['rep']} (-{rep_loss})\n"
+            f"Members Alive: {len(get_alive_members(gang))}\n"
+            f"Shot Caller: `{gang['leader']}`"
+        )
+        embed.set_footer(text="Gone but not forgotten.")
 
     await safe_send(message.channel, embed=embed)
+    if not gang['alive']:
+        await safe_send(message.channel, content=f"**{gang['name']}** has been wiped out. Type `gang` to start fresh.")
 
 
 async def handle_block(message, args):
@@ -1173,8 +1174,9 @@ async def handle_block(message, args):
             loss = random.randint(40, 120)
             rep_change -= loss
             alive_now = get_alive_members(gang)
-            if len(alive_now) > 1:
-                num_victims = min(random.randint(1, 2), len(alive_now) - 1)
+            if alive_now:
+                # Any member can die — no last-man guard
+                num_victims = min(random.randint(1, 2), len(alive_now))
                 victims = random.sample(alive_now, num_victims)
                 for v in victims:
                     v['alive'] = False
@@ -1230,6 +1232,9 @@ async def handle_block(message, args):
             ev_embed.description = ev_embed.description[:EMBED_DESC_LIMIT - 3] + "..."
 
         await safe_send(message.channel, embed=ev_embed)
+        check_and_mark_dead(code)
+        if not gang['alive']:
+            break
 
     gang['rep'] = max(1, gang['rep'] + rep_change)
     update_shot_caller(gang)
@@ -1324,6 +1329,7 @@ async def handle_dp(message, args):
     roll = random.randint(1, 100)
 
     if roll <= 15:
+        # Any member can die — no last-man guard
         target['alive'] = False
         target['deaths'] += 1
         check_and_mark_dead(code)
@@ -1382,6 +1388,8 @@ async def handle_dp(message, args):
         embed.set_footer(text="He took it. He's still in.")
 
     await safe_send(message.channel, embed=embed)
+    if not gang['alive']:
+        await safe_send(message.channel, content=f"**{gang['name']}** has been wiped out. Type `gang` to start fresh.")
 
 
 async def handle_party(message, args):
@@ -1506,8 +1514,9 @@ async def handle_party(message, args):
                 f"Bottles, chairs, everything. **{gang['name']}** held their own but it was ugly. The spot is hot now.",
             ])
 
+            # Any member can die — no last-man guard
             alive_now = get_alive_members(gang)
-            if len(alive_now) > 1 and random.randint(1, 100) <= 35:
+            if alive_now and random.randint(1, 100) <= 35:
                 victim = random.choice([m for m in attending if m['alive']])
                 victim['alive'] = False
                 victim['deaths'] += 1
@@ -1545,17 +1554,20 @@ async def handle_party(message, args):
                 f"**{rival_info['name']}** moved first and the set never recovered. Walked out short.",
             ])
 
+            # Any member can die — no last-man guard
             alive_now = get_alive_members(gang)
-            victims_count = random.randint(1, min(2, max(1, len(alive_now) - 1)))
-            if len(alive_now) > 1:
-                victims = random.sample([m for m in attending if m['alive']], min(victims_count, len([m for m in attending if m['alive']])))
-                for v in victims:
-                    v['alive'] = False
-                    v['deaths'] += 1
-                    fallen.append(v['name'])
-                    loss_line += f"\n`{v['name']}` didn't make it."
-                killer_name = random.choice(STREET_NAMES)
-                add_revenge_target(gang, killer_name, rival_info, rival_rep)
+            if alive_now:
+                victims_count = random.randint(1, min(2, len(alive_now)))
+                attending_alive = [m for m in attending if m['alive']]
+                if attending_alive:
+                    victims = random.sample(attending_alive, min(victims_count, len(attending_alive)))
+                    for v in victims:
+                        v['alive'] = False
+                        v['deaths'] += 1
+                        fallen.append(v['name'])
+                        loss_line += f"\n`{v['name']}` didn't make it."
+                    killer_name = random.choice(STREET_NAMES)
+                    add_revenge_target(gang, killer_name, rival_info, rival_rep)
 
             if random.randint(1, 100) <= 40:
                 still_free = [m for m in attending if m['alive'] and not is_jailed(m)]
