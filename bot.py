@@ -78,17 +78,14 @@ def remove_from_inventory(user_id, item_id, quantity=1):
         del inventories[user_id][item_id]
     return True
 
-def parse_shop_args(content):
-    """
-    Uses shlex to parse quoted strings so multi-word names and descriptions work.
-    Example: shop add "Gas Can" 50 "A rusty can filled with fuel."
-    Returns a list of tokens with quotes respected.
-    """
-    try:
-        tokens = shlex.split(content)
-    except ValueError:
-        tokens = content.split()
-    return tokens
+def stock_display(item):
+    stock = item.get('stock')
+    if stock is None:
+        return "∞ Unlimited"
+    elif stock == 0:
+        return "❌ Out of Stock"
+    else:
+        return f"{stock} left"
 
 # --- Commands ---
 
@@ -173,17 +170,14 @@ async def handle_inv(message, args):
 async def handle_shop(message, args):
     global item_counter
 
-    # Re-parse the full message content so shlex can handle quotes properly
-    # Strip the leading command word "shop"
     full_content = message.content.strip()
     try:
         tokens = shlex.split(full_content)
     except ValueError:
         tokens = full_content.split()
 
-    # tokens[0] = "shop", tokens[1] = subcommand (optional), rest = args
     sub = tokens[1].lower() if len(tokens) > 1 else "view"
-    parsed = tokens[2:]  # everything after "shop <sub>"
+    parsed = tokens[2:]
 
     # ── VIEW ──────────────────────────────────────────────
     if sub == "view" or len(tokens) == 1:
@@ -202,8 +196,11 @@ async def handle_shop(message, args):
             color=discord.Color.gold()
         )
         for item_id, item in shop_items.items():
+            stock = item.get('stock')
+            stock_str = stock_display(item)
+            name_line = f"[#{item_id}]  {item['name']}  —  ${item['price']:,}  |  Stock: {stock_str}"
             embed.add_field(
-                name=f"[#{item_id}]  {item['name']}  —  ${item['price']:,}",
+                name=name_line,
                 value=item['description'],
                 inline=False
             )
@@ -216,11 +213,14 @@ async def handle_shop(message, args):
             await message.channel.send("You don't have permission to do that.")
             return
 
-        # parsed = [name, price, description]
-        if len(parsed) < 3:
+        # shop add "Name" <price> <stock|-1> "Description"
+        # stock = -1 means unlimited
+        if len(parsed) < 4:
             await message.channel.send(
-                'Usage: `shop add "Item Name" <price> "Description here"`\n'
-                'Example: `shop add "Gas Can" 50 "A rusty can filled with fuel."`'
+                'Usage: `shop add "Item Name" <price> <stock> "Description"`\n'
+                'Use `-1` for unlimited stock.\n'
+                'Example: `shop add "Gas Can" 50 10 "A rusty can filled with fuel."`\n'
+                'Example: `shop add "Lucky Coin" 25 -1 "Unlimited supply. Feels lucky."`'
             )
             return
 
@@ -235,16 +235,33 @@ async def handle_shop(message, args):
             await message.channel.send("Price must be at least $1.")
             return
 
-        description = parsed[2] if len(parsed) == 3 else " ".join(parsed[2:])
+        try:
+            stock_input = int(parsed[2])
+        except ValueError:
+            await message.channel.send("Stock must be a whole number. Use `-1` for unlimited.")
+            return
+
+        if stock_input < -1:
+            await message.channel.send("Stock must be `-1` (unlimited) or `0` or higher.")
+            return
+
+        stock = None if stock_input == -1 else stock_input
+        description = parsed[3] if len(parsed) == 4 else " ".join(parsed[3:])
 
         item_id = item_counter
-        shop_items[item_id] = {"name": name, "price": price, "description": description}
+        shop_items[item_id] = {
+            "name": name,
+            "price": price,
+            "stock": stock,
+            "description": description,
+        }
         item_counter += 1
 
         embed = discord.Embed(title="Item Added", color=discord.Color.green())
         embed.add_field(name="ID", value=f"`#{item_id}`", inline=True)
         embed.add_field(name="Name", value=name, inline=True)
         embed.add_field(name="Price", value=f"${price:,}", inline=True)
+        embed.add_field(name="Stock", value=stock_display(shop_items[item_id]), inline=True)
         embed.add_field(name="Description", value=description, inline=False)
         embed.set_footer(text=f"Shop now has {len(shop_items)} item(s).")
         await message.channel.send(embed=embed)
@@ -284,11 +301,12 @@ async def handle_shop(message, args):
             await message.channel.send("You don't have permission to do that.")
             return
 
-        # parsed = [id, name, price, description]
-        if len(parsed) < 4:
+        # shop edit <id> "Name" <price> <stock|-1> "Description"
+        if len(parsed) < 5:
             await message.channel.send(
-                'Usage: `shop edit <id> "Item Name" <price> "Description here"`\n'
-                'Example: `shop edit 1 "Gas Can" 75 "A full can of premium fuel."`'
+                'Usage: `shop edit <id> "Item Name" <price> <stock> "Description"`\n'
+                'Use `-1` for unlimited stock.\n'
+                'Example: `shop edit 1 "Gas Can" 75 5 "A full can of premium fuel."`'
             )
             return
 
@@ -313,23 +331,91 @@ async def handle_shop(message, args):
             await message.channel.send("Price must be at least $1.")
             return
 
-        description = parsed[3] if len(parsed) == 4 else " ".join(parsed[3:])
-        shop_items[item_id] = {"name": name, "price": price, "description": description}
+        try:
+            stock_input = int(parsed[3])
+        except ValueError:
+            await message.channel.send("Stock must be a whole number. Use `-1` for unlimited.")
+            return
+
+        if stock_input < -1:
+            await message.channel.send("Stock must be `-1` (unlimited) or `0` or higher.")
+            return
+
+        stock = None if stock_input == -1 else stock_input
+        description = parsed[4] if len(parsed) == 5 else " ".join(parsed[4:])
+
+        shop_items[item_id] = {
+            "name": name,
+            "price": price,
+            "stock": stock,
+            "description": description,
+        }
 
         embed = discord.Embed(title="Item Updated", color=discord.Color.blue())
         embed.add_field(name="ID", value=f"`#{item_id}`", inline=True)
         embed.add_field(name="Name", value=name, inline=True)
         embed.add_field(name="Price", value=f"${price:,}", inline=True)
+        embed.add_field(name="Stock", value=stock_display(shop_items[item_id]), inline=True)
         embed.add_field(name="Description", value=description, inline=False)
+        await message.channel.send(embed=embed)
+
+    # ── RESTOCK (admin) ────────────────────────────────────
+    elif sub == "restock":
+        if not is_admin(message):
+            await message.channel.send("You don't have permission to do that.")
+            return
+
+        # shop restock <id> <amount>
+        if len(parsed) < 2:
+            await message.channel.send(
+                "Usage: `shop restock <id> <amount>`\n"
+                "Example: `shop restock 1 20`"
+            )
+            return
+
+        try:
+            item_id = int(parsed[0])
+        except ValueError:
+            await message.channel.send("ID must be a number.")
+            return
+
+        if item_id not in shop_items:
+            await message.channel.send(f"No item found with ID `#{item_id}`.")
+            return
+
+        try:
+            amount = int(parsed[1])
+        except ValueError:
+            await message.channel.send("Amount must be a whole number.")
+            return
+
+        if amount < 1:
+            await message.channel.send("Restock amount must be at least 1.")
+            return
+
+        item = shop_items[item_id]
+        if item['stock'] is None:
+            await message.channel.send(f"**{item['name']}** already has unlimited stock.")
+            return
+
+        old_stock = item['stock']
+        item['stock'] += amount
+
+        embed = discord.Embed(title="Item Restocked", color=discord.Color.green())
+        embed.add_field(name="Item", value=item['name'], inline=True)
+        embed.add_field(name="Added", value=f"+{amount}", inline=True)
+        embed.add_field(name="New Stock", value=str(item['stock']), inline=True)
+        embed.set_footer(text=f"Was {old_stock}, now {item['stock']}.")
         await message.channel.send(embed=embed)
 
     else:
         await message.channel.send(
             "Unknown subcommand. Usage:\n"
             "`shop` — view the shop\n"
-            '`shop add "Name" <price> "Description"` — admin only\n'
+            '`shop add "Name" <price> <stock> "Description"` — admin only\n'
             "`shop remove <id>` — admin only\n"
-            '`shop edit <id> "Name" <price> "Description"` — admin only'
+            '`shop edit <id> "Name" <price> <stock> "Description"` — admin only\n'
+            "`shop restock <id> <amount>` — admin only"
         )
 
 
@@ -349,6 +435,16 @@ async def handle_buy(message, args):
         await message.channel.send(f"No item found with ID `#{item_id}`. Use `shop` to browse.")
         return
 
+    # Check stock
+    if item['stock'] is not None and item['stock'] <= 0:
+        embed = discord.Embed(
+            title="Out of Stock",
+            description=f"**{item['name']}** is sold out right now. Check back later.",
+            color=discord.Color.dark_grey()
+        )
+        await message.channel.send(embed=embed)
+        return
+
     user_id = message.author.id
     balance = get_balance(user_id)
 
@@ -365,6 +461,10 @@ async def handle_buy(message, args):
     remove_balance(user_id, item['price'])
     add_to_inventory(user_id, item_id)
 
+    # Deduct stock if not unlimited
+    if item['stock'] is not None:
+        item['stock'] -= 1
+
     embed = discord.Embed(
         title="Purchase Successful",
         description=f"You bought **{item['name']}**.",
@@ -373,6 +473,7 @@ async def handle_buy(message, args):
     embed.add_field(name="Item", value=item['name'], inline=True)
     embed.add_field(name="Cost", value=f"${item['price']:,}", inline=True)
     embed.add_field(name="Remaining Balance", value=f"${get_balance(user_id):,}", inline=True)
+    embed.add_field(name="Stock Left", value=stock_display(item), inline=True)
     embed.add_field(name="Description", value=item['description'], inline=False)
     embed.set_footer(text="Use `inv` to see your inventory. Use `use <id>` to use it.")
     embed.set_author(name=message.author.display_name, icon_url=message.author.display_avatar.url)
