@@ -3,6 +3,7 @@ from discord.ext import commands
 from dotenv import load_dotenv
 import os
 import random
+import shlex
 from keep_alive import keep_alive
 
 load_dotenv()
@@ -13,7 +14,7 @@ bot = commands.Bot(command_prefix='?', intents=intents)
 
 balances = {}
 shop_items = {}
-inventories = {}  # user_id -> {item_id: quantity}
+inventories = {}
 item_counter = 1
 
 WORK_ACTIONS = [
@@ -77,6 +78,18 @@ def remove_from_inventory(user_id, item_id, quantity=1):
         del inventories[user_id][item_id]
     return True
 
+def parse_shop_args(content):
+    """
+    Uses shlex to parse quoted strings so multi-word names and descriptions work.
+    Example: shop add "Gas Can" 50 "A rusty can filled with fuel."
+    Returns a list of tokens with quotes respected.
+    """
+    try:
+        tokens = shlex.split(content)
+    except ValueError:
+        tokens = content.split()
+    return tokens
+
 # --- Commands ---
 
 async def handle_work(message, args):
@@ -94,7 +107,6 @@ async def handle_work(message, args):
 
 
 async def handle_bal(message, args):
-    # bal or bal @user
     if message.mentions:
         target = message.mentions[0]
     else:
@@ -114,7 +126,6 @@ async def handle_bal(message, args):
 
 
 async def handle_inv(message, args):
-    # inv or inv @user
     if message.mentions:
         target = message.mentions[0]
     else:
@@ -148,7 +159,6 @@ async def handle_inv(message, args):
                 inline=False
             )
         else:
-            # Item was removed from shop but user still owns it
             embed.add_field(
                 name=f"[#{item_id}]  Unknown Item  x{qty}",
                 value="This item no longer exists in the shop.",
@@ -163,10 +173,20 @@ async def handle_inv(message, args):
 async def handle_shop(message, args):
     global item_counter
 
-    sub = args[0].lower() if args else "view"
+    # Re-parse the full message content so shlex can handle quotes properly
+    # Strip the leading command word "shop"
+    full_content = message.content.strip()
+    try:
+        tokens = shlex.split(full_content)
+    except ValueError:
+        tokens = full_content.split()
+
+    # tokens[0] = "shop", tokens[1] = subcommand (optional), rest = args
+    sub = tokens[1].lower() if len(tokens) > 1 else "view"
+    parsed = tokens[2:]  # everything after "shop <sub>"
 
     # ── VIEW ──────────────────────────────────────────────
-    if sub == "view" or not args:
+    if sub == "view" or len(tokens) == 1:
         if not shop_items:
             embed = discord.Embed(
                 title="🛒  Shop",
@@ -196,16 +216,17 @@ async def handle_shop(message, args):
             await message.channel.send("You don't have permission to do that.")
             return
 
-        if len(args) < 4:
+        # parsed = [name, price, description]
+        if len(parsed) < 3:
             await message.channel.send(
-                "Usage: `shop add <name> <price> <description>`\n"
-                "Example: `shop add Sneakers 250 A clean pair of kicks.`"
+                'Usage: `shop add "Item Name" <price> "Description here"`\n'
+                'Example: `shop add "Gas Can" 50 "A rusty can filled with fuel."`'
             )
             return
 
-        name = args[1]
+        name = parsed[0]
         try:
-            price = int(args[2])
+            price = int(parsed[1])
         except ValueError:
             await message.channel.send("Price must be a whole number.")
             return
@@ -214,7 +235,8 @@ async def handle_shop(message, args):
             await message.channel.send("Price must be at least $1.")
             return
 
-        description = " ".join(args[3:])
+        description = parsed[2] if len(parsed) == 3 else " ".join(parsed[2:])
+
         item_id = item_counter
         shop_items[item_id] = {"name": name, "price": price, "description": description}
         item_counter += 1
@@ -233,12 +255,12 @@ async def handle_shop(message, args):
             await message.channel.send("You don't have permission to do that.")
             return
 
-        if len(args) < 2:
+        if len(parsed) < 1:
             await message.channel.send("Usage: `shop remove <id>`")
             return
 
         try:
-            item_id = int(args[1])
+            item_id = int(parsed[0])
         except ValueError:
             await message.channel.send("ID must be a number.")
             return
@@ -262,15 +284,16 @@ async def handle_shop(message, args):
             await message.channel.send("You don't have permission to do that.")
             return
 
-        if len(args) < 5:
+        # parsed = [id, name, price, description]
+        if len(parsed) < 4:
             await message.channel.send(
-                "Usage: `shop edit <id> <name> <price> <description>`\n"
-                "Example: `shop edit 1 Sneakers 300 Updated description here.`"
+                'Usage: `shop edit <id> "Item Name" <price> "Description here"`\n'
+                'Example: `shop edit 1 "Gas Can" 75 "A full can of premium fuel."`'
             )
             return
 
         try:
-            item_id = int(args[1])
+            item_id = int(parsed[0])
         except ValueError:
             await message.channel.send("ID must be a number.")
             return
@@ -279,9 +302,9 @@ async def handle_shop(message, args):
             await message.channel.send(f"No item found with ID `#{item_id}`.")
             return
 
-        name = args[2]
+        name = parsed[1]
         try:
-            price = int(args[3])
+            price = int(parsed[2])
         except ValueError:
             await message.channel.send("Price must be a whole number.")
             return
@@ -290,7 +313,7 @@ async def handle_shop(message, args):
             await message.channel.send("Price must be at least $1.")
             return
 
-        description = " ".join(args[4:])
+        description = parsed[3] if len(parsed) == 4 else " ".join(parsed[3:])
         shop_items[item_id] = {"name": name, "price": price, "description": description}
 
         embed = discord.Embed(title="Item Updated", color=discord.Color.blue())
@@ -304,9 +327,9 @@ async def handle_shop(message, args):
         await message.channel.send(
             "Unknown subcommand. Usage:\n"
             "`shop` — view the shop\n"
-            "`shop add <name> <price> <description>` — admin only\n"
+            '`shop add "Name" <price> "Description"` — admin only\n'
             "`shop remove <id>` — admin only\n"
-            "`shop edit <id> <name> <price> <description>` — admin only"
+            '`shop edit <id> "Name" <price> "Description"` — admin only'
         )
 
 
