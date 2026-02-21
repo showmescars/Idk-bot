@@ -12,7 +12,8 @@ intents.message_content = True
 bot = commands.Bot(command_prefix='?', intents=intents)
 
 balances = {}
-shop_items = {}  # item_id -> {name, price, description}
+shop_items = {}
+inventories = {}  # user_id -> {item_id: quantity}
 item_counter = 1
 
 WORK_ACTIONS = [
@@ -57,6 +58,25 @@ def add_balance(user_id, amount):
 def remove_balance(user_id, amount):
     balances[user_id] = max(0, get_balance(user_id) - amount)
 
+def get_inventory(user_id):
+    return inventories.get(user_id, {})
+
+def add_to_inventory(user_id, item_id, quantity=1):
+    if user_id not in inventories:
+        inventories[user_id] = {}
+    inventories[user_id][item_id] = inventories[user_id].get(item_id, 0) + quantity
+
+def remove_from_inventory(user_id, item_id, quantity=1):
+    if user_id not in inventories:
+        return False
+    current = inventories[user_id].get(item_id, 0)
+    if current < quantity:
+        return False
+    inventories[user_id][item_id] = current - quantity
+    if inventories[user_id][item_id] == 0:
+        del inventories[user_id][item_id]
+    return True
+
 # --- Commands ---
 
 async def handle_work(message, args):
@@ -65,33 +85,88 @@ async def handle_work(message, args):
     action = random.choice(WORK_ACTIONS)
     add_balance(user_id, amount)
 
-    embed = discord.Embed(
-        title="Work",
-        description=action["desc"],
-        color=discord.Color.green()
-    )
+    embed = discord.Embed(title="Work", description=action["desc"], color=discord.Color.green())
     embed.add_field(name="Earned", value=f"**${amount:,}**", inline=True)
     embed.add_field(name="Balance", value=f"**${get_balance(user_id):,}**", inline=True)
     embed.set_footer(text=action["flavor"])
     embed.set_author(name=message.author.display_name, icon_url=message.author.display_avatar.url)
+    await message.channel.send(embed=embed)
 
+
+async def handle_bal(message, args):
+    # bal or bal @user
+    if message.mentions:
+        target = message.mentions[0]
+    else:
+        target = message.author
+
+    user_id = target.id
+    balance = get_balance(user_id)
+    inv = get_inventory(user_id)
+    total_items = sum(inv.values())
+
+    embed = discord.Embed(title="Balance", color=discord.Color.gold())
+    embed.set_author(name=target.display_name, icon_url=target.display_avatar.url)
+    embed.add_field(name="Wallet", value=f"**${balance:,}**", inline=True)
+    embed.add_field(name="Items Owned", value=f"**{total_items}**", inline=True)
+    embed.set_footer(text="Use `inv` to see your inventory.")
+    await message.channel.send(embed=embed)
+
+
+async def handle_inv(message, args):
+    # inv or inv @user
+    if message.mentions:
+        target = message.mentions[0]
+    else:
+        target = message.author
+
+    user_id = target.id
+    inv = get_inventory(user_id)
+
+    if not inv:
+        embed = discord.Embed(
+            title=f"{target.display_name}'s Inventory",
+            description="Nothing here yet. Buy something from the `shop`.",
+            color=discord.Color.dark_grey()
+        )
+        await message.channel.send(embed=embed)
+        return
+
+    embed = discord.Embed(
+        title=f"{target.display_name}'s Inventory",
+        description="Use `use <id>` to use an item.",
+        color=discord.Color.blurple()
+    )
+    embed.set_author(name=target.display_name, icon_url=target.display_avatar.url)
+
+    for item_id, qty in inv.items():
+        item = shop_items.get(item_id)
+        if item:
+            embed.add_field(
+                name=f"[#{item_id}]  {item['name']}  x{qty}",
+                value=item['description'],
+                inline=False
+            )
+        else:
+            # Item was removed from shop but user still owns it
+            embed.add_field(
+                name=f"[#{item_id}]  Unknown Item  x{qty}",
+                value="This item no longer exists in the shop.",
+                inline=False
+            )
+
+    total_items = sum(inv.values())
+    embed.set_footer(text=f"{total_items} total item(s) in inventory.")
     await message.channel.send(embed=embed)
 
 
 async def handle_shop(message, args):
-    """
-    Usage:
-      shop               — view the shop (everyone)
-      shop add <name> <price> <description>  — admin: add item
-      shop remove <id>   — admin: remove item
-      shop edit <id> <name> <price> <description> — admin: edit item
-    """
     global item_counter
 
     sub = args[0].lower() if args else "view"
 
     # ── VIEW ──────────────────────────────────────────────
-    if sub == "view" or (not args):
+    if sub == "view" or not args:
         if not shop_items:
             embed = discord.Embed(
                 title="🛒  Shop",
@@ -121,8 +196,6 @@ async def handle_shop(message, args):
             await message.channel.send("You don't have permission to do that.")
             return
 
-        # ?shop add <name> <price> <description>
-        # We require at least 3 more args: name, price, description
         if len(args) < 4:
             await message.channel.send(
                 "Usage: `shop add <name> <price> <description>`\n"
@@ -134,7 +207,7 @@ async def handle_shop(message, args):
         try:
             price = int(args[2])
         except ValueError:
-            await message.channel.send("Price must be a whole number. Example: `shop add Sneakers 250 A clean pair of kicks.`")
+            await message.channel.send("Price must be a whole number.")
             return
 
         if price < 1:
@@ -142,19 +215,11 @@ async def handle_shop(message, args):
             return
 
         description = " ".join(args[3:])
-
         item_id = item_counter
-        shop_items[item_id] = {
-            "name": name,
-            "price": price,
-            "description": description,
-        }
+        shop_items[item_id] = {"name": name, "price": price, "description": description}
         item_counter += 1
 
-        embed = discord.Embed(
-            title="Item Added",
-            color=discord.Color.green()
-        )
+        embed = discord.Embed(title="Item Added", color=discord.Color.green())
         embed.add_field(name="ID", value=f"`#{item_id}`", inline=True)
         embed.add_field(name="Name", value=name, inline=True)
         embed.add_field(name="Price", value=f"${price:,}", inline=True)
@@ -175,7 +240,7 @@ async def handle_shop(message, args):
         try:
             item_id = int(args[1])
         except ValueError:
-            await message.channel.send("ID must be a number. Example: `shop remove 3`")
+            await message.channel.send("ID must be a number.")
             return
 
         if item_id not in shop_items:
@@ -197,7 +262,6 @@ async def handle_shop(message, args):
             await message.channel.send("You don't have permission to do that.")
             return
 
-        # ?shop edit <id> <name> <price> <description>
         if len(args) < 5:
             await message.channel.send(
                 "Usage: `shop edit <id> <name> <price> <description>`\n"
@@ -227,17 +291,9 @@ async def handle_shop(message, args):
             return
 
         description = " ".join(args[4:])
+        shop_items[item_id] = {"name": name, "price": price, "description": description}
 
-        shop_items[item_id] = {
-            "name": name,
-            "price": price,
-            "description": description,
-        }
-
-        embed = discord.Embed(
-            title="Item Updated",
-            color=discord.Color.blue()
-        )
+        embed = discord.Embed(title="Item Updated", color=discord.Color.blue())
         embed.add_field(name="ID", value=f"`#{item_id}`", inline=True)
         embed.add_field(name="Name", value=name, inline=True)
         embed.add_field(name="Price", value=f"${price:,}", inline=True)
@@ -254,11 +310,103 @@ async def handle_shop(message, args):
         )
 
 
+async def handle_buy(message, args):
+    if not args:
+        await message.channel.send("Usage: `buy <id>`  —  Example: `buy 1`")
+        return
+
+    try:
+        item_id = int(args[0])
+    except ValueError:
+        await message.channel.send("ID must be a number. Example: `buy 1`")
+        return
+
+    item = shop_items.get(item_id)
+    if not item:
+        await message.channel.send(f"No item found with ID `#{item_id}`. Use `shop` to browse.")
+        return
+
+    user_id = message.author.id
+    balance = get_balance(user_id)
+
+    if balance < item['price']:
+        shortage = item['price'] - balance
+        embed = discord.Embed(
+            title="Insufficient Funds",
+            description=f"**{item['name']}** costs **${item['price']:,}** but you only have **${balance:,}**.\nYou're **${shortage:,}** short. Get back to `work`.",
+            color=discord.Color.red()
+        )
+        await message.channel.send(embed=embed)
+        return
+
+    remove_balance(user_id, item['price'])
+    add_to_inventory(user_id, item_id)
+
+    embed = discord.Embed(
+        title="Purchase Successful",
+        description=f"You bought **{item['name']}**.",
+        color=discord.Color.green()
+    )
+    embed.add_field(name="Item", value=item['name'], inline=True)
+    embed.add_field(name="Cost", value=f"${item['price']:,}", inline=True)
+    embed.add_field(name="Remaining Balance", value=f"${get_balance(user_id):,}", inline=True)
+    embed.add_field(name="Description", value=item['description'], inline=False)
+    embed.set_footer(text="Use `inv` to see your inventory. Use `use <id>` to use it.")
+    embed.set_author(name=message.author.display_name, icon_url=message.author.display_avatar.url)
+    await message.channel.send(embed=embed)
+
+
+async def handle_use(message, args):
+    if not args:
+        await message.channel.send("Usage: `use <id>`  —  Example: `use 1`")
+        return
+
+    try:
+        item_id = int(args[0])
+    except ValueError:
+        await message.channel.send("ID must be a number. Example: `use 1`")
+        return
+
+    user_id = message.author.id
+    inv = get_inventory(user_id)
+
+    if item_id not in inv or inv[item_id] < 1:
+        await message.channel.send(f"You don't have item `#{item_id}` in your inventory. Use `inv` to check what you own.")
+        return
+
+    item = shop_items.get(item_id)
+    item_name = item['name'] if item else f"Item #{item_id}"
+    item_desc = item['description'] if item else "No description available."
+
+    remove_from_inventory(user_id, item_id)
+
+    embed = discord.Embed(
+        title=f"Used — {item_name}",
+        description=f"You used **{item_name}**.\n\n{item_desc}",
+        color=discord.Color.purple()
+    )
+    embed.set_author(name=message.author.display_name, icon_url=message.author.display_avatar.url)
+
+    remaining = get_inventory(user_id).get(item_id, 0)
+    if remaining > 0:
+        embed.set_footer(text=f"You have {remaining}x {item_name} left.")
+    else:
+        embed.set_footer(text=f"That was your last {item_name}.")
+
+    await message.channel.send(embed=embed)
+
+
 # --- Bot plumbing ---
 
 COMMANDS = {
     "work": handle_work,
+    "bal": handle_bal,
+    "balance": handle_bal,
+    "inv": handle_inv,
+    "inventory": handle_inv,
     "shop": handle_shop,
+    "buy": handle_buy,
+    "use": handle_use,
 }
 
 @bot.event
