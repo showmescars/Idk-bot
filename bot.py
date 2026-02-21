@@ -1846,13 +1846,17 @@ async def handle_delete(message, args):
     await safe_send(message.channel, embed=embed)
 
 
-# --- School Command ---
+# --- School Logic (consolidated) ---
 
-async def run_school_event_for_member(channel, gang, member, school, rival_info, rival_rep, code):
-    """Runs a full school day sequence for a single member. Returns (rep_change, fallen_name_or_None, jailed_tuple_or_None)."""
+def resolve_school_event_for_member(gang, member, rival_info, rival_rep, code):
+    """
+    Runs all school events for one member silently and returns a summary line + rep change.
+    Returns (summary_line, rep_change, fallen_name_or_None, jailed_tuple_or_None)
+    """
     rep_change = 0
     fallen = None
     jailed = None
+    event_names = []
 
     num_events = random.randint(1, 3)
     events_chosen = random.sample(SCHOOL_EVENTS, min(num_events, len(SCHOOL_EVENTS)))
@@ -1861,17 +1865,8 @@ async def run_school_event_for_member(channel, gang, member, school, rival_info,
         if not member['alive']:
             break
 
-        await asyncio.sleep(MSG_DELAY)
-
-        desc = (
-            event['description']
-            .replace("{member}", f"`{member['name']}`")
-            .replace("{gang_name}", gang['name'])
-            .replace("{rival_gang}", rival_info['name'])
-        )
-
-        ev_embed = discord.Embed(title=event['name'], description=desc, color=event['color'])
         bonus = get_notoriety_death_bonus(member)
+        event_names.append(event['name'])
 
         if event['type'] == 'fight_win':
             gain = random.randint(*event['value'])
@@ -1879,11 +1874,6 @@ async def run_school_event_for_member(channel, gang, member, school, rival_info,
             member['kills'] += 1
             member['missions_survived'] += 1
             update_shot_caller(gang)
-            ev_embed.description += (
-                f"\n\n`{member['name']}` held it down. Cred: +{gain}\n"
-                f"Kills: {member['kills']} | Notoriety: {get_notoriety_tier(member['kills']).upper()}"
-            )
-            ev_embed.set_footer(text="Word travels fast in a high school.")
 
         elif event['type'] == 'fight_win_heat':
             gain = random.randint(*event['value'])
@@ -1892,31 +1882,19 @@ async def run_school_event_for_member(channel, gang, member, school, rival_info,
             member['missions_survived'] += 1
             update_shot_caller(gang)
             add_revenge_target(gang, random.choice(STREET_NAMES), rival_info, rival_rep)
-            ev_embed.description += (
-                f"\n\n`{member['name']}` put in work publicly. Cred: +{gain}\n"
-                f"Kills: {member['kills']} | Notoriety: {get_notoriety_tier(member['kills']).upper()}\n"
-                f"**{rival_info['name']}** has a name on their list now."
-            )
-            ev_embed.set_footer(text=f"Type `revenge {code}` — or wait for them to come.")
 
         elif event['type'] == 'fight_loss':
             loss = random.randint(*event['value'])
             rep_change -= loss
-            ev_embed.description += f"\n\nTook an L. Cred: -{loss}"
-            ev_embed.set_footer(text="Can't win every hallway.")
 
         elif event['type'] == 'sign_thrown':
             gain = random.randint(*event['value'])
             rep_change += gain
-            ev_embed.description += f"\n\nSet is known at this school now. Cred: +{gain}"
-            ev_embed.set_footer(text="Streets start at the school gates.")
 
         elif event['type'] == 'sign_disrespected':
             loss = random.randint(*event['value'])
             rep_change -= loss
             add_revenge_target(gang, random.choice(STREET_NAMES), rival_info, rival_rep)
-            ev_embed.description += f"\n\nDisrespected in front of everyone. Cred: -{loss}\nBlood owed."
-            ev_embed.set_footer(text=f"Type `revenge {code}` to handle it.")
 
         elif event['type'] == 'recruit_attempt':
             gain = random.randint(*event['value'])
@@ -1927,30 +1905,14 @@ async def run_school_event_for_member(channel, gang, member, school, rival_info,
                 if available:
                     new_name = random.choice(available)
                     gang['members'].append(make_member(new_name))
-                    ev_embed.description += f"\n\n`{new_name}` joined the set. Cred: +{gain}\nTotal Alive: {len(get_alive_members(gang))}"
-                else:
-                    ev_embed.description += f"\n\nKid wasn't ready yet. Cred: +{gain}"
-            else:
-                ev_embed.description += f"\n\nKid's still watching. Cred: +{gain}"
-            ev_embed.set_footer(text="The next generation is always watching.")
 
         elif event['type'] == 'rep_up':
             gain = random.randint(*event['value'])
             rep_change += gain
-            ev_embed.description += f"\n\nCred: +{gain}"
-            ev_embed.set_footer(text="Reputation is everything.")
 
-        elif event['type'] == 'suspended':
+        elif event['type'] in ('suspended', 'expelled'):
             loss = random.randint(*event['value'])
             rep_change -= loss
-            ev_embed.description += f"\n\nCred: -{loss}"
-            ev_embed.set_footer(text="Off campus but still in the game.")
-
-        elif event['type'] == 'expelled':
-            loss = random.randint(*event['value'])
-            rep_change -= loss
-            ev_embed.description += f"\n\nCred: -{loss}\n`{member['name']}` is done at this school."
-            ev_embed.set_footer(text="Streets full time now.")
 
         elif event['type'] == 'after_school_fight':
             gain_or_loss = random.randint(*event['value'])
@@ -1959,15 +1921,8 @@ async def run_school_event_for_member(channel, gang, member, school, rival_info,
                 member['kills'] += 1
                 member['missions_survived'] += 1
                 update_shot_caller(gang)
-                ev_embed.description += (
-                    f"\n\n`{member['name']}` handled it. Cred: +{gain_or_loss}\n"
-                    f"Kills: {member['kills']} | Notoriety: {get_notoriety_tier(member['kills']).upper()}"
-                )
-                ev_embed.set_footer(text="After school, different rules.")
             else:
                 rep_change -= gain_or_loss
-                ev_embed.description += f"\n\n`{member['name']}` got worked. Cred: -{gain_or_loss}"
-                ev_embed.set_footer(text="Took an L when it counted.")
 
         elif event['type'] == 'after_school_jumped':
             loss = random.randint(*event['value'])
@@ -1978,19 +1933,9 @@ async def run_school_event_for_member(channel, gang, member, school, rival_info,
                 member['deaths'] += 1
                 fallen = member['name']
                 add_revenge_target(gang, random.choice(STREET_NAMES), rival_info, rival_rep)
-                ev_embed.description += (
-                    f"\n\n`{member['name']}` didn't make it back from that one. Gone.\n"
-                    f"Cred: -{loss}\nBlood owed — **{rival_info['name']}**."
-                )
-                ev_embed.set_footer(text=f"Type `revenge {code}`.")
             elif random.randint(1, 100) <= 25:
                 s = send_to_jail(member)
                 jailed = (member['name'], s)
-                ev_embed.description += f"\n\n`{member['name']}` got knocked when the police showed up. {s}.\nCred: -{loss}"
-                ev_embed.set_footer(text="Wrong place, wrong time.")
-            else:
-                ev_embed.description += f"\n\n`{member['name']}` took the beating and made it back. Cred: -{loss}"
-                ev_embed.set_footer(text="Alive. That's what matters.")
 
         elif event['type'] == 'after_school_stabbing':
             loss = random.randint(*event['value'])
@@ -2001,19 +1946,9 @@ async def run_school_event_for_member(channel, gang, member, school, rival_info,
                 member['deaths'] += 1
                 fallen = member['name']
                 add_revenge_target(gang, random.choice(STREET_NAMES), rival_info, rival_rep)
-                ev_embed.description += (
-                    f"\n\n`{member['name']}` got stabbed and didn't make it. Gone on a school sidewalk.\n"
-                    f"Cred: -{loss}\nBlood owed — **{rival_info['name']}**."
-                )
-                ev_embed.set_footer(text=f"Type `revenge {code}`.")
             else:
                 s = send_to_jail(member)
                 jailed = (member['name'], s)
-                ev_embed.description += (
-                    f"\n\n`{member['name']}` caught a blade and survived. Hospitalized, then arrested. Facing {s}.\n"
-                    f"Cred: -{loss}"
-                )
-                ev_embed.set_footer(text="Stabbed and cuffed. Rough day.")
 
         elif event['type'] == 'after_school_shooting':
             loss = random.randint(*event['value'])
@@ -2024,31 +1959,22 @@ async def run_school_event_for_member(channel, gang, member, school, rival_info,
                 member['deaths'] += 1
                 fallen = member['name']
                 add_revenge_target(gang, random.choice(STREET_NAMES), rival_info, rival_rep)
-                ev_embed.description += (
-                    f"\n\n`{member['name']}` was the target. Didn't make it.\n"
-                    f"Cred: -{loss}\n**{rival_info['name']}** knew exactly who they were coming for."
-                )
-                ev_embed.set_footer(text=f"High notoriety makes you a priority target. Type `revenge {code}`.")
-            else:
-                ev_embed.description += (
-                    f"\n\n`{member['name']}` hit the ground and stayed low. Made it out.\n"
-                    f"Cred: -{loss}"
-                )
-                ev_embed.set_footer(text="Survived by inches.")
 
         elif event['type'] == 'nothing':
-            ev_embed.description += "\n\nNothing popped off."
-            ev_embed.set_footer(text="Low key day.")
+            pass
 
-        if len(ev_embed.description) > EMBED_DESC_LIMIT:
-            ev_embed.description = ev_embed.description[:EMBED_DESC_LIMIT - 3] + "..."
+    # Build a compact summary line for this member
+    status_tag = ""
+    if fallen:
+        status_tag = " — **FALLEN**"
+    elif jailed:
+        status_tag = f" — locked up ({jailed[1]})"
 
-        await safe_send(channel, embed=ev_embed)
-        check_and_mark_dead(code)
-        if not gang['alive']:
-            break
+    cred_tag = f"+{rep_change}" if rep_change >= 0 else str(rep_change)
+    events_str = ", ".join(event_names) if event_names else "Nothing"
+    summary_line = f"`{member['name']}`{status_tag} | {cred_tag} cred | {events_str}"
 
-    return rep_change, fallen, jailed
+    return summary_line, rep_change, fallen, jailed
 
 
 async def handle_school(message, args):
@@ -2112,6 +2038,7 @@ async def handle_school(message, args):
     total_rep_change = 0
     all_fallen = []
     all_jailed = []
+    member_lines = []
 
     for member in attending:
         if not gang['alive']:
@@ -2119,33 +2046,23 @@ async def handle_school(message, args):
         if not member['alive']:
             continue
 
-        # Member header so you know who's up
-        member_intro = discord.Embed(
-            title=f"{member['name']} — School Day",
-            description=(
-                f"Kills: {member['kills']}  |  Notoriety: {get_notoriety_tier(member['kills']).upper()}\n"
-                f"Status: {get_member_status(member)}"
-            ),
-            color=discord.Color.dark_blue()
-        )
-        await safe_send(message.channel, embed=member_intro)
-
-        rep_change, fallen, jailed = await run_school_event_for_member(
-            message.channel, gang, member, school, rival_info, rival_rep, code
+        summary_line, rep_change, fallen, jailed = resolve_school_event_for_member(
+            gang, member, rival_info, rival_rep, code
         )
         total_rep_change += rep_change
+        member_lines.append(summary_line)
         if fallen:
             all_fallen.append(fallen)
         if jailed:
             all_jailed.append(jailed)
 
+        check_and_mark_dead(code)
         if not gang['alive']:
             break
 
     gang['rep'] = max(1, old_rep + total_rep_change)
     update_shot_caller(gang)
     check_and_mark_dead(code)
-    await asyncio.sleep(MSG_DELAY)
 
     color = discord.Color.green() if total_rep_change >= 0 else discord.Color.orange()
     rep_display = (
@@ -2156,21 +2073,35 @@ async def handle_school(message, args):
 
     summary = discord.Embed(title="School Day — Done", color=color)
     summary.description = (
-        f"**{gang['name']}** — {actual} sent to **{school}**.\n\n"
+        f"**{gang['name']}** — {actual} sent to **{school}**.\n"
+        f"Opps: **{rival_info['name']}**\n\n"
         f"Cred: {rep_display}\n"
         f"Shot Caller: `{gang['leader']}`\n"
         f"Alive: {len(get_alive_members(gang))}  |  Free: {len(get_free_members(gang))}"
     )
 
+    if member_lines:
+        roster_text = "\n".join(member_lines)
+        if len(roster_text) <= EMBED_FIELD_LIMIT:
+            summary.add_field(name="Crew Report", value=roster_text, inline=False)
+        else:
+            chunks = [member_lines[i:i+8] for i in range(0, len(member_lines), 8)]
+            for idx, chunk in enumerate(chunks):
+                summary.add_field(
+                    name="Crew Report" if idx == 0 else "Crew Report (cont.)",
+                    value="\n".join(chunk),
+                    inline=False
+                )
+
     if all_fallen:
-        summary.description += "\nFallen: " + ", ".join(f"`{n}`" for n in all_fallen)
+        summary.description += "\n\n**Fallen:** " + ", ".join(f"`{n}`" for n in all_fallen)
     if all_jailed:
-        summary.description += "\nLocked Up: " + ", ".join(f"`{n}` ({s})" for n, s in all_jailed)
+        summary.description += "\n**Locked Up:** " + ", ".join(f"`{n}` ({s})" for n, s in all_jailed)
 
     all_targets = get_revenge_targets(gang)
     if all_targets:
         blood_text = "\n".join(f"**{t['gang']}** | `{t['name']}`" for t in all_targets)
-        summary.description += f"\n\nBlood Owed:\n{blood_text}\n\nType `revenge {code}` to handle it."
+        summary.description += f"\n\n**Blood Owed:**\n{blood_text}\n\nType `revenge {code}` to handle it."
 
     if len(summary.description) > EMBED_DESC_LIMIT:
         summary.description = summary.description[:EMBED_DESC_LIMIT - 3] + "..."
